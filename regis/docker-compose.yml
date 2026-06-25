@@ -1,0 +1,67 @@
+# Local dev stack. Mirrors the PRD architecture: Postgres + Redis + S3(MinIO) +
+# Qdrant + the FastAPI API and the Arq worker. Production runs the managed
+# equivalents (RDS, ElastiCache, S3, Qdrant) in AWS ap-south-1 — see infra/terraform.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: regis
+      POSTGRES_PASSWORD: regis
+      POSTGRES_DB: regis
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U regis"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  minio: # S3-compatible storage for evidence documents (local stand-in for S3)
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: regis
+      MINIO_ROOT_PASSWORD: regis-secret
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["miniodata:/data"]
+
+  qdrant: # vector DB for the copilot RAG corpus + per-tenant doc namespace
+    image: qdrant/qdrant
+    ports: ["6333:6333"]
+    volumes: ["qdrantdata:/qdrant/storage"]
+
+  api:
+    build: ./backend
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_started}
+    environment:
+      REGIS_DATABASE_URL: postgresql+psycopg://regis:regis@postgres:5432/regis
+      REGIS_REDIS_URL: redis://redis:6379/0
+      REGIS_QDRANT_URL: http://qdrant:6333
+      REGIS_JWT_SECRET: dev-only-change-me
+    ports: ["8000:8000"]
+    # On boot: apply migrations, seed the library, then serve.
+    command: >
+      sh -c "alembic upgrade head &&
+             python -m app.seed.cli &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  worker:
+    build: ./backend
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_started}
+    environment:
+      REGIS_DATABASE_URL: postgresql+psycopg://regis:regis@postgres:5432/regis
+      REGIS_REDIS_URL: redis://redis:6379/0
+    command: ["arq", "app.jobs.worker.WorkerSettings"]
+
+volumes:
+  pgdata:
+  miniodata:
+  qdrantdata:

@@ -1,0 +1,3090 @@
+{
+  "meta": {
+    "title": "NBFC Phase-1 Compliance Obligation Library",
+    "version": "0.1-draft",
+    "status": "DRAFT_UNVERIFIED — every entry requires verification by a qualified Company Secretary / Chartered Accountant against the latest statutes, RBI Master Directions, and CIMS return taxonomy before production use.",
+    "scope": "Indian NBFC (Base/Middle Layer under RBI Scale-Based Regulation). Phase-1 seed.",
+    "obligation_count": 106,
+    "law_count": 29,
+    "table": "obligation_templates"
+  },
+  "law_library": [
+    {
+      "id": "law_rbi_sbr",
+      "name": "RBI Master Direction – Scale Based Regulation (SBR) for NBFCs, 2023",
+      "regulator": "RBI",
+      "category": "rbi"
+    },
+    {
+      "id": "law_rbi_returns",
+      "name": "RBI Master Direction – NBFC Returns / CIMS Reporting",
+      "regulator": "RBI",
+      "category": "rbi"
+    },
+    {
+      "id": "law_rbi_nbfc_md",
+      "name": "RBI Master Directions – NBFC-ND-SI / NBFC-D Prudential Norms",
+      "regulator": "RBI",
+      "category": "rbi"
+    },
+    {
+      "id": "law_rbi_kyc",
+      "name": "RBI Master Direction – Know Your Customer (KYC) Direction, 2016",
+      "regulator": "RBI",
+      "category": "kyc_aml"
+    },
+    {
+      "id": "law_pmla",
+      "name": "Prevention of Money Laundering Act, 2002 & Rules (FIU-IND)",
+      "regulator": "FIU-IND",
+      "category": "kyc_aml"
+    },
+    {
+      "id": "law_rbi_cic",
+      "name": "RBI Master Direction – Credit Information Reporting (CICs)",
+      "regulator": "RBI",
+      "category": "rbi"
+    },
+    {
+      "id": "law_rbi_fraud",
+      "name": "RBI Master Direction – Monitoring of Frauds in NBFCs",
+      "regulator": "RBI",
+      "category": "rbi"
+    },
+    {
+      "id": "law_rbi_it",
+      "name": "RBI Master Direction – IT Governance, Risk, Controls & Assurance",
+      "regulator": "RBI",
+      "category": "rbi"
+    },
+    {
+      "id": "law_rbi_compliance",
+      "name": "RBI – Compliance Function & Chief Compliance Officer in NBFCs",
+      "regulator": "RBI",
+      "category": "rbi"
+    },
+    {
+      "id": "law_rbi_audit",
+      "name": "RBI – Appointment of Statutory Auditors (SCAs/SAs) Guidelines",
+      "regulator": "RBI",
+      "category": "rbi"
+    },
+    {
+      "id": "law_rbi_ombudsman",
+      "name": "RBI – Internal Ombudsman / Grievance Redressal for NBFCs",
+      "regulator": "RBI",
+      "category": "rbi"
+    },
+    {
+      "id": "law_companies_act",
+      "name": "Companies Act, 2013 & Rules (MCA / ROC)",
+      "regulator": "MCA",
+      "category": "corporate"
+    },
+    {
+      "id": "law_income_tax",
+      "name": "Income-tax Act, 1961 & Rules (CBDT)",
+      "regulator": "Income Tax Dept",
+      "category": "income_tax"
+    },
+    {
+      "id": "law_gst",
+      "name": "Central/State GST Acts, 2017 & Rules",
+      "regulator": "GSTN / CBIC",
+      "category": "gst"
+    },
+    {
+      "id": "law_fema",
+      "name": "Foreign Exchange Management Act, 1999 & Rules (RBI/FEMA)",
+      "regulator": "RBI (FEMA)",
+      "category": "fema"
+    },
+    {
+      "id": "law_epf",
+      "name": "Employees' Provident Funds & Misc. Provisions Act, 1952 (EPFO)",
+      "regulator": "EPFO",
+      "category": "labour"
+    },
+    {
+      "id": "law_esi",
+      "name": "Employees' State Insurance Act, 1948 (ESIC)",
+      "regulator": "ESIC",
+      "category": "labour"
+    },
+    {
+      "id": "law_pt",
+      "name": "State Professional Tax Acts",
+      "regulator": "State Govt",
+      "category": "labour"
+    },
+    {
+      "id": "law_posh",
+      "name": "Sexual Harassment of Women at Workplace (POSH) Act, 2013",
+      "regulator": "District Officer",
+      "category": "labour"
+    },
+    {
+      "id": "law_bonus",
+      "name": "Payment of Bonus Act, 1965",
+      "regulator": "Labour Dept",
+      "category": "labour"
+    },
+    {
+      "id": "law_lwf",
+      "name": "State Labour Welfare Fund Acts",
+      "regulator": "State Govt",
+      "category": "labour"
+    },
+    {
+      "id": "law_shops",
+      "name": "State Shops & Establishments Acts",
+      "regulator": "State Govt",
+      "category": "labour"
+    },
+    {
+      "id": "law_gratuity",
+      "name": "Payment of Gratuity Act, 1972",
+      "regulator": "Labour Dept",
+      "category": "labour"
+    },
+    {
+      "id": "law_sebi_lodr",
+      "name": "SEBI (LODR) Regulations, 2015 – Listed Non-Convertible Securities",
+      "regulator": "SEBI / Stock Exchange",
+      "category": "sebi"
+    },
+    {
+      "id": "law_sebi_ncs",
+      "name": "SEBI (Issue & Listing of Non-Convertible Securities) Regulations, 2021",
+      "regulator": "SEBI",
+      "category": "sebi"
+    },
+    {
+      "id": "law_sebi_pit",
+      "name": "SEBI (Prohibition of Insider Trading) Regulations, 2015",
+      "regulator": "SEBI",
+      "category": "sebi"
+    },
+    {
+      "id": "law_rbi_digital",
+      "name": "RBI – Guidelines on Digital Lending",
+      "regulator": "RBI",
+      "category": "rbi"
+    },
+    {
+      "id": "law_cersai",
+      "name": "SARFAESI Act / CERSAI – Registration of Security Interest",
+      "regulator": "CERSAI",
+      "category": "rbi"
+    },
+    {
+      "id": "law_rbi_deposit",
+      "name": "RBI – Acceptance of Public Deposits (NBFC-D) Directions",
+      "regulator": "RBI",
+      "category": "rbi"
+    }
+  ],
+  "obligation_templates": [
+    {
+      "template_id": "rbi_ret_dnbs02",
+      "law_id": "law_rbi_returns",
+      "category": "rbi",
+      "title": "RBI Quarterly Return – Important Financial Parameters (DNBS02 / CIMS equivalent)",
+      "description": "File the quarterly return on important financial parameters of the NBFC (assets, income, NOF, CRAR, NPA) via RBI CIMS portal. Verify exact return code against current CIMS taxonomy.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 15,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "CIMS acknowledgment",
+        "Return working file",
+        "Trial balance"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Non-submission/delay attracts penalty under RBI Act s.58B and supervisory action; persistent default can affect CoR.",
+      "form_reference": "DNBS02",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_ret_dnbs03",
+      "law_id": "law_rbi_returns",
+      "category": "rbi",
+      "title": "RBI Quarterly Return – Reporting of Prudential Norms (DNBS03 / CIMS equivalent)",
+      "description": "Quarterly prudential-norms return (asset classification, provisioning, capital market & real-estate exposure) via CIMS.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 15,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "CIMS acknowledgment",
+        "Provisioning workings"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Penalty under RBI Act; misreporting of prudential norms can trigger inspection findings.",
+      "form_reference": "DNBS03",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_ret_alm_struct",
+      "law_id": "law_rbi_nbfc_md",
+      "category": "rbi",
+      "title": "ALM – Statement of Structural Liquidity",
+      "description": "Monthly/periodic Asset-Liability Management structural liquidity statement showing maturity-bucket mismatches.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "days_after_month_end",
+        "days": 10,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "rbi_layer": [
+          "middle",
+          "upper"
+        ],
+        "asset_size_min_cr": 100
+      },
+      "required_evidence": [
+        "ALM statement",
+        "Bucketing workings"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Liquidity-mismatch breaches invite supervisory action; non-reporting penalised under RBI Act.",
+      "form_reference": "ALM-Structural",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_ret_alm_dynamic",
+      "law_id": "law_rbi_nbfc_md",
+      "category": "rbi",
+      "title": "ALM – Statement of Dynamic Liquidity",
+      "description": "Short-term dynamic liquidity statement (typically fortnightly/monthly) for applicable NBFCs.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "days_after_month_end",
+        "days": 10,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "rbi_layer": [
+          "middle",
+          "upper"
+        ],
+        "asset_size_min_cr": 100
+      },
+      "required_evidence": [
+        "Dynamic liquidity statement"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Supervisory action for liquidity gaps; reporting default penalised.",
+      "form_reference": "ALM-Dynamic",
+      "dependencies": [
+        "rbi_ret_alm_struct"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_ret_irs",
+      "law_id": "law_rbi_nbfc_md",
+      "category": "rbi",
+      "title": "ALM – Interest Rate Sensitivity Statement",
+      "description": "Periodic interest-rate sensitivity (IRS) statement under ALM framework.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "days_after_month_end",
+        "days": 10,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "rbi_layer": [
+          "middle",
+          "upper"
+        ],
+        "asset_size_min_cr": 100
+      },
+      "required_evidence": [
+        "IRS statement"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Reporting default penalised; gaps flagged in inspection.",
+      "form_reference": "ALM-IRS",
+      "dependencies": [
+        "rbi_ret_alm_struct"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_lcr",
+      "law_id": "law_rbi_nbfc_md",
+      "category": "rbi",
+      "title": "Liquidity Coverage Ratio (LCR) maintenance & reporting",
+      "description": "Maintain and report LCR (stock of HQLA vs net cash outflows) per RBI glide path for applicable NBFCs.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "days_after_month_end",
+        "days": 15,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "asset_size_min_cr": 5000
+      },
+      "required_evidence": [
+        "LCR computation",
+        "HQLA register"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Breach of minimum LCR is a prudential violation; attracts supervisory action.",
+      "form_reference": "LCR",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_cic_reporting",
+      "law_id": "law_rbi_cic",
+      "category": "rbi",
+      "title": "Credit Information Reporting to CICs (CIBIL/Equifax/Experian/CRIF)",
+      "description": "Submit borrower credit data to all four Credit Information Companies. RBI mandated fortnightly (or shorter) reporting effective 01-Jan-2025 — verify current cadence.",
+      "frequency": "fortnightly",
+      "due_rule": {
+        "type": "days_after_fortnight_end",
+        "days": 7,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "CIC upload acknowledgments (x4)",
+        "Reject-and-rectify report"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Penalty up to Rs.1 crore per CIC under CIC(R) Act for default; data-quality lapses flagged by RBI.",
+      "form_reference": "CIC-Upload",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_crilc",
+      "law_id": "law_rbi_nbfc_md",
+      "category": "rbi",
+      "title": "CRILC Reporting – Large Credit Exposures",
+      "description": "Report borrowers with aggregate exposure >= Rs.5 crore to RBI's CRILC; weekly reporting of SMA/default status.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 21,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "nbfc_category": [
+          "nd_si",
+          "deposit_taking"
+        ]
+      },
+      "required_evidence": [
+        "CRILC return acknowledgment"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Non/incorrect reporting penalised; weekly SMA default reporting is closely monitored.",
+      "form_reference": "CRILC",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_crilc_sma_weekly",
+      "law_id": "law_rbi_nbfc_md",
+      "category": "rbi",
+      "title": "CRILC – Weekly SMA / Default Reporting",
+      "description": "Weekly reporting of Special Mention Accounts and defaults of large borrowers to CRILC.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "weekly",
+        "day_of_week": "friday",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "nbfc_category": [
+          "nd_si",
+          "deposit_taking"
+        ]
+      },
+      "required_evidence": [
+        "Weekly CRILC-SMA file"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Delay in default reporting is a serious supervisory concern.",
+      "form_reference": "CRILC-SMA",
+      "dependencies": [
+        "rbi_crilc"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "aml_ctr",
+      "law_id": "law_pmla",
+      "category": "kyc_aml",
+      "title": "Cash Transaction Report (CTR) to FIU-IND",
+      "description": "Report all cash transactions > Rs.10 lakh (or series of integrally connected transactions) for the month to FIU-IND.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "days_after_month_end",
+        "days": 15,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "FIU CTR acknowledgment",
+        "Transaction extract"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "PMLA penalties Rs.10k–1 lakh per failure; reputational and regulatory consequences.",
+      "form_reference": "CTR",
+      "dependencies": [
+        "aml_principal_officer"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "aml_str",
+      "law_id": "law_pmla",
+      "category": "kyc_aml",
+      "title": "Suspicious Transaction Report (STR) to FIU-IND",
+      "description": "File STR within 7 days of forming suspicion of money laundering / terror financing.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "days_after_event",
+        "days": 7,
+        "event": "suspicion_formed",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "FIU STR acknowledgment",
+        "Internal suspicion note"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Failure to report is a serious PMLA violation with penalties and personal liability for Principal Officer.",
+      "form_reference": "STR",
+      "dependencies": [
+        "aml_principal_officer"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "aml_ntr",
+      "law_id": "law_pmla",
+      "category": "kyc_aml",
+      "title": "Non-Profit Organisation / NTR & CCR Reporting to FIU-IND",
+      "description": "File applicable FIU reports (NTR for NPO receipts, CCR for counterfeit currency, CBWTR for cross-border wire transfers) as triggered.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "days_after_event",
+        "days": 15,
+        "event": "reportable_transaction",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "FIU acknowledgment"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "PMLA penalties for non-reporting.",
+      "form_reference": "NTR/CCR/CBWTR",
+      "dependencies": [
+        "aml_principal_officer"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "kyc_ckyc_upload",
+      "law_id": "law_rbi_kyc",
+      "category": "kyc_aml",
+      "title": "Central KYC Registry (CKYCR) Upload",
+      "description": "Upload KYC records of new individual/legal-entity accounts to CKYCR within 10 days of account opening.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "days_after_account_open",
+        "days": 10,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "CKYC upload report",
+        "KYC Identifier register"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "RBI penalty for KYC non-compliance; account-opening lapses flagged in inspection.",
+      "form_reference": "CKYCR",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "kyc_rekyc",
+      "law_id": "law_rbi_kyc",
+      "category": "kyc_aml",
+      "title": "Periodic KYC Updation (Re-KYC)",
+      "description": "Risk-based periodic updation of customer KYC: high-risk every 2 years, medium 8 years, low 10 years.",
+      "frequency": "ongoing",
+      "due_rule": {
+        "type": "risk_based_periodic",
+        "high_years": 2,
+        "medium_years": 8,
+        "low_years": 10
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "Re-KYC records",
+        "Customer due-diligence file"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Stale KYC is a recurring RBI inspection finding; penalties for systemic lapses.",
+      "form_reference": "Re-KYC",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_tds_deposit",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "Monthly TDS/TCS Deposit",
+      "description": "Deposit tax deducted/collected at source for the month to the credit of Central Government.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "day_of_month",
+        "day": 7,
+        "offset_month": 1,
+        "working_day_adjustment": "next",
+        "march_special": {
+          "day": 30,
+          "month": 4
+        }
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "Challan (ITNS-281)",
+        "TDS computation"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Interest @1.5%/month (s.201), penalty (s.221), and disallowance of expense (s.40(a)(ia)); late deposit can be prosecutable.",
+      "form_reference": "ITNS-281",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_tds_return_24q",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "Quarterly TDS Return – Salaries (24Q)",
+      "description": "File quarterly TDS statement for salary deductions.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "tds_return_dates",
+        "dates": [
+          "07-31",
+          "10-31",
+          "01-31",
+          "05-31"
+        ],
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "24Q return acknowledgment",
+        "FVU file"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Late fee Rs.200/day (s.234E) capped at TDS amount; penalty s.271H Rs.10k–1 lakh.",
+      "form_reference": "Form 24Q",
+      "dependencies": [
+        "it_tds_deposit"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_tds_return_26q",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "Quarterly TDS Return – Non-Salary (26Q)",
+      "description": "File quarterly TDS statement for non-salary deductions (interest, professional fees, rent, contractors).",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "tds_return_dates",
+        "dates": [
+          "07-31",
+          "10-31",
+          "01-31",
+          "05-31"
+        ],
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "26Q return acknowledgment",
+        "FVU file"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Late fee Rs.200/day (s.234E); penalty s.271H.",
+      "form_reference": "Form 26Q",
+      "dependencies": [
+        "it_tds_deposit"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_tds_return_27q",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "Quarterly TDS Return – Non-Resident Payments (27Q)",
+      "description": "File quarterly TDS statement for payments to non-residents.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "tds_return_dates",
+        "dates": [
+          "07-31",
+          "10-31",
+          "01-31",
+          "05-31"
+        ],
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_nonresident_payments": true
+      },
+      "required_evidence": [
+        "27Q acknowledgment",
+        "Form 15CA/CB refs"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Late fee s.234E; penalty s.271H.",
+      "form_reference": "Form 27Q",
+      "dependencies": [
+        "it_tds_deposit"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_tds_cert_16a",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "Issue of TDS Certificates (Form 16A)",
+      "description": "Download from TRACES and issue Form 16A to deductees within 15 days of the TDS return due date.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_tds_return",
+        "days": 15,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "Form 16A copies",
+        "TRACES download log"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Penalty Rs.100/day per certificate (s.272A(2)(g)).",
+      "form_reference": "Form 16A",
+      "dependencies": [
+        "it_tds_return_26q"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_tds_cert_16",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "Issue of Salary TDS Certificate (Form 16)",
+      "description": "Issue annual Form 16 to employees by 15 June following the financial year.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 6,
+        "day": 15,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "Form 16 register"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Penalty Rs.100/day per certificate.",
+      "form_reference": "Form 16",
+      "dependencies": [
+        "it_tds_return_24q"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_advance_tax",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "Advance Tax Payment (Quarterly Instalments)",
+      "description": "Pay advance tax in four instalments: 15% by 15-Jun, 45% by 15-Sep, 75% by 15-Dec, 100% by 15-Mar.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "advance_tax_dates",
+        "dates": [
+          "06-15",
+          "09-15",
+          "12-15",
+          "03-15"
+        ],
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "Advance tax challans",
+        "Tax projection working"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Interest u/s 234B & 234C for shortfall/deferment.",
+      "form_reference": "ITNS-280",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_tax_audit",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "Tax Audit Report (Form 3CA/3CB-3CD)",
+      "description": "Obtain and file tax audit report where turnover/gross receipts exceed prescribed limits.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 9,
+        "day": 30,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "Signed Form 3CD",
+        "Audit working papers"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Penalty u/s 271B: 0.5% of turnover up to Rs.1.5 lakh.",
+      "form_reference": "Form 3CD",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_itr6",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "Income Tax Return – Company (ITR-6)",
+      "description": "File annual corporate income tax return (audited cases by 31-Oct; with TP by 30-Nov).",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 10,
+        "day": 31,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "ITR-V acknowledgment",
+        "Computation of income"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Late fee s.234F; interest s.234A; loss of carry-forward; prosecution in extreme cases.",
+      "form_reference": "ITR-6",
+      "dependencies": [
+        "it_tax_audit"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_form61a_sft",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "Statement of Financial Transactions (SFT – Form 61A)",
+      "description": "Report specified high-value financial transactions for the FY to the IT Department.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 5,
+        "day": 31,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "Form 61A acknowledgment"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Penalty Rs.500/day (s.271FA), Rs.1000/day after notice.",
+      "form_reference": "Form 61A",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_form61b_crs",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "FATCA/CRS Reporting (Form 61B)",
+      "description": "Report reportable accounts of foreign tax residents for FATCA/CRS for the calendar year.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 5,
+        "day": 31,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_reportable_accounts": true
+      },
+      "required_evidence": [
+        "Form 61B acknowledgment",
+        "Due-diligence records"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Penalty s.271FA / s.271FAA for inaccurate reporting.",
+      "form_reference": "Form 61B",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_form3ceb_tp",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "Transfer Pricing Report (Form 3CEB)",
+      "description": "File accountant's report on international/specified-domestic transactions with associated enterprises.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 10,
+        "day": 31,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_international_transactions": true
+      },
+      "required_evidence": [
+        "Signed Form 3CEB",
+        "TP study"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Penalty s.271BA Rs.1 lakh; s.271AA up to 2% of transaction value.",
+      "form_reference": "Form 3CEB",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_15ca_cb",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "Foreign Remittance Reporting (Form 15CA/15CB)",
+      "description": "File Form 15CA (and 15CB where required) before each foreign remittance to a non-resident.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "before_event",
+        "event": "foreign_remittance",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_nonresident_payments": true
+      },
+      "required_evidence": [
+        "Form 15CA ack",
+        "Form 15CB (CA certificate)"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Penalty s.271-I Rs.1 lakh for non-furnishing.",
+      "form_reference": "Form 15CA/CB",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "gst_gstr1",
+      "law_id": "law_gst",
+      "category": "gst",
+      "title": "GSTR-1 – Outward Supplies Return",
+      "description": "File details of outward supplies. Monthly (11th) or QRMP quarterly (13th) depending on scheme.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "day_of_month",
+        "day": 11,
+        "offset_month": 1,
+        "working_day_adjustment": "next",
+        "qrmp_alt": {
+          "type": "days_after_quarter_end",
+          "day": 13
+        }
+      },
+      "applicability_rule": {
+        "gst_registered": true
+      },
+      "required_evidence": [
+        "GSTR-1 filed acknowledgment"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Late fee + interest; mismatch blocks recipient ITC and invites scrutiny.",
+      "form_reference": "GSTR-1",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "gst_gstr3b",
+      "law_id": "law_gst",
+      "category": "gst",
+      "title": "GSTR-3B – Summary Return & Tax Payment",
+      "description": "File monthly/quarterly summary return and pay net GST liability. NBFCs may opt 50% ITC reversal u/s 17(4).",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "day_of_month",
+        "day": 20,
+        "offset_month": 1,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "gst_registered": true
+      },
+      "required_evidence": [
+        "GSTR-3B acknowledgment",
+        "Tax payment challan",
+        "ITC reconciliation"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Interest @18% on late tax; late fee Rs.50/day; persistent default blocks e-way/return filing.",
+      "form_reference": "GSTR-3B",
+      "dependencies": [
+        "gst_gstr1"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "gst_pmt06_qrmp",
+      "law_id": "law_gst",
+      "category": "gst",
+      "title": "QRMP Monthly Tax Payment (PMT-06)",
+      "description": "For QRMP filers, pay tax for the first two months of each quarter via PMT-06.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "day_of_month",
+        "day": 25,
+        "offset_month": 1,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "gst_registered": true,
+        "gst_scheme": "qrmp"
+      },
+      "required_evidence": [
+        "PMT-06 challan"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Interest on delayed payment.",
+      "form_reference": "PMT-06",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "gst_gstr9",
+      "law_id": "law_gst",
+      "category": "gst",
+      "title": "GSTR-9 – Annual Return",
+      "description": "File GST annual return consolidating the year's supplies, ITC and tax.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 12,
+        "day": 31,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "gst_registered": true,
+        "turnover_min_cr": 2
+      },
+      "required_evidence": [
+        "GSTR-9 acknowledgment"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Late fee for delay; reconciliation discrepancies invite notices.",
+      "form_reference": "GSTR-9",
+      "dependencies": [
+        "gst_gstr3b"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "gst_gstr9c",
+      "law_id": "law_gst",
+      "category": "gst",
+      "title": "GSTR-9C – Reconciliation Statement",
+      "description": "File self-certified reconciliation between audited financials and GSTR-9 where turnover exceeds threshold.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 12,
+        "day": 31,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "gst_registered": true,
+        "turnover_min_cr": 5
+      },
+      "required_evidence": [
+        "GSTR-9C",
+        "Reconciliation working"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Late fee; mismatches flagged for audit.",
+      "form_reference": "GSTR-9C",
+      "dependencies": [
+        "gst_gstr9"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "gst_itc_recon",
+      "law_id": "law_gst",
+      "category": "gst",
+      "title": "Monthly ITC Reconciliation (GSTR-2B vs Books)",
+      "description": "Reconcile input tax credit per GSTR-2B with purchase records before claiming ITC in 3B.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "day_of_month",
+        "day": 14,
+        "offset_month": 1,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "gst_registered": true
+      },
+      "required_evidence": [
+        "2B vs books reconciliation"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Excess/ineligible ITC attracts interest @18% and penalty.",
+      "form_reference": "GSTR-2B",
+      "dependencies": [
+        "gst_gstr3b"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "lab_pf_ecr",
+      "law_id": "law_epf",
+      "category": "labour",
+      "title": "EPF – Monthly Contribution & ECR Filing",
+      "description": "Deposit employer+employee PF contributions and file the Electronic Challan-cum-Return by 15th of next month.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "day_of_month",
+        "day": 15,
+        "offset_month": 1,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_employees_min": 20
+      },
+      "required_evidence": [
+        "ECR acknowledgment",
+        "Challan (TRRN)"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Damages u/s 14B (5–25% p.a.) + interest u/s 7Q; non-deposit of employee share is prosecutable.",
+      "form_reference": "EPF-ECR",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "lab_esi_contrib",
+      "law_id": "law_esi",
+      "category": "labour",
+      "title": "ESI – Monthly Contribution Deposit",
+      "description": "Deposit ESI contributions by 15th of next month for covered employees.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "day_of_month",
+        "day": 15,
+        "offset_month": 1,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_employees_min": 10,
+        "esi_applicable": true
+      },
+      "required_evidence": [
+        "ESI challan",
+        "Contribution statement"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Interest @12% p.a. + damages; non-payment is prosecutable.",
+      "form_reference": "ESI-Challan",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "lab_esi_return",
+      "law_id": "law_esi",
+      "category": "labour",
+      "title": "ESI – Half-Yearly Return of Contributions",
+      "description": "File half-yearly ESI return of contributions (Apr–Sep and Oct–Mar).",
+      "frequency": "half_yearly",
+      "due_rule": {
+        "type": "esi_return_dates",
+        "dates": [
+          "11-11",
+          "05-11"
+        ],
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_employees_min": 10,
+        "esi_applicable": true
+      },
+      "required_evidence": [
+        "ESI return acknowledgment"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Penalty for non-filing.",
+      "form_reference": "ESI-RC",
+      "dependencies": [
+        "lab_esi_contrib"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "lab_pt_deposit",
+      "law_id": "law_pt",
+      "category": "labour",
+      "title": "Professional Tax – Deposit & Return (State-wise)",
+      "description": "Deduct and deposit professional tax and file the periodic PT return per applicable state (frequency varies by state).",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "state_specific",
+        "default_day": 21,
+        "offset_month": 1,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_employees_min": 1,
+        "pt_states": [
+          "MH",
+          "KA",
+          "WB",
+          "TN",
+          "GJ",
+          "AP",
+          "TS",
+          "MP"
+        ]
+      },
+      "required_evidence": [
+        "PT challan",
+        "PT return acknowledgment"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Interest + penalty per state Act for late deposit/filing.",
+      "form_reference": "PT-Return",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "lab_lwf",
+      "law_id": "law_lwf",
+      "category": "labour",
+      "title": "Labour Welfare Fund Contribution (State-wise)",
+      "description": "Deposit LWF contribution per applicable state schedule (half-yearly/annual varies).",
+      "frequency": "half_yearly",
+      "due_rule": {
+        "type": "state_specific",
+        "common_dates": [
+          "06-30",
+          "12-31"
+        ],
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_employees_min": 1,
+        "lwf_states": [
+          "MH",
+          "KA",
+          "TN",
+          "GJ",
+          "WB",
+          "AP",
+          "TS",
+          "DL",
+          "HR"
+        ]
+      },
+      "required_evidence": [
+        "LWF challan"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "low",
+      "penalty_note": "Penalty per state LWF Act.",
+      "form_reference": "LWF",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "lab_tds_salary_note",
+      "law_id": "law_income_tax",
+      "category": "labour",
+      "title": "Payroll TDS Computation (Salary)",
+      "description": "Compute monthly TDS on salaries based on employee declarations and deposit with monthly TDS.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "day_of_month",
+        "day": 7,
+        "offset_month": 1,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_employees_min": 1
+      },
+      "required_evidence": [
+        "Payroll TDS register"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Linked to TDS deposit/return penalties.",
+      "form_reference": "TDS-Salary",
+      "dependencies": [
+        "it_tds_deposit"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_board_meeting",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Board Meetings – Minimum Four Per Year",
+      "description": "Hold minimum four board meetings per FY with gap between two meetings not exceeding 120 days.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "max_gap_days",
+        "days": 120
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "Notice",
+        "Attendance",
+        "Signed minutes"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Penalty u/s 173: Rs.25,000 on company and every officer in default.",
+      "form_reference": "MGT-15",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_agm",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Annual General Meeting (AGM)",
+      "description": "Hold AGM within 6 months of FY end (15 months from previous AGM).",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "days_after_fy_end",
+        "days": 180,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "AGM notice",
+        "Minutes",
+        "Attendance"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Penalty u/s 99 up to Rs.1 lakh + Rs.5,000/day continuing default.",
+      "form_reference": "",
+      "dependencies": [
+        "ca_board_meeting"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_aoc4",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Filing of Financial Statements (AOC-4)",
+      "description": "File audited financial statements with ROC within 30 days of AGM.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "days_after_agm",
+        "days": 30,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "AOC-4 SRN",
+        "Audited financials",
+        "Board & auditor reports"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Additional fee Rs.100/day; penalty on company & officers u/s 137.",
+      "form_reference": "AOC-4",
+      "dependencies": [
+        "ca_agm"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_mgt7",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Filing of Annual Return (MGT-7 / MGT-7A)",
+      "description": "File annual return with ROC within 60 days of AGM.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "days_after_agm",
+        "days": 60,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "MGT-7 SRN",
+        "Shareholding details"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Additional fee Rs.100/day; penalty u/s 92.",
+      "form_reference": "MGT-7",
+      "dependencies": [
+        "ca_agm"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_dir3kyc",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Director KYC (DIR-3 KYC)",
+      "description": "Every director with a DIN files annual KYC by 30 September.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 9,
+        "day": 30,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "DIR-3 KYC SRN per director"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "DIN deactivated; reactivation fee Rs.5,000 per director.",
+      "form_reference": "DIR-3 KYC",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_dpt3",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Return of Deposits / Exempted Deposits (DPT-3)",
+      "description": "File annual return of deposits and amounts not considered deposits as on 31 March, by 30 June.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 6,
+        "day": 30,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "DPT-3 SRN",
+        "Auditor certificate"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Penalty u/s 73/76A; additional fees.",
+      "form_reference": "DPT-3",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_msme1",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Half-Yearly Return of MSME Dues (MSME-1)",
+      "description": "Report outstanding dues to MSME suppliers beyond 45 days, half-yearly (Apr–Sep, Oct–Mar).",
+      "frequency": "half_yearly",
+      "due_rule": {
+        "type": "msme_dates",
+        "dates": [
+          "10-31",
+          "04-30"
+        ],
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_msme_dues": true
+      },
+      "required_evidence": [
+        "MSME-1 SRN",
+        "Outstanding-dues schedule"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Penalty u/s 405 on company & officers.",
+      "form_reference": "MSME-1",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_csr2",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "CSR Reporting (CSR-2) & Spending",
+      "description": "Spend >=2% of average net profit (3 yrs) on CSR if thresholds met; file CSR-2; transfer unspent to designated account.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "days_after_agm",
+        "days": 30,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "csr_applicable": true
+      },
+      "required_evidence": [
+        "CSR-2 SRN",
+        "CSR committee report",
+        "Spend proof"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Penalty u/s 135(7): up to 2x unspent or Rs.1 crore (company); officer penalty.",
+      "form_reference": "CSR-2",
+      "dependencies": [
+        "ca_aoc4"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_adt1",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Auditor Appointment Filing (ADT-1)",
+      "description": "File ADT-1 within 15 days of auditor appointment/ratification at AGM.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "days_after_event",
+        "days": 15,
+        "event": "auditor_appointment",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "ADT-1 SRN",
+        "Board/AGM resolution",
+        "Auditor consent"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Additional fees; non-filing penalty.",
+      "form_reference": "ADT-1",
+      "dependencies": [
+        "ca_agm"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_mbp1",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Directors' Disclosure of Interest (MBP-1)",
+      "description": "Obtain MBP-1 from every director at first board meeting of FY and on any change.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "first_board_meeting_of_fy"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "Signed MBP-1 forms"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "low",
+      "penalty_note": "Penalty u/s 184 on director in default; vacation of office risk.",
+      "form_reference": "MBP-1",
+      "dependencies": [
+        "ca_board_meeting"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_dir8",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Directors' Non-Disqualification Declaration (DIR-8)",
+      "description": "Obtain DIR-8 from every director annually confirming non-disqualification.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "first_board_meeting_of_fy"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "Signed DIR-8 forms"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "low",
+      "penalty_note": "Officer liability if disqualified director continues.",
+      "form_reference": "DIR-8",
+      "dependencies": [
+        "ca_board_meeting"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_mgt14",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Filing of Board/Special Resolutions (MGT-14)",
+      "description": "File MGT-14 within 30 days for resolutions requiring registration (e.g., s.179(3) items, special resolutions).",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "days_after_event",
+        "days": 30,
+        "event": "resolution_passed",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "MGT-14 SRN",
+        "Certified resolution"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Additional fees; penalty u/s 117.",
+      "form_reference": "MGT-14",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_ben2",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Significant Beneficial Owner Filing (BEN-2)",
+      "description": "File BEN-2 within 30 days of receipt of BEN-1 declaration of significant beneficial ownership.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "days_after_event",
+        "days": 30,
+        "event": "ben1_received",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_sbo": true
+      },
+      "required_evidence": [
+        "BEN-2 SRN",
+        "BEN-1 declaration"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Penalty u/s 90 on company & officers.",
+      "form_reference": "BEN-2",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_pas3",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Return of Allotment (PAS-3)",
+      "description": "File PAS-3 within 15 days (private placement) / 30 days of allotment of securities.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "days_after_event",
+        "days": 15,
+        "event": "share_allotment",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_capital_changes": true
+      },
+      "required_evidence": [
+        "PAS-3 SRN",
+        "Board resolution",
+        "List of allottees"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Additional fees; penalty u/s 39/42.",
+      "form_reference": "PAS-3",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_dir12",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Change in Directors (DIR-12)",
+      "description": "File DIR-12 within 30 days of appointment/resignation/change of directors.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "days_after_event",
+        "days": 30,
+        "event": "director_change",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "DIR-12 SRN",
+        "Resolution / DIR-11",
+        "Consent (DIR-2)"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Additional fees; penalty u/s 172.",
+      "form_reference": "DIR-12",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_secretarial_audit",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Secretarial Audit (MR-3)",
+      "description": "Obtain secretarial audit report from a PCS for prescribed companies; annex to Board report.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "before_board_report"
+      },
+      "applicability_rule": {
+        "is_listed": true
+      },
+      "required_evidence": [
+        "Signed MR-3"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Penalty u/s 204 on company, officers and PCS.",
+      "form_reference": "MR-3",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_statutory_registers",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Maintenance of Statutory Registers",
+      "description": "Maintain and update statutory registers (members, directors, charges, contracts, SBO) on an ongoing basis.",
+      "frequency": "ongoing",
+      "due_rule": {
+        "type": "continuous"
+      },
+      "applicability_rule": {
+        "all": true
+      },
+      "required_evidence": [
+        "Updated registers"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "low",
+      "penalty_note": "Penalty u/s 88 etc. for non-maintenance.",
+      "form_reference": "MGT-1/etc",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sbr_nof",
+      "law_id": "law_rbi_sbr",
+      "category": "rbi",
+      "title": "Net Owned Fund (NOF) Maintenance",
+      "description": "Maintain minimum NOF (Rs.10 crore for ICCs under glide path to 2027); monitor continuously.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 15
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "NOF computation",
+        "Auditor certificate (annual)"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Shortfall in NOF can lead to cancellation of Certificate of Registration.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sbr_crar",
+      "law_id": "law_rbi_nbfc_md",
+      "category": "rbi",
+      "title": "Capital Adequacy (CRAR) Maintenance",
+      "description": "Maintain minimum CRAR of 15% (Tier-I >=10%); monitor and report quarterly.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 15
+      },
+      "applicability_rule": {
+        "nbfc_category": [
+          "nd_si",
+          "deposit_taking"
+        ]
+      },
+      "required_evidence": [
+        "CRAR computation"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Breach is a prudential violation inviting supervisory/PCA action.",
+      "form_reference": "",
+      "dependencies": [
+        "sbr_nof"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sbr_sac",
+      "law_id": "law_rbi_audit",
+      "category": "rbi",
+      "title": "Statutory Auditor Certificate (SAC) to RBI",
+      "description": "Submit annual Statutory Auditor's Certificate confirming the NBFC continues to undertake business requiring CoR and meets principal-business criteria (50-50 test).",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "days_after_fy_end",
+        "days": 90,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "SAC",
+        "50-50 test working"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Non-submission flagged; can question continuance of CoR.",
+      "form_reference": "SAC",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sbr_cco",
+      "law_id": "law_rbi_compliance",
+      "category": "rbi",
+      "title": "Chief Compliance Officer & Compliance Function",
+      "description": "Maintain independent compliance function and a designated Chief Compliance Officer per RBI norms (Middle/Upper layer); annual board-reviewed compliance policy.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "annual_board_review"
+      },
+      "applicability_rule": {
+        "rbi_layer": [
+          "middle",
+          "upper"
+        ]
+      },
+      "required_evidence": [
+        "Board-approved compliance policy",
+        "CCO appointment record"
+      ],
+      "default_owner_role": "head",
+      "risk_level": "high",
+      "penalty_note": "Governance lapse; adverse supervisory assessment.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sbr_rbia",
+      "law_id": "law_rbi_nbfc_md",
+      "category": "rbi",
+      "title": "Risk-Based Internal Audit (RBIA) Framework",
+      "description": "Implement and operate a Board-approved Risk-Based Internal Audit framework with periodic reporting to Audit Committee.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "audit_committee_cycle"
+      },
+      "applicability_rule": {
+        "asset_size_min_cr": 500
+      },
+      "required_evidence": [
+        "RBIA reports",
+        "ACB minutes"
+      ],
+      "default_owner_role": "head",
+      "risk_level": "high",
+      "penalty_note": "RBI direction; weak internal audit is a supervisory red flag.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sbr_fpc",
+      "law_id": "law_rbi_sbr",
+      "category": "rbi",
+      "title": "Fair Practices Code (FPC) – Review & Display",
+      "description": "Maintain, display and annually review a Board-approved Fair Practices Code; ensure pricing transparency and KFS issuance.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "annual_board_review"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "Board-approved FPC",
+        "KFS template"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Consumer-protection violations attract RBI action.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sbr_interest_policy",
+      "law_id": "law_rbi_sbr",
+      "category": "rbi",
+      "title": "Interest Rate / Pricing Policy – Annual Review",
+      "description": "Board-approved interest rate model and policy on gradation of risk; reviewed annually.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "annual_board_review"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "Board-approved interest rate policy"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Excessive/opaque pricing invites RBI scrutiny.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sbr_kyc_policy",
+      "law_id": "law_rbi_kyc",
+      "category": "rbi",
+      "title": "KYC/AML Policy – Annual Board Review",
+      "description": "Maintain and annually review the Board-approved KYC/AML/CFT policy.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "annual_board_review"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "Board-approved KYC/AML policy"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Outdated AML policy is a recurring inspection finding.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sbr_outsourcing",
+      "law_id": "law_rbi_nbfc_md",
+      "category": "rbi",
+      "title": "Outsourcing Policy & Review",
+      "description": "Maintain Board-approved outsourcing policy; review material outsourcing arrangements and ensure RBI conditions are met.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "annual_board_review"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "Outsourcing policy",
+        "Vendor due-diligence register"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Responsibility remains with NBFC; lapses attract action.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sbr_grievance",
+      "law_id": "law_rbi_ombudsman",
+      "category": "rbi",
+      "title": "Grievance Redressal & Internal Ombudsman",
+      "description": "Operate grievance redressal mechanism; appoint Internal Ombudsman where applicable; display GRO details.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "annual_board_review"
+      },
+      "applicability_rule": {
+        "asset_size_min_cr": 5000
+      },
+      "required_evidence": [
+        "GRO/IO appointment",
+        "Grievance MIS"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "RBI ombudsman scheme coverage; reputational risk.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sbr_loans_directors",
+      "law_id": "law_rbi_nbfc_md",
+      "category": "rbi",
+      "title": "Loans to Directors / Senior Officers – Board Approval & Disclosure",
+      "description": "Ensure loans/advances to directors, their relatives and senior officers follow Board-approved policy and disclosure norms.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "audit_committee_cycle"
+      },
+      "applicability_rule": {
+        "rbi_layer": [
+          "middle",
+          "upper"
+        ]
+      },
+      "required_evidence": [
+        "Board approvals",
+        "Disclosure schedule"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Related-party/governance violation.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_fmr",
+      "law_id": "law_rbi_fraud",
+      "category": "rbi",
+      "title": "Fraud Monitoring Return (FMR) to RBI",
+      "description": "Report frauds to RBI within prescribed timelines and file quarterly fraud monitoring returns; place fraud review before Board.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 15,
+        "working_day_adjustment": "next",
+        "event_report_days": 21
+      },
+      "applicability_rule": {
+        "asset_size_min_cr": 500
+      },
+      "required_evidence": [
+        "FMR acknowledgment",
+        "Board fraud review minutes"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Delayed fraud reporting is a serious supervisory violation.",
+      "form_reference": "FMR",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_it_governance",
+      "law_id": "law_rbi_it",
+      "category": "rbi",
+      "title": "IT Governance, Risk & Controls Framework",
+      "description": "Implement Board-approved IT governance framework, IS audit, BCP/DR per RBI Master Direction on IT Governance (effective Apr 2024).",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "annual_board_review"
+      },
+      "applicability_rule": {
+        "asset_size_min_cr": 500
+      },
+      "required_evidence": [
+        "IT/IS policy",
+        "IS audit report",
+        "BCP/DR test report"
+      ],
+      "default_owner_role": "head",
+      "risk_level": "high",
+      "penalty_note": "Cyber/IT lapses attract RBI action and operational risk.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_cyber_incident",
+      "law_id": "law_rbi_it",
+      "category": "rbi",
+      "title": "Cyber Security Incident Reporting to RBI",
+      "description": "Report cyber security incidents to RBI within the prescribed window (typically 2–6 hours of detection).",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "hours_after_event",
+        "hours": 6,
+        "event": "cyber_incident"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "Incident report",
+        "RBI acknowledgment"
+      ],
+      "default_owner_role": "head",
+      "risk_level": "high",
+      "penalty_note": "Non-reporting is a serious supervisory and CERT-In violation.",
+      "form_reference": "",
+      "dependencies": [
+        "rbi_it_governance"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "fema_fcgpr",
+      "law_id": "law_fema",
+      "category": "fema",
+      "title": "Foreign Investment Reporting (FC-GPR)",
+      "description": "Report issue of shares/eligible instruments to a person resident outside India within 30 days of allotment via FIRMS portal.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "days_after_event",
+        "days": 30,
+        "event": "share_allotment_to_nr",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_foreign_investment": true
+      },
+      "required_evidence": [
+        "FC-GPR acknowledgment",
+        "FIRC",
+        "Valuation certificate"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Late Submission Fee (LSF); compounding under FEMA for delay.",
+      "form_reference": "FC-GPR",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "fema_fctrs",
+      "law_id": "law_fema",
+      "category": "fema",
+      "title": "Transfer of Shares Reporting (FC-TRS)",
+      "description": "Report transfer of capital instruments between resident and non-resident within 60 days via FIRMS.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "days_after_event",
+        "days": 60,
+        "event": "share_transfer_nr",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_foreign_investment": true
+      },
+      "required_evidence": [
+        "FC-TRS acknowledgment",
+        "Transfer documents"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "LSF / compounding for delay.",
+      "form_reference": "FC-TRS",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "fema_fla",
+      "law_id": "law_fema",
+      "category": "fema",
+      "title": "Foreign Liabilities and Assets (FLA) Return",
+      "description": "File annual FLA return to RBI by 15 July for companies with foreign investment/overseas assets.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 7,
+        "day": 15,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_foreign_investment": true
+      },
+      "required_evidence": [
+        "FLA acknowledgment"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Non-filing is a FEMA contravention subject to compounding.",
+      "form_reference": "FLA",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "fema_ecb2",
+      "law_id": "law_fema",
+      "category": "fema",
+      "title": "External Commercial Borrowing Return (ECB-2)",
+      "description": "File monthly ECB-2 return for outstanding external commercial borrowings via AD bank.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "day_of_month",
+        "day": 7,
+        "offset_month": 1,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_ecb": true
+      },
+      "required_evidence": [
+        "ECB-2 acknowledgment"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Delay attracts LSF; affects further ECB eligibility.",
+      "form_reference": "ECB-2",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "fema_apr_odi",
+      "law_id": "law_fema",
+      "category": "fema",
+      "title": "Annual Performance Report (APR) – Overseas Investment",
+      "description": "File APR for each overseas direct investment / JV-WOS by 31 December.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 12,
+        "day": 31,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_odi": true
+      },
+      "required_evidence": [
+        "APR acknowledgment",
+        "Audited accounts of JV/WOS"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Non-filing is a FEMA contravention; blocks further remittances.",
+      "form_reference": "APR",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "lab_posh_icc",
+      "law_id": "law_posh",
+      "category": "labour",
+      "title": "POSH – Internal Committee & Annual Report",
+      "description": "Constitute Internal Committee (10+ employees), conduct awareness, and file annual POSH report with District Officer.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 1,
+        "day": 31,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_employees_min": 10
+      },
+      "required_evidence": [
+        "IC constitution order",
+        "Annual report filing proof"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Penalty up to Rs.50,000; repeat – higher penalty & licence cancellation.",
+      "form_reference": "POSH Annual Report",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "lab_posh_disclosure",
+      "law_id": "law_posh",
+      "category": "labour",
+      "title": "POSH Disclosure in Board Report",
+      "description": "Include statement on POSH compliance and complaints in the Directors' Report.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "before_board_report"
+      },
+      "applicability_rule": {
+        "has_employees_min": 10
+      },
+      "required_evidence": [
+        "Board report extract"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "low",
+      "penalty_note": "Companies Act disclosure non-compliance.",
+      "form_reference": "",
+      "dependencies": [
+        "lab_posh_icc",
+        "ca_aoc4"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "lab_bonus",
+      "law_id": "law_bonus",
+      "category": "labour",
+      "title": "Payment of Bonus & Annual Return (Form D)",
+      "description": "Pay statutory bonus within 8 months of FY end and file annual return Form D.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 12,
+        "day": 31,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_employees_min": 20,
+        "has_eligible_bonus_employees": true
+      },
+      "required_evidence": [
+        "Bonus register",
+        "Form D ack"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "low",
+      "penalty_note": "Penalty / imprisonment under Bonus Act for default.",
+      "form_reference": "Form D",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "lab_gratuity_insurance",
+      "law_id": "law_gratuity",
+      "category": "labour",
+      "title": "Gratuity – Provisioning / Insurance",
+      "description": "Maintain gratuity provision/fund and (where mandated) compulsory gratuity insurance; display abstract.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "annual_review"
+      },
+      "applicability_rule": {
+        "has_employees_min": 10
+      },
+      "required_evidence": [
+        "Actuarial valuation",
+        "Insurance/fund proof"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "low",
+      "penalty_note": "Penalty under Gratuity Act for non-compliance.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "lab_shops_renewal",
+      "law_id": "law_shops",
+      "category": "labour",
+      "title": "Shops & Establishments Registration / Renewal",
+      "description": "Maintain valid S&E registration for each establishment/branch and renew per state schedule.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "license_renewal",
+        "lead_days": 30
+      },
+      "applicability_rule": {
+        "has_branches_min": 1
+      },
+      "required_evidence": [
+        "S&E certificate per location"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "low",
+      "penalty_note": "Penalty / closure under state S&E Act.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_digital_kfs",
+      "law_id": "law_rbi_digital",
+      "category": "rbi",
+      "title": "Digital Lending – Key Fact Statement (KFS) & APR Disclosure",
+      "description": "Issue standardised Key Fact Statement with all-inclusive APR to every digital-lending borrower; ensure cooling-off period and direct disbursal to borrower account.",
+      "frequency": "ongoing",
+      "due_rule": {
+        "type": "per_loan_disbursal"
+      },
+      "applicability_rule": {
+        "does_digital_lending": true
+      },
+      "required_evidence": [
+        "KFS templates",
+        "Sample loan disclosures"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Non-compliance with digital lending norms is a focus area of RBI enforcement.",
+      "form_reference": "KFS",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_digital_lsp",
+      "law_id": "law_rbi_digital",
+      "category": "rbi",
+      "title": "Digital Lending – LSP / DLA Due Diligence & Disclosure",
+      "description": "Maintain due diligence on Lending Service Providers/Digital Lending Apps, publish list on website, ensure data localization and grievance routing.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "annual_board_review"
+      },
+      "applicability_rule": {
+        "does_digital_lending": true
+      },
+      "required_evidence": [
+        "LSP agreements",
+        "Website disclosure",
+        "Data audit"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "RBI action including business restrictions for digital lending violations.",
+      "form_reference": "",
+      "dependencies": [
+        "rbi_digital_kfs"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_dlg_cap",
+      "law_id": "law_rbi_digital",
+      "category": "rbi",
+      "title": "Default Loss Guarantee (DLG) Cap Monitoring",
+      "description": "Ensure DLG arrangements with partners do not exceed 5% of the loan portfolio and are properly disclosed/invoked.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 15
+      },
+      "applicability_rule": {
+        "has_dlg_arrangements": true
+      },
+      "required_evidence": [
+        "DLG register",
+        "Cap computation"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Breach of DLG cap is a prudential violation.",
+      "form_reference": "",
+      "dependencies": [
+        "rbi_digital_lsp"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_emi_reset",
+      "law_id": "law_rbi_nbfc_md",
+      "category": "rbi",
+      "title": "Floating-Rate Reset & EMI Communication",
+      "description": "On benchmark reset, communicate revised EMI/tenor options to floating-rate retail borrowers per RBI Aug-2023 framework.",
+      "frequency": "ongoing",
+      "due_rule": {
+        "type": "per_rate_reset"
+      },
+      "applicability_rule": {
+        "has_floating_rate_retail": true
+      },
+      "required_evidence": [
+        "Borrower communication log"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Consumer-protection violation; RBI scrutiny.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "cersai_security",
+      "law_id": "law_cersai",
+      "category": "rbi",
+      "title": "CERSAI – Registration of Security Interest",
+      "description": "Register creation/modification/satisfaction of security interest with CERSAI within 30 days of the transaction.",
+      "frequency": "ongoing",
+      "due_rule": {
+        "type": "days_after_event",
+        "days": 30,
+        "event": "security_interest_creation",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "is_secured_lender": true
+      },
+      "required_evidence": [
+        "CERSAI registration IDs"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Loss of priority of charge; SARFAESI enforcement issues.",
+      "form_reference": "CERSAI",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_auditors_report",
+      "law_id": "law_rbi_audit",
+      "category": "rbi",
+      "title": "NBFC Auditors' Report to RBI",
+      "description": "Statutory auditor to report to RBI (in addition to Board) on regulatory compliance matters under NBFC Auditors' Report Directions; ensure exception reporting where applicable.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "days_after_fy_end",
+        "days": 90,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "Auditor's report to RBI (if exceptions)"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Adverse auditor report triggers RBI follow-up.",
+      "form_reference": "",
+      "dependencies": [
+        "sbr_sac"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_change_control",
+      "law_id": "law_rbi_sbr",
+      "category": "rbi",
+      "title": "Prior RBI Approval – Change in Control/Management",
+      "description": "Obtain prior written RBI approval for any takeover/acquisition of control or change in >30% of directors (excl. independent).",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "before_event",
+        "event": "change_in_control"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "RBI approval letter",
+        "Public notice"
+      ],
+      "default_owner_role": "head",
+      "risk_level": "high",
+      "penalty_note": "Change without approval can invalidate CoR.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_complaints_disclosure",
+      "law_id": "law_rbi_ombudsman",
+      "category": "rbi",
+      "title": "Public Disclosure of Complaints",
+      "description": "Disclose complaints data and grievance redressal summary on website and in annual financial statements per RBI norms.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "before_board_report"
+      },
+      "applicability_rule": {
+        "rbi_registered": true
+      },
+      "required_evidence": [
+        "Website disclosure",
+        "Complaints MIS"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "low",
+      "penalty_note": "Transparency non-compliance; RBI scrutiny.",
+      "form_reference": "",
+      "dependencies": [
+        "sbr_grievance"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_large_exposure",
+      "law_id": "law_rbi_sbr",
+      "category": "rbi",
+      "title": "Large Exposures Framework Monitoring (Upper Layer)",
+      "description": "Monitor and report single/group counterparty exposures within Large Exposure Framework limits (Upper Layer NBFCs).",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 15
+      },
+      "applicability_rule": {
+        "rbi_layer": [
+          "upper"
+        ]
+      },
+      "required_evidence": [
+        "Exposure computation",
+        "Breach register"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Limit breach is a prudential violation.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_concentration",
+      "law_id": "law_rbi_nbfc_md",
+      "category": "rbi",
+      "title": "Credit/Investment Concentration Norms Monitoring",
+      "description": "Monitor concentration of credit/investment (single & group borrower ceilings) and report breaches.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 15
+      },
+      "applicability_rule": {
+        "nbfc_category": [
+          "nd_si",
+          "deposit_taking"
+        ]
+      },
+      "required_evidence": [
+        "Concentration report"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Prudential breach inviting supervisory action.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_slr_deposit",
+      "law_id": "law_rbi_deposit",
+      "category": "rbi",
+      "title": "Statutory Liquid Assets (SLR) Maintenance – NBFC-D",
+      "description": "Maintain prescribed % of public deposits in approved liquid securities (SLR) and report.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 15
+      },
+      "applicability_rule": {
+        "deposit_taking": true
+      },
+      "required_evidence": [
+        "SLR computation",
+        "Custody statement"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "SLR shortfall is a serious prudential violation.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "rbi_deposit_reserve",
+      "law_id": "law_rbi_deposit",
+      "category": "rbi",
+      "title": "Deposit Repayment & Ceiling Compliance – NBFC-D",
+      "description": "Maintain deposits within ceiling, ensure investment-grade rating, and meet repayment reserve obligations.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 15
+      },
+      "applicability_rule": {
+        "deposit_taking": true
+      },
+      "required_evidence": [
+        "Rating letter",
+        "Deposit ledger",
+        "Ceiling computation"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Breach affects deposit acceptance authority.",
+      "form_reference": "",
+      "dependencies": [
+        "rbi_slr_deposit"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sebi_lodr_results",
+      "law_id": "law_sebi_lodr",
+      "category": "sebi",
+      "title": "LODR Reg 52 – Financial Results (Listed NCDs)",
+      "description": "Submit standalone/consolidated financial results to stock exchange within 45 days of quarter-end (60 days for year-end) with line items per Reg 52(4).",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 45,
+        "working_day_adjustment": "next",
+        "annual_days": 60
+      },
+      "applicability_rule": {
+        "has_listed_debt": true
+      },
+      "required_evidence": [
+        "Filed results",
+        "Exchange submission receipt",
+        "Limited review report"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Fines per SEBI SOP; trading/issuance restrictions for persistent default.",
+      "form_reference": "Reg 52",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sebi_lodr_board_intimation",
+      "law_id": "law_sebi_lodr",
+      "category": "sebi",
+      "title": "LODR Reg 50 – Prior Intimation of Board Meeting",
+      "description": "Give stock exchange prior intimation (>=2 working days) of board meetings considering results or fund-raising via NCDs.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "before_event",
+        "event": "board_meeting",
+        "lead_working_days": 2
+      },
+      "applicability_rule": {
+        "has_listed_debt": true
+      },
+      "required_evidence": [
+        "Intimation copy",
+        "Exchange receipt"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Non-compliance fine per SEBI SOP.",
+      "form_reference": "Reg 50",
+      "dependencies": [
+        "ca_board_meeting"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sebi_lodr_payment",
+      "law_id": "law_sebi_lodr",
+      "category": "sebi",
+      "title": "LODR Reg 57 – Interest/Redemption Payment Intimation",
+      "description": "Intimate stock exchange of interest/principal payment obligations and confirm payment within prescribed days; submit certificate.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "around_due_date",
+        "before_days": 2,
+        "after_days": 1
+      },
+      "applicability_rule": {
+        "has_listed_debt": true
+      },
+      "required_evidence": [
+        "Payment confirmation",
+        "Exchange certificate"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "high",
+      "penalty_note": "Default in debt servicing disclosure is a serious violation.",
+      "form_reference": "Reg 57",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sebi_lodr_asset_cover",
+      "law_id": "law_sebi_lodr",
+      "category": "sebi",
+      "title": "LODR Reg 54 – Asset Cover Certificate",
+      "description": "Maintain and submit asset cover certificate / security cover to debenture trustee and stock exchange alongside results.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 45,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_listed_debt": true
+      },
+      "required_evidence": [
+        "Asset cover certificate (CA/PCS)"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "high",
+      "penalty_note": "Inadequate security cover triggers trustee/SEBI action.",
+      "form_reference": "Reg 54",
+      "dependencies": [
+        "sebi_lodr_results"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sebi_lodr_trustee_docs",
+      "law_id": "law_sebi_lodr",
+      "category": "sebi",
+      "title": "LODR Reg 56 – Documents to Debenture Trustee",
+      "description": "Provide periodic information/documents (security cover, end-use, defaults) to the debenture trustee.",
+      "frequency": "quarterly",
+      "due_rule": {
+        "type": "days_after_quarter_end",
+        "days": 45,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_listed_debt": true
+      },
+      "required_evidence": [
+        "Trustee submission log"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Trustee escalation to SEBI for non-cooperation.",
+      "form_reference": "Reg 56",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sebi_lodr_record_date",
+      "law_id": "law_sebi_lodr",
+      "category": "sebi",
+      "title": "LODR Reg 60 – Record Date Notice",
+      "description": "Notify stock exchange of record date for interest/redemption at least 7 working days in advance.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "before_event",
+        "event": "record_date",
+        "lead_working_days": 7
+      },
+      "applicability_rule": {
+        "has_listed_debt": true
+      },
+      "required_evidence": [
+        "Record date intimation"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Fine per SEBI SOP.",
+      "form_reference": "Reg 60",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sebi_lc_borrowing",
+      "law_id": "law_sebi_ncs",
+      "category": "sebi",
+      "title": "Large Corporate – Incremental Borrowing Disclosure",
+      "description": "Identified Large Corporates to disclose borrowing plan/compliance with qualified-borrowing norms to stock exchange.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "days_after_fy_end",
+        "days": 90,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "is_large_corporate": true
+      },
+      "required_evidence": [
+        "LC disclosure filing"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Monetary disincentive for shortfall in market borrowing.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sebi_pit_sdd",
+      "law_id": "law_sebi_pit",
+      "category": "sebi",
+      "title": "Insider Trading – Structured Digital Database & Code",
+      "description": "Maintain Structured Digital Database of UPSI sharing, enforce code of conduct, and handle trading-window/closure for listed-debt issuer.",
+      "frequency": "ongoing",
+      "due_rule": {
+        "type": "continuous"
+      },
+      "applicability_rule": {
+        "has_listed_debt": true
+      },
+      "required_evidence": [
+        "SDD logs",
+        "Code of conduct",
+        "Trading window notices"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "SEBI penalties for PIT violations.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_chg1",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Charge Creation/Modification (CHG-1)",
+      "description": "File CHG-1 within 30 days of creation/modification of a charge (on borrowings); condonable up to 120 days with additional fee.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "days_after_event",
+        "days": 30,
+        "event": "charge_creation",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_borrowings": true
+      },
+      "required_evidence": [
+        "CHG-1 SRN",
+        "Charge instrument"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Charge unenforceable if unregistered; additional fees.",
+      "form_reference": "CHG-1",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "ca_chg4",
+      "law_id": "law_companies_act",
+      "category": "corporate",
+      "title": "Satisfaction of Charge (CHG-4)",
+      "description": "File CHG-4 within 30 days of satisfaction/repayment of a charge.",
+      "frequency": "event_based",
+      "due_rule": {
+        "type": "days_after_event",
+        "days": 30,
+        "event": "charge_satisfaction",
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_borrowings": true
+      },
+      "required_evidence": [
+        "CHG-4 SRN",
+        "No-dues / satisfaction letter"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "low",
+      "penalty_note": "Register shows charge outstanding; additional fees.",
+      "form_reference": "CHG-4",
+      "dependencies": [
+        "ca_chg1"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "gst_rcm",
+      "law_id": "law_gst",
+      "category": "gst",
+      "title": "GST – Reverse Charge Payment & Self-Invoicing",
+      "description": "Identify RCM liabilities (legal, GTA, import of services, unregistered procurement), pay in cash, and issue self-invoices.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "day_of_month",
+        "day": 20,
+        "offset_month": 1,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "gst_registered": true
+      },
+      "required_evidence": [
+        "RCM register",
+        "Self-invoices",
+        "Payment proof"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Interest/penalty for short RCM payment; ITC denial.",
+      "form_reference": "RCM",
+      "dependencies": [
+        "gst_gstr3b"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "gst_gstr6_isd",
+      "law_id": "law_gst",
+      "category": "gst",
+      "title": "GSTR-6 – Input Service Distributor Return",
+      "description": "Where registered as ISD, distribute common ITC and file GSTR-6 monthly.",
+      "frequency": "monthly",
+      "due_rule": {
+        "type": "day_of_month",
+        "day": 13,
+        "offset_month": 1,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "gst_registered": true,
+        "is_isd": true
+      },
+      "required_evidence": [
+        "GSTR-6 acknowledgment"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "low",
+      "penalty_note": "Mis-distribution invites demand.",
+      "form_reference": "GSTR-6",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_msme_43b",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "MSME Vendor Payment Timeline (Sec 43B(h))",
+      "description": "Ensure payments to MSE suppliers within 45/15 days to avoid disallowance; track outstanding for tax computation.",
+      "frequency": "ongoing",
+      "due_rule": {
+        "type": "continuous",
+        "max_days": 45
+      },
+      "applicability_rule": {
+        "has_msme_dues": true
+      },
+      "required_evidence": [
+        "MSME ageing report"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "medium",
+      "penalty_note": "Disallowance of expense in the year if unpaid beyond limit.",
+      "form_reference": "",
+      "dependencies": [
+        "ca_msme1"
+      ],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "it_equalisation",
+      "law_id": "law_income_tax",
+      "category": "income_tax",
+      "title": "Equalisation Levy Statement (Form-1)",
+      "description": "Where applicable, deduct equalisation levy on specified services and file annual statement.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "fixed_date",
+        "month": 6,
+        "day": 30,
+        "working_day_adjustment": "next"
+      },
+      "applicability_rule": {
+        "has_eq_levy": true
+      },
+      "required_evidence": [
+        "Form-1 acknowledgment",
+        "Challans"
+      ],
+      "default_owner_role": "preparer",
+      "risk_level": "low",
+      "penalty_note": "Interest + penalty for non-compliance.",
+      "form_reference": "Form-1",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    }
+  ]
+}

@@ -33,6 +33,19 @@ def set_tenant(session: Session, organization_id: str | None) -> None:
     )
 
 
+def set_bootstrap(session: Session) -> None:
+    """Grant this transaction the pre-tenant *bootstrap* scope.
+
+    Login must resolve which org a user belongs to *before* any tenant scope
+    exists, so it needs to read `memberships` across the RLS boundary. Only the
+    memberships policy honours this GUC (read-only), and the sole caller filters
+    by user identity — so this never returns unbounded tenant data. Postgres-only.
+    """
+    if not _IS_PG:
+        return
+    session.execute(text("SELECT set_config('app.bootstrap', 'on', true)"))
+
+
 @contextmanager
 def tenant_session(organization_id: str | None) -> Iterator[Session]:
     """A session bound to one tenant for its lifetime; commits on success."""

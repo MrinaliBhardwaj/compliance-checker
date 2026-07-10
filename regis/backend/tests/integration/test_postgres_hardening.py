@@ -58,6 +58,74 @@ def test_rls_blocks_cross_tenant(pg_engine):
     assert seen_b == 0  # org B cannot see org A's rows
 
 
+def _new_org(conn) -> uuid.UUID:
+    org = uuid.uuid4()
+    conn.execute(text("INSERT INTO organizations (id, name, plan_tier, created_at) "
+                      "VALUES (:o,'A','starter',now())"), {"o": org})
+    return org
+
+
+def test_signup_pattern_requires_org_scope(pg_engine):
+    """H1: a tenant insert with no GUC set is blocked by FORCE RLS; scoping the
+    session to the just-created org (the signup pattern) lets it through."""
+    with pg_engine.begin() as conn:
+        org = _new_org(conn)
+        user = uuid.uuid4()
+        conn.execute(text("INSERT INTO users (id, email, auth_provider, created_at) "
+                          "VALUES (:u,'a@x.example','password',now())"), {"u": user})
+        # no app.current_org set -> membership insert violates the policy
+        with pytest.raises(Exception):
+            conn.execute(text(
+                "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
+                "VALUES (:i,:u,:o,'compliance_admin','active',now())"),
+                {"i": uuid.uuid4(), "u": user, "o": org})
+    with pg_engine.begin() as conn:
+        org = _new_org(conn)
+        user = uuid.uuid4()
+        conn.execute(text("INSERT INTO users (id, email, auth_provider, created_at) "
+                          "VALUES (:u,'b@x.example','password',now())"), {"u": user})
+        _set_org(conn, org)  # signup scopes to the new org before inserting
+        conn.execute(text(
+            "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
+            "VALUES (:i,:u,:o,'compliance_admin','active',now())"),
+            {"i": uuid.uuid4(), "u": user, "o": org})
+        conn.execute(text("INSERT INTO entities (id, organization_id, legal_name, created_at) "
+                          "VALUES (:e,:o,'Acme Ltd',now())"), {"e": uuid.uuid4(), "o": org})
+
+
+def test_login_bootstrap_reads_membership_cross_tenant(pg_engine):
+    """H1: login resolves user->org via a bootstrap-scoped membership read; without
+    bootstrap and without a tenant GUC the same read returns nothing. Bootstrap is
+    read-only — it must not permit forging a membership."""
+    with pg_engine.begin() as conn:
+        org = _new_org(conn)
+        user = uuid.uuid4()
+        conn.execute(text("INSERT INTO users (id, email, auth_provider, created_at) "
+                          "VALUES (:u,'c@x.example','password',now())"), {"u": user})
+        _set_org(conn, org)
+        conn.execute(text(
+            "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
+            "VALUES (:i,:u,:o,'preparer','active',now())"),
+            {"i": uuid.uuid4(), "u": user, "o": org})
+
+    with pg_engine.connect() as conn:
+        # no scope at all -> RLS hides the row (the original H1 failure at login)
+        blind = conn.execute(text("SELECT count(*) FROM memberships WHERE user_id=:u"),
+                             {"u": user}).scalar_one()
+        assert blind == 0
+        # bootstrap scope -> login can resolve the membership
+        conn.execute(text("SELECT set_config('app.bootstrap','on',false)"))
+        seen = conn.execute(text("SELECT count(*) FROM memberships WHERE user_id=:u"),
+                            {"u": user}).scalar_one()
+        assert seen == 1
+        # bootstrap is read-only: WITH CHECK still blocks a cross-tenant insert
+        with pytest.raises(Exception):
+            conn.execute(text(
+                "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
+                "VALUES (:i,:u,:o,'compliance_admin','active',now())"),
+                {"i": uuid.uuid4(), "u": user, "o": uuid.uuid4()})
+
+
 def test_audit_log_is_append_only(pg_engine):
     org = uuid.uuid4()
     with pg_engine.begin() as conn:

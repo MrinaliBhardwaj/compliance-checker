@@ -4,9 +4,9 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import {
-  assignInstance, classifyDocument, getInstance, linkDocument, listAssignable,
+  assignInstance, classifyDocument, entityAudit, getInstance, linkDocument, listAssignable,
   transitionInstance, uploadDocumentProgress,
-  type InstanceDetail, type LifecycleAction, type LinkResult, type Member,
+  type AuditEvent, type InstanceDetail, type LifecycleAction, type LinkResult, type Member,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/lib/toast";
@@ -143,6 +143,54 @@ function Body({ d, onChanged }: { d: InstanceDetail; onChanged: () => void }) {
         )}
         {role === "preparer" && <div className="muted" style={{ fontSize: 12 }}>You can start, attach evidence, and submit for review.</div>}
       </div>
+
+      {can("view_audit") && <HistoryPanel instanceId={d.id} />}
+    </div>
+  );
+}
+
+function HistoryPanel({ instanceId }: { instanceId: string }) {
+  // Immutable timeline for this obligation — the audit trail, scoped to one item.
+  const history = useQuery({
+    queryKey: ["instance-audit", instanceId],
+    queryFn: () => entityAudit("obligation_instance", instanceId),
+  });
+
+  const when = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleString("en-IN", {
+        day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
+      });
+    } catch { return iso; }
+  };
+  const line = (e: AuditEvent): string => {
+    const m = e.meta || {};
+    if (e.action === "instance_status_change" && m.from && m.to) {
+      return `${m.from} → ${m.to}${m.override_evidence ? " · evidence override" : ""}`;
+    }
+    return e.action_label;
+  };
+
+  return (
+    <div className="card stack">
+      <h3 style={{ margin: 0 }}>History</h3>
+      {history.isLoading && <Loading />}
+      {history.isError && <ErrorState error={history.error} onRetry={history.refetch} />}
+      {history.data && (history.data.length === 0
+        ? <div className="muted" style={{ fontSize: 12 }}>No recorded activity yet.</div>
+        : <div className="stack" style={{ gap: 6 }}>
+            {history.data.map((e) => (
+              <div key={e.id} className="row" style={{ gap: 10, alignItems: "baseline" }}>
+                <span className="muted" style={{ fontSize: 12, whiteSpace: "nowrap", minWidth: 96 }}>
+                  {when(e.created_at)}
+                </span>
+                <span style={{ fontSize: 13 }}>
+                  <b>{line(e)}</b>
+                  <span className="muted"> · {e.actor_name}</span>
+                </span>
+              </div>
+            ))}
+          </div>)}
     </div>
   );
 }

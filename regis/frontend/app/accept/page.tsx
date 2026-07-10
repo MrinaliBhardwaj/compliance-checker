@@ -49,11 +49,14 @@ function Accept() {
   return (
     <main style={{ maxWidth: 430, margin: "9vh auto", padding: 24 }}>
       <h1>Accept your invite</h1>
-      <p className="muted">Set a password to join your team&apos;s compliance workspace.</p>
+      <p className="muted">
+        New here? The password you enter becomes your account password. Already have
+        a Regis account? Enter your existing password to confirm it&apos;s you.
+      </p>
       <div className="card stack" style={{ marginTop: 8 }}>
         <label className="field"><span>Full name (optional)</span>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} /></label>
-        <label className="field"><span>Choose a password</span>
+        <label className="field"><span>Password</span>
           <input className="input" type="password" value={password}
             onChange={(e) => setPassword(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()} /></label>

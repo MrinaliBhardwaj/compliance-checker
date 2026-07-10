@@ -174,8 +174,14 @@ def _resolve_user(session: Session, organization_id, ident):
 
 def accept_invite(session: Session, *, token: str, password: str | None,
                   full_name: str | None) -> dict:
-    from app.core.security import Principal, create_access_token, decode_invite_token
+    from app.core.db import set_tenant
+    from app.core.security import (
+        Principal, create_access_token, decode_invite_token, verify_password)
     claims = decode_invite_token(token)
+    # The invite token carries its org — scope the session to it so the membership
+    # read/update, entity read, and audit insert all satisfy RLS on Postgres. The
+    # token is signed, so its org claim is trustworthy for scoping.
+    set_tenant(session, str(claims["org"]))
     membership = session.get(Membership, claims["mid"])
     if not membership:
         raise NotFound()
@@ -183,18 +189,29 @@ def accept_invite(session: Session, *, token: str, password: str | None,
     if user is None:
         raise NotFound()
 
-    if membership.status != "active":
-        # first acceptance: set password if this is a brand-new (password) user
-        if user.password_hash is None:
-            if not password:
-                raise TeamError("a password is required to accept this invite")
-            user.password_hash = hash_password(password)
-        if full_name and not user.full_name:
-            user.full_name = full_name
-        membership.status = "active"
-        audit.record(session, action="invite_accepted",
-                     organization_id=membership.organization_id, actor_user_id=user.id,
-                     entity_type="membership", entity_id=str(membership.id), meta={})
+    # Single-use: only a pending invite is acceptable. An already-used token never
+    # mints another session, and a removed member's old link never reinstates them.
+    if membership.status != "invited":
+        raise TeamError("this invite has already been used or is no longer valid")
+    if claims.get("email") != user.email:
+        raise TeamError("invite does not match this account")
+
+    if user.password_hash is None:
+        # brand-new user: first acceptance sets their password
+        if not password:
+            raise TeamError("a password is required to accept this invite")
+        user.password_hash = hash_password(password)
+    elif not password or not verify_password(password, user.password_hash):
+        # existing account: possession of the link is not identity — the invitee
+        # proves the account password (blocks the inviter accepting on their behalf).
+        raise TeamError("enter this account's existing password to accept the invite")
+
+    if full_name and not user.full_name:
+        user.full_name = full_name
+    membership.status = "active"
+    audit.record(session, action="invite_accepted",
+                 organization_id=membership.organization_id, actor_user_id=user.id,
+                 entity_type="membership", entity_id=str(membership.id), meta={})
 
     entity = session.execute(
         select(Entity).where(Entity.organization_id == membership.organization_id)

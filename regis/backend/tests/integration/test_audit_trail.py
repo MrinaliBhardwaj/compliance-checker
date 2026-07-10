@@ -11,12 +11,13 @@ os.environ.setdefault("REGIS_DATABASE_URL", "sqlite+pysqlite:///:memory:")
 
 from datetime import date  # noqa: E402
 
+from sqlalchemy import select  # noqa: E402
+
 from app.core.security import Principal  # noqa: E402
 from app.models.compliance import ObligationInstance  # noqa: E402
 from app.modules.audit import service as audit  # noqa: E402
 from app.modules.obligations import service as obsvc  # noqa: E402
 from app.modules.onboarding.service import generate_calendar  # noqa: E402
-from sqlalchemy import select  # noqa: E402
 
 CTX = {
     "window_start": date(2026, 4, 1), "window_end": date(2027, 3, 31),

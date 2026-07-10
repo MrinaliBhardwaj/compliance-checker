@@ -10,7 +10,7 @@ get_db; we never trust the caller for the org id.
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, time, timezone
+from datetime import UTC, date, datetime, time
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -62,7 +62,7 @@ def label_for(action: str) -> str:
 
 def _day_bounds(d: date, *, end: bool) -> datetime:
     """Inclusive day → UTC datetime bound (since=start-of-day, until=end-of-day)."""
-    return datetime.combine(d, time.max if end else time.min, tzinfo=timezone.utc)
+    return datetime.combine(d, time.max if end else time.min, tzinfo=UTC)
 
 
 def _resolve_actors(session: Session, rows: list[AuditLog]) -> dict[str, User]:

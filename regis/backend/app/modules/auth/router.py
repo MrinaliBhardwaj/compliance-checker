@@ -99,9 +99,9 @@ def accept_invite(body: AcceptInviteRequest) -> TokenResponse:
             res = team_svc.accept_invite(db, token=body.token, password=body.password,
                                          full_name=body.full_name)
         except team_svc.NotFound:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Invite not found")
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Invite not found") from None
         except team_svc.TeamError as e:
-            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
         db.commit()
     return TokenResponse(access_token=res["access_token"], organization_id=res["organization_id"],
                          entity_id=res["entity_id"], role=res["role"])

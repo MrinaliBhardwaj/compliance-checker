@@ -9,7 +9,7 @@ report and the live view never disagree.
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from datetime import date, datetime, timezone, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -59,7 +59,7 @@ def build_compliance_report(session: Session, *, organization_id, today: date,
         ).all()
         ev_counts = {iid: n for iid, n in rows}
 
-    for inst, co, tpl in triples:
+    for inst, _co, tpl in triples:
         eff = _effective_status(inst.status, inst.due_date, today)
         by_status[eff] += 1
         by_category[tpl.category][eff] += 1
@@ -89,7 +89,7 @@ def build_compliance_report(session: Session, *, organization_id, today: date,
     return {
         "organization": org.name if org else str(organization_id),
         "entity": entity.legal_name if entity else "All entities",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "as_of": today.isoformat(),
         "library_version": LIBRARY_VERSION,
         "provisional": provisional,  # DRAFT_UNVERIFIED content gate -> shown as provisional

@@ -63,5 +63,6 @@ class WorkerSettings:
     @staticmethod
     def redis_settings():
         from arq.connections import RedisSettings
+
         from app.core.config import get_settings
         return RedisSettings.from_dsn(get_settings().redis_url)

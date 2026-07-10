@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy import func, select
 
 from app.engines.applicability import Decision
-from app.models.legal_updates import LegalUpdate, LegalUpdateStatus
+from app.models.legal_updates import LegalUpdateStatus
 from app.models.profile import CompanyProfile
 from app.models.system import AuditLog
 from app.modules.legal_updates import service as svc

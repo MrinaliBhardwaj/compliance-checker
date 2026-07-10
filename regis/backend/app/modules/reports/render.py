@@ -157,15 +157,15 @@ def _render_pdf_minimal(lines: list[str]) -> bytes:
         stream = "\n".join(body).encode("latin-1")
         cnum = add(b"<< /Length %d >>\nstream\n%s\nendstream" % (len(stream), stream))
         content_nums.append(cnum)
-        pnum = add(("<< /Type /Page /Parent %d 0 R /MediaBox [0 0 595 842] "
-                    "/Resources << /Font << /F1 %d 0 R >> >> /Contents %d 0 R >>"
-                    % (pages_num, font_num, cnum)).encode("latin-1"))
+        pnum = add((f"<< /Type /Page /Parent {pages_num} 0 R /MediaBox [0 0 595 842] "
+                    f"/Resources << /Font << /F1 {font_num} 0 R >> >> "
+                    f"/Contents {cnum} 0 R >>").encode("latin-1"))
         page_nums.append(pnum)
 
     kids = " ".join(f"{n} 0 R" for n in page_nums)
-    objects[pages_num - 1] = ("<< /Type /Pages /Kids [%s] /Count %d >>"
-                              % (kids, len(page_nums))).encode("latin-1")
-    objects[catalog_num - 1] = ("<< /Type /Catalog /Pages %d 0 R >>" % pages_num).encode("latin-1")
+    objects[pages_num - 1] = (
+        f"<< /Type /Pages /Kids [{kids}] /Count {len(page_nums)} >>").encode("latin-1")
+    objects[catalog_num - 1] = f"<< /Type /Catalog /Pages {pages_num} 0 R >>".encode("latin-1")
 
     out = bytearray(b"%PDF-1.4\n")
     offsets = [0] * (len(objects) + 1)

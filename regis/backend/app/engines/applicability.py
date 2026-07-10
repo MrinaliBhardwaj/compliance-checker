@@ -15,7 +15,7 @@ and never overrides a deterministic decision.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 # ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ CONF_MISSING = 0.4
 CONF_UNVERIFIED_CAP = 0.7
 
 
-class Decision(str, Enum):
+class Decision(StrEnum):
     APPLICABLE = "APPLICABLE"
     NOT_APPLICABLE = "NOT_APPLICABLE"
     NEEDS_REVIEW = "NEEDS_REVIEW"

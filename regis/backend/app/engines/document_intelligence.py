@@ -20,13 +20,13 @@ import hashlib
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
-from enum import Enum
+from enum import StrEnum
 
 
 # ---------------------------------------------------------------------------
 # 1. Canonical document-type taxonomy
 # ---------------------------------------------------------------------------
-class DocType(str, Enum):
+class DocType(StrEnum):
     FILING_ACK = "FILING_ACK"                 # proof a return/form was filed
     PAYMENT_CHALLAN = "PAYMENT_CHALLAN"       # tax/contribution payment proof
     STATUTORY_CERTIFICATE = "STATUTORY_CERTIFICATE"
@@ -189,7 +189,8 @@ def validate(extracted: dict, instance: dict, template: dict, org: dict) -> list
 
 
 def _periods_align(a: str, b: str) -> bool:
-    norm = lambda s: re.sub(r"[^a-z0-9]", "", s.lower())
+    def norm(s):
+        return re.sub(r"[^a-z0-9]", "", s.lower())
     na, nb = norm(a), norm(b)
     if na in nb or nb in na:
         return True
@@ -226,9 +227,10 @@ def dedupe(new_doc: dict, existing: list[dict]) -> dict:
         if e.get("sha256") and e["sha256"] == new_doc.get("sha256"):
             return {"verdict": "EXACT_DUPLICATE", "of": e["id"], "action": "block"}
     # 5.2 key-tuple near-duplicate: same entity + form + period + reference
-    key = lambda d: (d.get("entity_id"), (d.get("ai_extracted") or {}).get("form_number"),
-                     (d.get("ai_extracted") or {}).get("period"),
-                     (d.get("ai_extracted") or {}).get("reference_number"))
+    def key(d):
+        return (d.get("entity_id"), (d.get("ai_extracted") or {}).get("form_number"),
+                         (d.get("ai_extracted") or {}).get("period"),
+                         (d.get("ai_extracted") or {}).get("reference_number"))
     nk = key(new_doc)
     if all(nk):  # only when the tuple is fully populated
         for e in existing:

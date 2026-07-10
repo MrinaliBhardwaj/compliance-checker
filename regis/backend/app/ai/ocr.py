@@ -23,8 +23,9 @@ def extract_text(file_bytes: bytes, mime: str) -> tuple[str, float]:
 
 def _pdf(b: bytes) -> tuple[str, float]:
     try:
-        from pypdf import PdfReader  # type: ignore
         import io
+
+        from pypdf import PdfReader  # type: ignore
         reader = PdfReader(io.BytesIO(b))
         text = "\n".join((p.extract_text() or "") for p in reader.pages)
         if text.strip():

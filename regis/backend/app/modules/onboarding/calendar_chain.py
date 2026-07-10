@@ -41,7 +41,7 @@ def build_company_obligations(universe: dict, library: dict) -> list[dict]:
 def default_window(start: date | None = None, months: int = 12) -> dict:
     """A 12-month rolling horizon, FY-aligned by default for the golden run."""
     start = start or date(2026, 4, 1)
-    end = date(start.year + 1, start.month, 1) if months == 12 else start
+    date(start.year + 1, start.month, 1) if months == 12 else start
     # default golden window is the full FY2026-27
     return {"window_start": start, "window_end": date(2027, 3, 31)}
 

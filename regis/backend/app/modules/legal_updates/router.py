@@ -61,6 +61,6 @@ def review(update_id: str, body: ReviewBody, db: DbSession,
                                 legal_update_id=update_id, status=body.status,
                                 reviewed_by=principal.user_id, reason=body.reason)
     except ValueError as e:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e))
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
     return {"legal_update_id": str(row.legal_update_id), "status": row.status,
             "reviewed_at": row.reviewed_at.isoformat()}

@@ -21,8 +21,9 @@ pytestmark = pytest.mark.skipif(not PG_URL, reason="REGIS_TEST_PG_URL not set (n
 
 @pytest.fixture
 def pg_engine():
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     engine = create_engine(PG_URL, future=True)
     cfg = Config("alembic.ini")

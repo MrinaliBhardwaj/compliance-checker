@@ -13,9 +13,9 @@ import pytest
 from sqlalchemy import select
 
 from app.models.compliance import ObligationInstance
+from app.modules.onboarding.service import generate_calendar
 from app.modules.reports.render import render_html, render_pdf
 from app.modules.reports.service import build_compliance_report
-from app.modules.onboarding.service import generate_calendar
 
 CTX = {
     "window_start": date(2026, 4, 1), "window_end": date(2027, 3, 31),

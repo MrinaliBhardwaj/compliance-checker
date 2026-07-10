@@ -8,8 +8,12 @@ from datetime import date
 
 import pytest
 
-from app.engines.instance_generator import generate_instances, is_overdue, reminder_schedule
-from app.engines.instance_generator import Instance
+from app.engines.instance_generator import (
+    Instance,
+    generate_instances,
+    is_overdue,
+    reminder_schedule,
+)
 from app.modules.onboarding.calendar_chain import run_chain
 
 pytestmark = pytest.mark.golden

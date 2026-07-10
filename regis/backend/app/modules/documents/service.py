@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import asdict
-from datetime import date, datetime
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session

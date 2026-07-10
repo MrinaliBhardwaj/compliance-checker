@@ -16,8 +16,8 @@ os.environ.setdefault("REGIS_DATABASE_URL", "sqlite+pysqlite:///:memory:")
 from datetime import date  # noqa: E402
 
 from app.core.security import Principal  # noqa: E402
-from app.modules.legal_updates import service as lusvc
 from app.models.profile import CompanyProfile
+from app.modules.legal_updates import service as lusvc
 from app.modules.obligations.router import instance_detail, list_instances
 from app.modules.onboarding.service import generate_calendar
 

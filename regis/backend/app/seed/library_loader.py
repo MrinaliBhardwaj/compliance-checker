@@ -103,7 +103,6 @@ def seed_database(session, path: Path | str = SEED_PATH) -> dict[str, int]:
     run is a no-op. Returns counts written. Imported lazily to keep the pure loader
     free of ORM dependencies.
     """
-    from sqlalchemy import select
 
     from app.models.content import LawLibrary, ObligationTemplate
 

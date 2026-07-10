@@ -13,7 +13,7 @@ rejection notifications on Maker-Checker events.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -100,7 +100,7 @@ def emit(session: Session, *, organization_id, user_id, type_: str, channel: str
     delivered = get_channel(channel).send(to=to_email, subject=subject, body=body,
                                           meta={"from": get_settings().email_from})
     if delivered:
-        row.sent_at = datetime.now(timezone.utc)
+        row.sent_at = datetime.now(UTC)
     payload["delivered"] = delivered
     return row
 

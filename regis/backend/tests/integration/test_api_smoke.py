@@ -22,11 +22,10 @@ os.environ["REGIS_JWT_SECRET"] = "test-secret"
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.core.config import get_settings  # noqa: E402
-from app.core.db import engine  # noqa: E402
+from app.core.db import SessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Base  # noqa: E402
 from app.seed.library_loader import seed_database  # noqa: E402
-from app.core.db import SessionLocal  # noqa: E402
 
 
 @pytest.fixture(scope="module")

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+import uuid
 
 import pytest
 
@@ -40,8 +41,10 @@ def client():
 
 
 def _auth(client) -> tuple[dict, str]:
+    # unique email per call: the module-scoped client shares one DB, so a fixed
+    # email would 409 on every signup after the first
     r = client.post("/auth/signup", json={
-        "email": "officer@acme.example", "password": "pw123456",
+        "email": f"officer-{uuid.uuid4().hex[:8]}@acme.example", "password": "pw123456",
         "organization_name": "Acme NBFC", "entity_legal_name": "Acme Capital Ltd",
     })
     assert r.status_code == 200, r.text

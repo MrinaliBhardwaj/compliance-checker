@@ -8,11 +8,10 @@ All channels fall back to Null (recorded, not externally sent) so no creds neede
 """
 from datetime import date, timedelta
 
-import pytest
 from sqlalchemy import func, select
 
 from app.core.security import Principal
-from app.models.compliance import CompanyObligation, ObligationInstance
+from app.models.compliance import ObligationInstance
 from app.models.system import Notification
 from app.models.tenancy import Membership, User
 from app.modules.notify.service import run_reminders

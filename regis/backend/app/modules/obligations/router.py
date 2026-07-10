@@ -9,7 +9,8 @@ from __future__ import annotations
 from collections import Counter
 from datetime import date, timedelta
 
-from fastapi import APIRouter, HTTPException, status as http_status
+from fastapi import APIRouter, HTTPException
+from fastapi import status as http_status
 from pydantic import BaseModel
 from sqlalchemy import select
 
@@ -158,11 +159,11 @@ def _map_errors(fn):
     try:
         return fn()
     except svc.InstanceNotFound:
-        raise HTTPException(http_status.HTTP_404_NOT_FOUND, "Instance not found")
+        raise HTTPException(http_status.HTTP_404_NOT_FOUND, "Instance not found") from None
     except RolePermissionError as e:
-        raise HTTPException(http_status.HTTP_403_FORBIDDEN, str(e))
+        raise HTTPException(http_status.HTTP_403_FORBIDDEN, str(e)) from e
     except (LifecycleError, svc.EvidenceGateError) as e:
-        raise HTTPException(http_status.HTTP_409_CONFLICT, str(e))
+        raise HTTPException(http_status.HTTP_409_CONFLICT, str(e)) from e
 
 
 @router.get("/instances/{instance_id}/completeness")

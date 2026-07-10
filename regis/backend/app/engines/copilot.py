@@ -25,13 +25,13 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import date, timedelta
-from enum import Enum
+from enum import StrEnum
 
 
 # ---------------------------------------------------------------------------
 # Intent taxonomy
 # ---------------------------------------------------------------------------
-class Intent(str, Enum):
+class Intent(StrEnum):
     DUE_WINDOW = "DUE_WINDOW"            # due this week/month/today/overdue -> structured
     STATUS_LOOKUP = "STATUS_LOOKUP"      # status of <obligation>          -> structured
     COUNT_SUMMARY = "COUNT_SUMMARY"      # how many / breakdown            -> structured

@@ -5,7 +5,7 @@ completion metadata, and writes an immutable audit row for every change.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -69,7 +69,7 @@ def transition(session: Session, *, organization_id, instance_id, action: str,
                 f"(missing: {[m[0] for m in comp['missing']]})")
 
     inst.status = to_status
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if action == "approve":
         inst.completed_at = now
         inst.completed_by = principal.user_id

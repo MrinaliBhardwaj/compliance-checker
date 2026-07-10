@@ -182,7 +182,7 @@ def generate_calendar(session: Session, *, organization_id, entity_id, profile: 
 
     # --- register event-driven listeners (not pre-generated) ---
     listener_count = 0
-    tpl_by_id = {t["template_id"]: t for t in library["obligation_templates"]}
+    {t["template_id"]: t for t in library["obligation_templates"]}
     for c in cobs_input:
         if c["due_rule"].get("type") in EVENT_DRIVEN:
             co = co_rows[c["template_id"]]

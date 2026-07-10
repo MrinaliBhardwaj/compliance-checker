@@ -7,7 +7,7 @@ the DB layer can set the RLS GUC and routers can enforce the PRD role matrix.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 import bcrypt
@@ -45,7 +45,7 @@ def create_access_token(principal: Principal) -> str:
     payload = {
         "sub": principal.user_id, "org": principal.organization_id,
         "role": principal.role, "email": principal.email,
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=s.access_token_ttl_minutes),
+        "exp": datetime.now(UTC) + timedelta(minutes=s.access_token_ttl_minutes),
     }
     return jwt.encode(payload, s.jwt_secret, algorithm=s.jwt_algorithm)
 
@@ -56,7 +56,7 @@ def create_invite_token(*, membership_id: str, organization_id: str, email: str,
     s = get_settings()
     payload = {
         "purpose": "invite", "mid": membership_id, "org": organization_id, "email": email,
-        "exp": datetime.now(timezone.utc) + timedelta(days=ttl_days),
+        "exp": datetime.now(UTC) + timedelta(days=ttl_days),
     }
     return jwt.encode(payload, s.jwt_secret, algorithm=s.jwt_algorithm)
 

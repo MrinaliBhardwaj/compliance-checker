@@ -12,7 +12,7 @@ Matching never silently drops an update: no clean match -> "may affect, review".
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -120,7 +120,7 @@ def review_update(session: Session, *, organization_id, legal_update_id, status:
         session.add(row)
     row.status = status
     row.reviewed_by = reviewed_by
-    row.reviewed_at = datetime.now(timezone.utc)
+    row.reviewed_at = datetime.now(UTC)
     session.flush()
     audit.record(session, action="legal_update_reviewed", organization_id=organization_id,
                  actor_user_id=reviewed_by, entity_type="legal_update",

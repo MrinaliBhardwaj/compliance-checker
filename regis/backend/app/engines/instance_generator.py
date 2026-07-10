@@ -192,7 +192,7 @@ def gen_days_after_fy_end(dr, ctx):
 def _date_list(dr, ctx, quarters=False):
     out = []
     for y in range(ctx["window_start"].year, ctx["window_end"].year + 1):
-        for i, mmdd in enumerate(dr["dates"]):
+        for _i, mmdd in enumerate(dr["dates"]):
             mm, dd = map(int, mmdd.split("-"))
             due = date(y, mm, dd)
             due, adj = adjust(due, dr.get("working_day_adjustment"))

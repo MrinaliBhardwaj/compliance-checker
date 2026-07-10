@@ -10,15 +10,13 @@ existing assignment endpoint. Invariants:
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.core import audit
 from app.core.security import create_invite_token, hash_password
 from app.models.compliance import ObligationInstance
-from app.models.tenancy import Entity, Membership, Organization, User
+from app.models.tenancy import Entity, Membership, User
 
 ROLES = {"compliance_admin", "head", "preparer"}
 
@@ -128,7 +126,7 @@ def remove_member(session: Session, *, organization_id, membership_id, reassign_
     # reassign owned obligations so nothing is orphaned (PRD edge case)
     reassigned = 0
     if reassign_to:
-        target = session.get(Membership, reassign_to) if _is_membership(session, reassign_to) else None
+        session.get(Membership, reassign_to) if _is_membership(session, reassign_to) else None
         target_user = _resolve_user(session, organization_id, reassign_to)
         if target_user is None:
             raise TeamError("reassign_to is not an active member")

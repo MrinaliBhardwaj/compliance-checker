@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import asdict, dataclass
-from enum import Enum
+from enum import StrEnum
 
 from .applicability import HARD_FIELDS
 
@@ -28,7 +28,7 @@ from .applicability import HARD_FIELDS
 # ---------------------------------------------------------------------------
 # Provenance + confidence
 # ---------------------------------------------------------------------------
-class Source(str, Enum):
+class Source(StrEnum):
     ASKED = "ASKED"               # answered directly in the questionnaire
     EXTRACTED = "EXTRACTED"       # parsed from an uploaded document
     DERIVED = "DERIVED"           # inferred from other fields (confirm)

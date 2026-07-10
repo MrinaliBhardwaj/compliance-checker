@@ -11,7 +11,6 @@ audit_log) is a separate revision (0002) so it can be tested in isolation.
 from __future__ import annotations
 
 from alembic import op
-
 from app.models import Base
 
 revision = "0001_baseline"

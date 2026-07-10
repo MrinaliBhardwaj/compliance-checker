@@ -31,7 +31,7 @@ def invite(body: InviteBody, db: DbSession, principal: Principal = Depends(_admi
                                  email=str(body.email), role=body.role,
                                  full_name=body.full_name, invited_by=principal.user_id)
     except svc.TeamError as e:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(e))
+        raise HTTPException(status.HTTP_409_CONFLICT, str(e)) from e
 
 
 @router.get("/members")
@@ -57,9 +57,9 @@ def change_role(membership_id: str, body: RoleBody, db: DbSession,
                                membership_id=membership_id, role=body.role,
                                actor=principal.user_id)
     except svc.NotFound:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found") from None
     except svc.TeamError as e:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(e))
+        raise HTTPException(status.HTTP_409_CONFLICT, str(e)) from e
 
 
 class RemoveBody(BaseModel):
@@ -74,6 +74,6 @@ def remove(membership_id: str, body: RemoveBody, db: DbSession,
                                  membership_id=membership_id, reassign_to=body.reassign_to,
                                  actor=principal.user_id)
     except svc.NotFound:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found") from None
     except svc.TeamError as e:
-        raise HTTPException(status.HTTP_409_CONFLICT, str(e))
+        raise HTTPException(status.HTTP_409_CONFLICT, str(e)) from e

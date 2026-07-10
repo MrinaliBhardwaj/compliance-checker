@@ -4,7 +4,7 @@ generation runs in the worker (idempotent nightly); this is the in-app inbox.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -39,7 +39,7 @@ def mark_read(notification_id: str, db: DbSession, principal: CurrentPrincipal) 
     if not n or str(n.organization_id) != principal.organization_id \
             or str(n.user_id) != principal.user_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Notification not found")
-    n.read_at = datetime.now(timezone.utc)
+    n.read_at = datetime.now(UTC)
     return {"id": str(n.id), "read_at": n.read_at.isoformat()}
 
 

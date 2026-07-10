@@ -13,9 +13,9 @@ from datetime import date
 import pytest
 from sqlalchemy import func, select
 
+import app.core.storage as storage_mod
 from app.core.security import Principal
 from app.core.storage import LocalStorage
-import app.core.storage as storage_mod
 from app.models.compliance import ObligationInstance
 from app.models.evidence import Document, DocumentLink
 from app.models.system import AuditLog
@@ -166,7 +166,7 @@ def test_entity_mismatch_link_blocked(db, seeded_org, profile_b):
 
 
 def test_preparer_scope_enforced(db, seeded_org, profile_b):
-    admin = _admin(seeded_org)
+    _admin(seeded_org)
     inst = _tds_instance(db, seeded_org, profile_b)
     other = Principal(user_id="00000000-0000-0000-0000-000000000099",
                       organization_id=str(seeded_org["org_id"]), role="preparer")

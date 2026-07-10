@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 
-from app.core.db import SessionLocal
+from app.core.db import SessionLocal, set_bootstrap, set_tenant
 from app.core.security import (
     CurrentPrincipal,
     Principal,
@@ -46,9 +46,12 @@ def signup(body: SignupRequest) -> TokenResponse:
         exists = db.execute(select(User).where(User.email == body.email)).scalar_one_or_none()
         if exists:
             raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
-        org = Organization(name=body.organization_name)
+        org = Organization(name=body.organization_name)  # organizations/users: no RLS
         db.add(org)
         db.flush()
+        # Everything below belongs to the new org — scope the session to it so the
+        # membership/entity inserts satisfy RLS (WITH CHECK) on production Postgres.
+        set_tenant(db, str(org.id))
         user = User(email=body.email, full_name=body.full_name,
                     auth_provider="password", password_hash=hash_password(body.password))
         db.add(user)
@@ -71,6 +74,7 @@ def me(principal: CurrentPrincipal) -> dict:
     """Resolve the bearer token to the current principal + the org's entities
     (so the SPA can verify session validity and populate the entity selector)."""
     with SessionLocal() as db:
+        set_tenant(db, principal.organization_id)  # scope the entities read to the caller's org
         entities = db.execute(
             select(Entity).where(Entity.organization_id == principal.organization_id)
         ).scalars().all()
@@ -115,14 +119,23 @@ class LoginRequest(BaseModel):
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest) -> TokenResponse:
     with SessionLocal() as db:
+        # users carries no RLS; resolving the user's org needs the pre-tenant
+        # bootstrap scope (memberships crosses tenants until we know the org).
+        set_bootstrap(db)
         user = db.execute(select(User).where(User.email == body.email)).scalar_one_or_none()
         if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid credentials")
+        # Only ACTIVE memberships grant access — a removed/invited membership must
+        # never mint a session (removal IS revocation). Deterministic pick: oldest.
         membership = db.execute(
-            select(Membership).where(Membership.user_id == user.id)
+            select(Membership).where(Membership.user_id == user.id,
+                                     Membership.status == "active")
+            .order_by(Membership.created_at)
         ).scalars().first()
         if not membership:
-            raise HTTPException(status.HTTP_403_FORBIDDEN, "No organization membership")
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "No active organization membership")
+        # Org resolved — narrow to it for the entity read (no longer bootstrap-wide).
+        set_tenant(db, str(membership.organization_id))
         entity = db.execute(
             select(Entity).where(Entity.organization_id == membership.organization_id)
         ).scalars().first()

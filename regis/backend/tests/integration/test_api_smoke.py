@@ -20,9 +20,11 @@ os.environ["REGIS_DATABASE_URL"] = f"sqlite+pysqlite:///{_TMP.name}"
 os.environ["REGIS_JWT_SECRET"] = "test-secret"
 
 from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy.orm import sessionmaker  # noqa: E402
 
 from app.core.config import get_settings  # noqa: E402
-from app.core.db import SessionLocal, engine  # noqa: E402
+from app.core.deps import get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Base  # noqa: E402
 from app.seed.library_loader import seed_database  # noqa: E402
@@ -30,13 +32,35 @@ from app.seed.library_loader import seed_database  # noqa: E402
 
 @pytest.fixture(scope="module")
 def client():
+    # Bind a dedicated temp-FILE engine and override the app's get_db, so this
+    # suite is independent of which module imported app.core.db first. (A shared
+    # module-level :memory: engine isn't visible across the TestClient worker
+    # thread, which silently empties the seeded library — see git history.)
     get_settings.cache_clear()
-    Base.metadata.create_all(engine)
-    with SessionLocal() as s:
+    test_engine = create_engine(f"sqlite+pysqlite:///{_TMP.name}", future=True)
+    TestSession = sessionmaker(bind=test_engine, autoflush=False,
+                               expire_on_commit=False, future=True)
+    Base.metadata.create_all(test_engine)
+    with TestSession() as s:
         seed_database(s)
         s.commit()
+
+    def _override_get_db():
+        # SQLite test path: tenant RLS is Postgres-only, so no set_tenant needed.
+        session = TestSession()
+        try:
+            yield session
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    app.dependency_overrides[get_db] = _override_get_db
     yield TestClient(app)
-    Base.metadata.drop_all(engine)
+    app.dependency_overrides.clear()
+    Base.metadata.drop_all(test_engine)
 
 
 def _auth(client) -> tuple[dict, str]:
@@ -184,17 +208,34 @@ def test_notifications_inbox_over_http(client):
 
 
 def test_legal_updates_over_http(client):
-    headers, entity_id = _auth(client)
+    import uuid as _uuid
+    email = f"content-{_uuid.uuid4().hex[:8]}@acme.example"
+    r = client.post("/auth/signup", json={
+        "email": email, "password": "pw123456",
+        "organization_name": "Acme NBFC", "entity_legal_name": "Acme Capital Ltd"})
+    assert r.status_code == 200, r.text
+    headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
+    entity_id = r.json()["entity_id"]
     # ensure a profile exists (so matching has something to match against)
     client.post("/onboarding/calendar/generate", headers=headers, json={
         "entity_id": entity_id,
         "raw_input": {"asset_size": "3000", "deposit_taking": "No",
                       "operating_states": ["MH"], "employee_count": 260, "gst_registered": "Yes"},
     })
-    pub = client.post("/legal-updates", headers=headers, json={
-        "title": "Middle-layer CCO change", "affects_filter": {"rbi_layer": ["middle", "upper"]},
-    })
-    assert pub.status_code == 200
+
+    body = {"title": "Middle-layer CCO change",
+            "affects_filter": {"rbi_layer": ["middle", "upper"]}}
+    # the feed is cross-tenant: a customer org admin must NOT be able to publish
+    assert client.post("/legal-updates", headers=headers, json=body).status_code == 403
+
+    # allowlisted as platform content team -> publish succeeds
+    s = get_settings()
+    s.content_admin_emails = email
+    try:
+        pub = client.post("/legal-updates", headers=headers, json=body)
+        assert pub.status_code == 200
+    finally:
+        s.content_admin_emails = ""
     update_id = pub.json()["id"]
 
     feed = client.get("/legal-updates", headers=headers).json()

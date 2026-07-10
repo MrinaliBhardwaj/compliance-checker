@@ -39,6 +39,16 @@ class Settings(BaseSettings):
     slack_webhook_url: str | None = None
     email_from: str = "compliance@regis.app"
 
+    # Platform content team (comma-separated emails). The legal-updates feed is
+    # global — every tenant sees it — so publishing is restricted to these
+    # identities. Empty (default) = nobody can publish via the API.
+    content_admin_emails: str = ""
+
+    @property
+    def content_admins(self) -> frozenset[str]:
+        return frozenset(
+            e.strip().lower() for e in self.content_admin_emails.split(",") if e.strip())
+
     # Auth
     jwt_secret: str = "dev-only-change-me"
     jwt_algorithm: str = "HS256"

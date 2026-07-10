@@ -9,6 +9,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from app.core.config import get_settings
+from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
 from app.modules.copilot.router import router as copilot_router
 from app.modules.documents.router import router as documents_router
@@ -44,3 +45,4 @@ app.include_router(notify_router)
 app.include_router(reports_router)
 app.include_router(legal_updates_router)
 app.include_router(copilot_router)
+app.include_router(audit_router)

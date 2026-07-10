@@ -1,6 +1,8 @@
 """
-Legal updates API. Publishing is a content-team operation (admin-gated here; the
-feed is global). Listing computes a deterministic match verdict per org; review is
+Legal updates API. The feed is GLOBAL (every tenant sees every update), so
+publishing is a platform content-team operation — gated on an allowlist, never
+open to customer org admins (who must not inject content into other tenants'
+feeds). Listing computes a deterministic match verdict per org; review is
 admin/head only (PRD §10) — preparers do not review legal updates.
 """
 from __future__ import annotations
@@ -10,6 +12,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
+from app.core.config import get_settings
 from app.core.deps import DbSession
 from app.core.security import CurrentPrincipal, Principal, require_role
 from app.modules.legal_updates import service as svc
@@ -17,7 +20,18 @@ from app.modules.legal_updates import service as svc
 router = APIRouter(prefix="/legal-updates", tags=["legal-updates"])
 
 _reviewer = require_role("compliance_admin", "head")
-_publisher = require_role("compliance_admin")  # content-team role; admin in V1
+
+
+def _publisher(principal: Principal = Depends(require_role("compliance_admin"))) -> Principal:
+    """Platform content-team gate (REGIS_CONTENT_ADMIN_EMAILS). Role alone is not
+    enough: every self-serve signup is a compliance_admin of their own org, and the
+    feed crosses tenants. Empty allowlist -> publishing via the API is disabled."""
+    allowed = get_settings().content_admins
+    if not principal.email or principal.email.lower() not in allowed:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Publishing legal updates is restricted to the platform content team")
+    return principal
 
 
 class PublishBody(BaseModel):

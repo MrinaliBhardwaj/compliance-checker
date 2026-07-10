@@ -77,7 +77,7 @@ export const removeMember = (membership_id: string, reassign_to?: string) =>
 // ---- role permissions (mirror PRD §10 role matrix) ----
 export type Capability =
   | "generate_calendar" | "assign" | "approve" | "submit" | "mark_na" | "reopen"
-  | "upload_evidence" | "export_reports" | "review_legal" | "publish_legal";
+  | "upload_evidence" | "export_reports" | "review_legal" | "publish_legal" | "view_audit";
 
 const MATRIX: Record<Capability, Role[]> = {
   generate_calendar: ["compliance_admin"],
@@ -90,6 +90,7 @@ const MATRIX: Record<Capability, Role[]> = {
   export_reports: ["compliance_admin", "head"],
   review_legal: ["compliance_admin", "head"],
   publish_legal: ["compliance_admin"],
+  view_audit: ["compliance_admin", "head"],
 };
 export const can = (role: Role | undefined, cap: Capability) =>
   !!role && MATRIX[cap].includes(role);
@@ -193,6 +194,38 @@ export async function downloadReport(kind: "html" | "pdf"): Promise<Blob> {
 // ---- copilot ----
 export const askCopilot = (query: string) =>
   req<CopilotTurn>("/copilot/ask", { method: "POST", body: JSON.stringify({ query }) });
+
+// ---- audit trail ----
+export interface AuditEvent {
+  id: string; action: string; action_label: string;
+  entity_type: string | null; entity_id: string | null;
+  actor_user_id: string | null; actor_name: string; actor_email: string | null;
+  target_label: string | null; meta: Record<string, unknown>; created_at: string;
+}
+export interface AuditPage {
+  events: AuditEvent[]; limit: number; offset: number; has_more: boolean;
+}
+export interface AuditCatalog {
+  labels: Record<string, string>; groups: Record<string, string[]>;
+}
+export const getAuditCatalog = () => req<AuditCatalog>("/audit/actions");
+export const listAudit = (f: {
+  action?: string; entity_type?: string; q?: string;
+  since?: string; until?: string; limit?: number; offset?: number;
+} = {}) => {
+  const qs = new URLSearchParams();
+  if (f.action) qs.set("action", f.action);
+  if (f.entity_type) qs.set("entity_type", f.entity_type);
+  if (f.q) qs.set("q", f.q);
+  if (f.since) qs.set("since", f.since);
+  if (f.until) qs.set("until", f.until);
+  if (f.limit != null) qs.set("limit", String(f.limit));
+  if (f.offset != null) qs.set("offset", String(f.offset));
+  const s = qs.toString();
+  return req<AuditPage>(`/audit${s ? `?${s}` : ""}`);
+};
+export const entityAudit = (entity_type: string, entity_id: string) =>
+  req<AuditEvent[]>(`/audit/entity/${entity_type}/${entity_id}`);
 
 // ---- types ----
 export type Status =

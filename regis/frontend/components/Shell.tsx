@@ -5,15 +5,16 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { listNotifications } from "@/lib/api";
+import { listNotifications, type Capability } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Loading } from "@/components/ui";
 
-const NAV: { href: string; label: string; cap?: "export_reports"; roles?: string[] }[] = [
+const NAV: { href: string; label: string; cap?: Capability; roles?: string[] }[] = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/obligations", label: "Obligations" },
   { href: "/legal-updates", label: "Legal updates" },
   { href: "/reports", label: "Reports", cap: "export_reports" },
+  { href: "/audit", label: "Audit trail", cap: "view_audit" },
   { href: "/team", label: "Team", roles: ["compliance_admin", "head"] },
 ];
 

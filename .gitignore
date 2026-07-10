@@ -27,3 +27,8 @@ npm-debug.log*
 .terraform/
 *.tfstate
 *.tfstate.*
+
+# test artifacts
+.coverage
+.regis_storage/
+*.db

@@ -14,6 +14,7 @@ import uuid
 
 import pytest
 from sqlalchemy import create_engine, text
+from sqlalchemy.exc import DBAPIError
 
 PG_URL = os.getenv("REGIS_TEST_PG_URL")
 pytestmark = pytest.mark.skipif(not PG_URL, reason="REGIS_TEST_PG_URL not set (needs Postgres)")
@@ -74,7 +75,7 @@ def test_signup_pattern_requires_org_scope(pg_engine):
         conn.execute(text("INSERT INTO users (id, email, auth_provider, created_at) "
                           "VALUES (:u,'a@x.example','password',now())"), {"u": user})
         # no app.current_org set -> membership insert violates the policy
-        with pytest.raises(Exception):
+        with pytest.raises(DBAPIError):
             conn.execute(text(
                 "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
                 "VALUES (:i,:u,:o,'compliance_admin','active',now())"),
@@ -119,7 +120,7 @@ def test_login_bootstrap_reads_membership_cross_tenant(pg_engine):
                             {"u": user}).scalar_one()
         assert seen == 1
         # bootstrap is read-only: WITH CHECK still blocks a cross-tenant insert
-        with pytest.raises(Exception):
+        with pytest.raises(DBAPIError):
             conn.execute(text(
                 "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
                 "VALUES (:i,:u,:o,'compliance_admin','active',now())"),

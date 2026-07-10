@@ -176,7 +176,11 @@ def accept_invite(session: Session, *, token: str, password: str | None,
                   full_name: str | None) -> dict:
     from app.core.db import set_tenant
     from app.core.security import (
-        Principal, create_access_token, decode_invite_token, verify_password)
+        Principal,
+        create_access_token,
+        decode_invite_token,
+        verify_password,
+    )
     claims = decode_invite_token(token)
     # The invite token carries its org — scope the session to it so the membership
     # read/update, entity read, and audit insert all satisfy RLS on Postgres. The

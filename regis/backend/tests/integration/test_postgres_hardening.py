@@ -47,8 +47,8 @@ def test_rls_blocks_cross_tenant(pg_engine):
                           "VALUES (:a,'A','starter',now()),(:b,'B','starter',now())"),
                      {"a": org_a, "b": org_b})
         _set_org(conn, org_a)
-        conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, created_at) "
-                          "VALUES (:i,:o,'reminder','email',now())"),
+        conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, payload, created_at) "
+                          "VALUES (:i,:o,'reminder','email','{}'::jsonb,now())"),
                      {"i": uuid.uuid4(), "o": org_a})
     with pg_engine.connect() as conn:
         _set_org(conn, org_a)
@@ -134,8 +134,8 @@ def test_audit_log_is_append_only(pg_engine):
                           "VALUES (:o,'A','starter',now())"), {"o": org})
         _set_org(conn, org)
         aid = uuid.uuid4()
-        conn.execute(text("INSERT INTO audit_log (id, organization_id, action, created_at) "
-                          "VALUES (:i,:o,'created',now())"), {"i": aid, "o": org})
+        conn.execute(text("INSERT INTO audit_log (id, organization_id, action, metadata, created_at) "
+                          "VALUES (:i,:o,'created','{}'::jsonb,now())"), {"i": aid, "o": org})
     with pg_engine.connect() as conn:
         _set_org(conn, org)
         with pytest.raises(Exception, match="append-only"):

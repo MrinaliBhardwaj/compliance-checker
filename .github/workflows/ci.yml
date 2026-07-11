@@ -16,12 +16,12 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: regis
-          POSTGRES_PASSWORD: regis
-          POSTGRES_DB: regis_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U regis"
+          --health-cmd "pg_isready -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -33,6 +33,12 @@ jobs:
           cache: pip
       - name: Install
         run: pip install -e ".[dev]"
+      - name: Create non-superuser test role (RLS must apply to it)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -c "CREATE ROLE regis LOGIN PASSWORD 'regis' NOSUPERUSER NOCREATEDB NOCREATEROLE;"
+          psql -h localhost -U postgres -c "CREATE DATABASE regis_test OWNER regis;"
       - name: Lint (ruff)
         run: ruff check .
       - name: Tests + coverage (includes live-Postgres RLS hardening)

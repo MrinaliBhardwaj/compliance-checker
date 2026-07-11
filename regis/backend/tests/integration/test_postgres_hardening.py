@@ -15,6 +15,7 @@ import uuid
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import DBAPIError
+from sqlalchemy.pool import NullPool
 
 PG_URL = os.getenv("REGIS_TEST_PG_URL")
 pytestmark = pytest.mark.skipif(not PG_URL, reason="REGIS_TEST_PG_URL not set (needs Postgres)")
@@ -26,7 +27,10 @@ def pg_engine():
 
     from alembic import command
 
-    engine = create_engine(PG_URL, future=True)
+    # NullPool: session GUCs (app.current_org / app.bootstrap) must not leak
+    # between logical connections via pooling — "fresh connection" tests rely
+    # on genuinely fresh sessions.
+    engine = create_engine(PG_URL, future=True, poolclass=NullPool)
     cfg = Config("alembic.ini")
     cfg.set_main_option("sqlalchemy.url", PG_URL)
     command.upgrade(cfg, "head")

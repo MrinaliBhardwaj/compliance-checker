@@ -7,16 +7,18 @@ the org. Everything else runs under the JWT's org scope. First signup defaults t
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, HTTPException, Response, status
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 
 from app.core.db import SessionLocal, set_bootstrap, set_tenant
 from app.core.security import (
     CurrentPrincipal,
     Principal,
+    clear_auth_cookie,
     create_access_token,
     hash_password,
+    set_auth_cookie,
     verify_password,
 )
 from app.models.tenancy import Entity, Membership, Organization, User
@@ -24,9 +26,12 @@ from app.models.tenancy import Entity, Membership, Organization, User
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
+MIN_PASSWORD_LEN = 8
+
+
 class SignupRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(min_length=MIN_PASSWORD_LEN, max_length=200)
     full_name: str | None = None
     organization_name: str
     entity_legal_name: str
@@ -41,7 +46,7 @@ class TokenResponse(BaseModel):
 
 
 @router.post("/signup", response_model=TokenResponse)
-def signup(body: SignupRequest) -> TokenResponse:
+def signup(body: SignupRequest, response: Response) -> TokenResponse:
     with SessionLocal() as db:
         exists = db.execute(select(User).where(User.email == body.email)).scalar_one_or_none()
         if exists:
@@ -65,6 +70,7 @@ def signup(body: SignupRequest) -> TokenResponse:
                               role="compliance_admin", email=body.email)
         token = create_access_token(principal)
         db.commit()
+        set_auth_cookie(response, token)
         return TokenResponse(access_token=token, organization_id=str(org.id),
                              entity_id=str(entity.id), role="compliance_admin")
 
@@ -94,7 +100,7 @@ class AcceptInviteRequest(BaseModel):
 
 
 @router.post("/accept-invite", response_model=TokenResponse)
-def accept_invite(body: AcceptInviteRequest) -> TokenResponse:
+def accept_invite(body: AcceptInviteRequest, response: Response) -> TokenResponse:
     """Public: an invited teammate activates their membership (sets a password if
     they're a brand-new user) and receives a session token."""
     from app.modules.team import service as team_svc
@@ -107,8 +113,16 @@ def accept_invite(body: AcceptInviteRequest) -> TokenResponse:
         except team_svc.TeamError as e:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
         db.commit()
+    set_auth_cookie(response, res["access_token"])
     return TokenResponse(access_token=res["access_token"], organization_id=res["organization_id"],
                          entity_id=res["entity_id"], role=res["role"])
+
+
+@router.post("/logout")
+def logout(response: Response) -> dict:
+    """Clear the session cookie. (httpOnly means the browser JS can't clear it.)"""
+    clear_auth_cookie(response)
+    return {"ok": True}
 
 
 class LoginRequest(BaseModel):
@@ -117,7 +131,7 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest) -> TokenResponse:
+def login(body: LoginRequest, response: Response) -> TokenResponse:
     with SessionLocal() as db:
         # users carries no RLS; resolving the user's org needs the pre-tenant
         # bootstrap scope (memberships crosses tenants until we know the org).
@@ -141,7 +155,9 @@ def login(body: LoginRequest) -> TokenResponse:
         ).scalars().first()
         principal = Principal(user_id=str(user.id), organization_id=str(membership.organization_id),
                               role=membership.role, email=user.email)
-        return TokenResponse(access_token=create_access_token(principal),
+        token = create_access_token(principal)
+        set_auth_cookie(response, token)
+        return TokenResponse(access_token=token,
                              organization_id=str(membership.organization_id),
                              entity_id=str(entity.id) if entity else "",
                              role=membership.role)

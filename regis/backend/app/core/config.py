@@ -54,8 +54,31 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_ttl_minutes: int = 60 * 12
 
+    # Session cookie (httpOnly) — the browser SPA authenticates via this, so the
+    # JWT is never exposed to JavaScript. Secure is off only in dev (plain http).
+    auth_cookie_name: str = "regis_session"
+
+    @property
+    def auth_cookie_secure(self) -> bool:
+        return self.env != "dev"
+
     # Field-level encryption key (Fernet). Required outside dev.
     field_key: str | None = None
+
+    # Uploads: cap evidence file size to bound memory use (DoS guard).
+    max_upload_mb: int = 25
+
+    # CORS: comma-separated allowed origins for the browser SPA. Empty = same-origin
+    # only (the dev/prod default is a Next.js proxy, so no cross-origin is needed).
+    cors_allow_origins: str = ""
+
+    @property
+    def max_upload_bytes(self) -> int:
+        return self.max_upload_mb * 1024 * 1024
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
 
     def assert_production_ready(self) -> None:
         if self.env != "prod":

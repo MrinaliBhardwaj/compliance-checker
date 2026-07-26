@@ -131,6 +131,40 @@ def test_login_bootstrap_reads_membership_cross_tenant(pg_engine):
                 {"i": uuid.uuid4(), "u": user, "o": uuid.uuid4()})
 
 
+def test_per_tenant_commit_persists_every_org(pg_engine):
+    """The worker's invariant: a tenant write only lands while its org's scope is
+    active. Committing per-org persists all orgs; a cross-scope write is rejected —
+    which is precisely why deferring to one final commit (last org's scope) would
+    silently drop every other org's changes (the nightly-sweep bug)."""
+    with pg_engine.begin() as conn:
+        org_a, org_b = _new_org(conn), _new_org(conn)
+
+    with pg_engine.connect() as conn:
+        # per-org: write each org's row under its own scope, commit between
+        _set_org(conn, org_a)
+        conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, created_at) "
+                          "VALUES (:i,:o,'reminder','email',now())"), {"i": uuid.uuid4(), "o": org_a})
+        conn.commit()
+        _set_org(conn, org_b)
+        conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, created_at) "
+                          "VALUES (:i,:o,'reminder','email',now())"), {"i": uuid.uuid4(), "o": org_b})
+        conn.commit()
+
+    with pg_engine.connect() as conn:
+        _set_org(conn, org_a)
+        assert conn.execute(text("SELECT count(*) FROM notifications")).scalar_one() == 1
+        _set_org(conn, org_b)
+        assert conn.execute(text("SELECT count(*) FROM notifications")).scalar_one() == 1
+
+    # the anti-pattern: writing org A's row while scoped to org B is refused
+    with pg_engine.connect() as conn:
+        _set_org(conn, org_b)
+        with pytest.raises(Exception):
+            conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, created_at) "
+                              "VALUES (:i,:o,'reminder','email',now())"), {"i": uuid.uuid4(), "o": org_a})
+            conn.commit()
+
+
 def test_audit_log_is_append_only(pg_engine):
     org = uuid.uuid4()
     with pg_engine.begin() as conn:

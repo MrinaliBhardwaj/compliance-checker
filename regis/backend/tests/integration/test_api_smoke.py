@@ -72,6 +72,9 @@ def _auth(client) -> tuple[dict, str]:
     })
     assert r.status_code == 200, r.text
     body = r.json()
+    # signup now also sets a session cookie; drop it so the shared client stays
+    # stateless and these tests authenticate purely via the explicit Bearer header.
+    client.cookies.clear()
     return {"Authorization": f"Bearer {body['access_token']}"}, body["entity_id"]
 
 
@@ -216,6 +219,7 @@ def test_legal_updates_over_http(client):
     assert r.status_code == 200, r.text
     headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
     entity_id = r.json()["entity_id"]
+    client.cookies.clear()  # stay stateless — authenticate via the Bearer header below
     # ensure a profile exists (so matching has something to match against)
     client.post("/onboarding/calendar/generate", headers=headers, json={
         "entity_id": entity_id,
@@ -267,3 +271,47 @@ def test_preparer_cannot_generate(client):
                     headers={"Authorization": f"Bearer {tok}"},
                     json={"entity_id": "e1", "raw_input": {}})
     assert r.status_code == 403
+
+
+def test_httponly_cookie_session(client):
+    """Auth rides on an httpOnly cookie: set on signup, usable with no Authorization
+    header, and cleared by logout. (Isolated client so its cookie jar is its own.)"""
+    import uuid as _uuid
+    c = TestClient(app)  # shares the app (overrides + seeded DB) but owns its cookies
+    email = f"cookie-{_uuid.uuid4().hex[:8]}@acme.example"
+    r = c.post("/auth/signup", json={
+        "email": email, "password": "goodpassword1",
+        "organization_name": "Cookie NBFC", "entity_legal_name": "Cookie Ltd"})
+    assert r.status_code == 200
+    set_cookie = r.headers.get("set-cookie", "").lower()
+    assert "regis_session=" in set_cookie and "httponly" in set_cookie
+
+    # authenticated purely by the cookie — no Authorization header sent
+    who = c.get("/auth/me")
+    assert who.status_code == 200 and who.json()["email"] == email
+
+    assert c.post("/auth/logout").status_code == 200
+    assert c.get("/auth/me").status_code == 401  # cookie cleared -> unauthenticated
+
+
+def test_signup_rejects_short_password(client):
+    import uuid as _uuid
+    r = client.post("/auth/signup", json={
+        "email": f"weak-{_uuid.uuid4().hex[:8]}@acme.example", "password": "short",
+        "organization_name": "Weak NBFC", "entity_legal_name": "Weak Ltd"})
+    assert r.status_code == 422  # Pydantic min_length gate, before any DB write
+
+
+def test_upload_rejects_oversize_file(client):
+    from app.core.config import get_settings
+    headers, entity_id = _auth(client)
+    s = get_settings()
+    original = s.max_upload_mb
+    s.max_upload_mb = 0  # any non-empty upload now exceeds the cap
+    try:
+        r = client.post("/documents/upload", headers=headers,
+                        data={"entity_id": entity_id},
+                        files={"file": ("big.pdf", b"x" * 4096, "application/pdf")})
+        assert r.status_code == 413
+    finally:
+        s.max_upload_mb = original

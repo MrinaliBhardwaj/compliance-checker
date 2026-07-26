@@ -9,12 +9,27 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
+from app.core.config import get_settings
 from app.core.deps import DbSession
 from app.core.security import CurrentPrincipal
 from app.models.evidence import Document
 from app.modules.documents import service as svc
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+
+
+async def _read_capped(file: UploadFile, limit: int) -> bytes:
+    """Read the upload but refuse anything over the cap, without buffering more
+    than one chunk past it (bounds worst-case memory even if Content-Length lies)."""
+    chunks: list[bytes] = []
+    total = 0
+    while chunk := await file.read(1024 * 1024):
+        total += len(chunk)
+        if total > limit:
+            raise HTTPException(413,
+                                f"File exceeds the {limit // (1024 * 1024)} MB upload limit")
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def _doc_out(d: Document) -> dict:
@@ -27,7 +42,7 @@ def _doc_out(d: Document) -> dict:
 @router.post("/upload")
 async def upload(db: DbSession, principal: CurrentPrincipal,
                  file: UploadFile = File(...), entity_id: str = Form(...)) -> dict:
-    content = await file.read()
+    content = await _read_capped(file, get_settings().max_upload_bytes)
     result = svc.upload_document(
         db, organization_id=principal.organization_id, entity_id=entity_id,
         uploaded_by=principal.user_id, file_name=file.filename or "upload.bin",

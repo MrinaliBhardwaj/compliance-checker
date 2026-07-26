@@ -3,7 +3,7 @@
 // exposes role-aware helpers, and powers route guarding + role-aware rendering.
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { type Capability, type Principal, type Role, can, clearToken, getToken, me } from "@/lib/api";
+import { type Capability, type Principal, type Role, can, logout as logoutApi, me } from "@/lib/api";
 
 interface AuthState {
   principal: Principal | null;
@@ -26,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [entityId, setEntityIdState] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!getToken()) { setPrincipal(null); setLoading(false); return; }
+    // Session lives in an httpOnly cookie we can't read — ask the server who we are.
     setLoading(true);
     try {
       const p = await me();
@@ -35,8 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const valid = p.entities.find((e) => e.id === stored)?.id ?? p.entities[0]?.id ?? null;
       setEntityIdState(valid);
     } catch {
-      clearToken();
-      setPrincipal(null);
+      setPrincipal(null);  // 401 -> not signed in
     } finally {
       setLoading(false);
     }
@@ -49,8 +48,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") localStorage.setItem(ENTITY_KEY, id);
   }, []);
 
-  const logout = useCallback(() => {
-    clearToken();
+  const logout = useCallback(async () => {
+    try { await logoutApi(); } catch { /* clear locally regardless */ }
     if (typeof window !== "undefined") localStorage.removeItem(ENTITY_KEY);
     setPrincipal(null);
     router.push("/");

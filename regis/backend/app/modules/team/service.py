@@ -204,6 +204,8 @@ def accept_invite(session: Session, *, token: str, password: str | None,
         # brand-new user: first acceptance sets their password
         if not password:
             raise TeamError("a password is required to accept this invite")
+        if len(password) < 8:
+            raise TeamError("password must be at least 8 characters")
         user.password_hash = hash_password(password)
     elif not password or not verify_password(password, user.password_hash):
         # existing account: possession of the link is not identity — the invitee

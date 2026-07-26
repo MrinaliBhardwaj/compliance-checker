@@ -1,7 +1,7 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { login, setToken, signup } from "@/lib/api";
+import { login, signup } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Spinner } from "@/components/ui";
 
@@ -24,7 +24,7 @@ export default function AuthPage() {
       const res = mode === "signup"
         ? await signup(form)
         : await login({ email: form.email, password: form.password });
-      setToken(res.access_token);
+      // session is set as an httpOnly cookie by the server; just remember the entity
       localStorage.setItem("regis_entity", res.entity_id);
       await refresh();
       router.push(mode === "signup" ? "/onboarding" : "/dashboard");

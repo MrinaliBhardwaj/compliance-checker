@@ -171,6 +171,9 @@ def instance_completeness(instance_id: str, db: DbSession, principal: CurrentPri
     inst = db.get(ObligationInstance, instance_id)
     if not inst or str(inst.organization_id) != principal.organization_id:
         raise HTTPException(http_status.HTTP_404_NOT_FOUND, "Instance not found")
+    # preparers are scoped to their own assigned instances (mirrors list/detail)
+    if principal.role == "preparer" and str(inst.owner_user_id) != principal.user_id:
+        raise HTTPException(http_status.HTTP_403_FORBIDDEN, "Not your assigned obligation")
     return completeness_for_instance(db, inst)
 
 

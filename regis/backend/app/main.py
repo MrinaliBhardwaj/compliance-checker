@@ -7,6 +7,7 @@ All AI is read-only/assistive; the deterministic cores are the source of truth.
 from __future__ import annotations
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.modules.audit.router import router as audit_router
@@ -23,12 +24,31 @@ from app.modules.team.router import router as team_router
 settings = get_settings()
 settings.assert_production_ready()
 
+# Interactive API docs are useful in dev but needlessly expose the surface map in
+# prod — serve them everywhere except prod.
+_docs_on = settings.env != "prod"
+
 app = FastAPI(
     title="Regis — NBFC Compliance Platform (Phase 1)",
     version="0.1.0",
     description="AI-assisted, human-confirmed compliance calendar for Indian NBFCs. "
                 "Deterministic cores; read-only AI; ap-south-1 data residency.",
+    docs_url="/docs" if _docs_on else None,
+    redoc_url="/redoc" if _docs_on else None,
+    openapi_url="/openapi.json" if _docs_on else None,
 )
+
+# CORS is off by default (the SPA reaches the API through a same-origin Next.js
+# proxy). Set REGIS_CORS_ALLOW_ORIGINS only if the browser calls the API directly;
+# credentials are allowed but the origin list is explicit — never "*".
+if settings.cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 @app.get("/health", tags=["system"])

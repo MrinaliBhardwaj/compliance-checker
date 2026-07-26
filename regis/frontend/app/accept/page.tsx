@@ -3,7 +3,7 @@
 // the workspace with their assigned role. Token comes from the invite link.
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { acceptInvite, setToken } from "@/lib/api";
+import { acceptInvite } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Spinner } from "@/components/ui";
 
@@ -29,8 +29,7 @@ function Accept() {
     setErr(null); setBusy(true);
     try {
       const res = await acceptInvite(token, password || undefined, name || undefined);
-      setToken(res.access_token);
-      localStorage.setItem("regis_entity", res.entity_id);
+      localStorage.setItem("regis_entity", res.entity_id);  // session cookie set by server
       await refresh();
       router.push("/dashboard");
     } catch (e) {

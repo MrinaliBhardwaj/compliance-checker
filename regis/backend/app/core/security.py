@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 import bcrypt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
@@ -19,6 +19,25 @@ from pydantic import BaseModel
 from app.core.config import get_settings
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
+
+
+def set_auth_cookie(response: Response, token: str) -> None:
+    """Store the session JWT in an httpOnly cookie — unreadable by JS, so an XSS
+    can't exfiltrate it. SameSite=Lax + non-GET mutations gives CSRF protection."""
+    s = get_settings()
+    response.set_cookie(
+        key=s.auth_cookie_name, value=token, httponly=True,
+        secure=s.auth_cookie_secure, samesite="lax", path="/",
+        max_age=s.access_token_ttl_minutes * 60,
+    )
+
+
+def clear_auth_cookie(response: Response) -> None:
+    s = get_settings()
+    response.delete_cookie(
+        key=s.auth_cookie_name, path="/", httponly=True,
+        secure=s.auth_cookie_secure, samesite="lax",
+    )
 
 
 def hash_password(p: str) -> str:
@@ -72,10 +91,16 @@ def decode_invite_token(token: str) -> dict:
     return claims
 
 
-def get_current_principal(token: Annotated[str | None, Depends(oauth2_scheme)]) -> Principal:
+def get_current_principal(
+    request: Request,
+    bearer: Annotated[str | None, Depends(oauth2_scheme)],
+) -> Principal:
+    s = get_settings()
+    # Browser SPA -> httpOnly cookie; API clients -> Authorization: Bearer. An
+    # explicit header wins over an ambient cookie (the caller is being explicit).
+    token = bearer or request.cookies.get(s.auth_cookie_name)
     if not token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not authenticated")
-    s = get_settings()
     try:
         claims = jwt.decode(token, s.jwt_secret, algorithms=[s.jwt_algorithm])
     except JWTError as e:

@@ -1,18 +1,7 @@
 // Typed client for the Regis backend. Calls are proxied via /api -> FastAPI.
-// Token in localStorage for the V1 web app (httpOnly cookie is a hardening item).
+// Auth is an httpOnly session cookie set by the server — the JWT is never exposed
+// to JS (XSS can't read it). Every call sends credentials so the cookie rides along.
 // All AI surfaces are read-only/assistive by contract.
-
-const TOKEN_KEY = "regis_token";
-
-export function setToken(t: string) {
-  if (typeof window !== "undefined") localStorage.setItem(TOKEN_KEY, t);
-}
-export function getToken(): string | null {
-  return typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
-}
-export function clearToken() {
-  if (typeof window !== "undefined") localStorage.removeItem(TOKEN_KEY);
-}
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -22,9 +11,9 @@ export class ApiError extends Error {
 
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`/api${path}`, { ...opts, headers: { ...headers, ...(opts.headers || {}) } });
+  const res = await fetch(`/api${path}`, {
+    ...opts, credentials: "include", headers: { ...headers, ...(opts.headers || {}) },
+  });
   if (!res.ok) {
     let detail = res.statusText;
     try {
@@ -57,6 +46,7 @@ export const login = (b: { email: string; password: string }) =>
 export const me = () => req<Principal>("/auth/me");
 export const acceptInvite = (token: string, password?: string, full_name?: string) =>
   req<AuthResponse>("/auth/accept-invite", { method: "POST", body: JSON.stringify({ token, password, full_name }) });
+export const logout = () => req<{ ok: boolean }>("/auth/logout", { method: "POST" });
 
 // ---- team ----
 export interface Member {
@@ -132,10 +122,9 @@ export async function uploadDocument(entity_id: string, file: File): Promise<Upl
   const fd = new FormData();
   fd.append("file", file);
   fd.append("entity_id", entity_id);
-  const headers: Record<string, string> = {};
-  const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`/api/documents/upload`, { method: "POST", headers, body: fd });
+  const res = await fetch(`/api/documents/upload`, {
+    method: "POST", credentials: "include", body: fd,
+  });
   if (!res.ok) throw new ApiError(res.status, res.statusText);
   return res.json();
 }
@@ -149,8 +138,7 @@ export function uploadDocumentProgress(
     fd.append("entity_id", entity_id);
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/documents/upload");
-    const token = getToken();
-    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.withCredentials = true;  // send the session cookie
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
     };
@@ -183,10 +171,7 @@ export const reviewLegalUpdate = (id: string, status: string, reason?: string) =
 // ---- reports ----
 export const getReport = () => req<Report>("/reports/compliance");
 export async function downloadReport(kind: "html" | "pdf"): Promise<Blob> {
-  const headers: Record<string, string> = {};
-  const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`/api/reports/compliance.${kind}`, { headers });
+  const res = await fetch(`/api/reports/compliance.${kind}`, { credentials: "include" });
   if (!res.ok) throw new ApiError(res.status, res.statusText);
   return res.blob();
 }

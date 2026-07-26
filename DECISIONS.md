@@ -20,3 +20,65 @@ Append-only log of direction decisions, so future sessions inherit them.
   across 29 laws / 367+ instances per calendar / 98.4% doc classification.
 - **SQLite is the demo/test path; Postgres+RLS is production-shaped.** The root
   README quickstart uses SQLite so the app runs with zero infra.
+
+## 2026-07-12 — Security review fixes (auth boundary)
+
+- **Auth endpoints set the RLS GUC explicitly; they are the one place that crosses
+  tenant scope.** Under production Postgres (`FORCE ROW LEVEL SECURITY`), a session
+  with no `app.current_org` is blocked on every tenant table. So: **signup** scopes
+  to the newly-created org before inserting membership/entity; **accept-invite**
+  scopes to the org in the signed invite token; **/me** scopes to the JWT's org.
+- **Login uses a narrow, read-only `app.bootstrap` GUC** (migration `0003`) to resolve
+  which org a user belongs to — the one unavoidable cross-tenant read. It is honored
+  ONLY by the `memberships` USING clause (not WITH CHECK: bootstrap can't forge a
+  membership), and the sole caller filters by user identity. Set via
+  `app.core.db.set_bootstrap`. Don't broaden this to other tables.
+- **Removal is revocation:** login accepts only `status='active'` memberships, and
+  invite acceptance is single-use (`invited`-only) — a removed member's old invite
+  link can't reinstate them, and an existing account must prove its own password to
+  accept (possession of the link ≠ identity).
+- **The legal-updates feed is cross-tenant, so publishing is allowlist-gated**
+  (`REGIS_CONTENT_ADMIN_EMAILS`), NOT just `compliance_admin` — every self-serve
+  signup is an admin of their own org. Empty allowlist = API publishing disabled.
+
+## 2026-07-24 — Security review: medium+ findings
+
+- **Background worker commits per-org, inside each org's tenant scope.** With
+  `autoflush=False`, deferring all writes to one final commit flushed them under the
+  *last* org's `app.current_org`, so Postgres RLS silently dropped every other org's
+  overdue-flips and reminders. `nightly_sweep` and `enqueue_due_reminders` now
+  `commit()` inside the per-org loop. (Enumerating `organizations` is fine — it has
+  no RLS policy.)
+- **Uploads are size-capped** (`REGIS_MAX_UPLOAD_MB`, default 25) — read in bounded
+  chunks, 413 over the cap — so a large upload can't exhaust memory.
+- **Passwords require ≥ 8 chars** (signup via Pydantic; new invited users in the
+  team service).
+- **`instance_completeness` scopes preparers to their own instances** (mirrors
+  list/detail) — was an org-only check.
+- **CORS is off by default** (SPA reaches the API via a same-origin Next.js proxy);
+  `REGIS_CORS_ALLOW_ORIGINS` opts specific origins in — never `*`. **API docs
+  (`/docs`, `/openapi.json`) are disabled when `REGIS_ENV=prod`.**
+- **Deliberately deferred (own change, not this batch):** (1) move the JWT from
+  localStorage to an httpOnly cookie — a full auth refactor (CSRF handling, every
+  call) that shouldn't be rushed into a hardening batch, and there's no known XSS
+  vector today (React escaping, no dangerouslySetInnerHTML). (2) Login rate-limiting
+  belongs at the edge/gateway (Cloudflare/ALB or slowapi+Redis at deploy), not in
+  app code.
+
+## 2026-07-24 — Session auth moved to httpOnly cookie
+
+- **The JWT lives in an httpOnly `regis_session` cookie, not localStorage** — so an
+  XSS can't read the token. Set by signup/login/accept-invite; cleared by the new
+  `POST /auth/logout` (httpOnly means JS can't clear it client-side).
+- **Cookie flags:** `HttpOnly`, `SameSite=Lax`, `Path=/`, `Max-Age`=token TTL, and
+  `Secure` on everywhere except `REGIS_ENV=dev` (plain-http localhost). CSRF is
+  covered by SameSite=Lax + all mutations being non-GET + the same-origin proxy.
+- **`get_current_principal` reads `Authorization: Bearer` first, else the cookie** —
+  explicit header wins so API clients/tests stay stateless; the browser (no header)
+  uses the cookie. The Bearer path is retained for programmatic clients.
+- **Frontend never touches the token:** `lib/api.ts` sends `credentials:"include"`
+  (fetch) / `withCredentials` (XHR upload); `setToken/getToken/clearToken` are gone.
+  `auth.tsx` `refresh()` just calls `/auth/me` (401 ⇒ signed out); `logout()` calls
+  the API. `regis_entity` (non-sensitive UI state) stays in localStorage.
+- Tests: `_auth` clears the shared TestClient's cookie jar so Bearer-based smoke
+  tests stay stateless; `test_httponly_cookie_session` covers the cookie path.

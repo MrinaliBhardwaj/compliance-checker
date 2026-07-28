@@ -7,10 +7,12 @@ the org. Everything else runs under the JWT's org scope. First signup defaults t
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Response, status
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import select
 
+from app.core import ratelimit
+from app.core.config import get_settings
 from app.core.db import SessionLocal, set_bootstrap, set_tenant
 from app.core.security import (
     CurrentPrincipal,
@@ -27,6 +29,21 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 MIN_PASSWORD_LEN = 8
+
+
+def _enforce_rate_limit(request: Request, scopes: dict[str, str]) -> None:
+    """Throttle brute force across the given (scope -> identifier) keys."""
+    s = get_settings()
+    try:
+        for scope, ident in scopes.items():
+            ratelimit.hit(scope, ident, limit=s.login_max_attempts,
+                          window=s.login_window_seconds)
+    except ratelimit.RateLimitExceeded as e:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Too many attempts. Please wait a few minutes and try again.",
+            headers={"Retry-After": str(e.retry_after)},
+        ) from None
 
 
 class SignupRequest(BaseModel):
@@ -100,9 +117,12 @@ class AcceptInviteRequest(BaseModel):
 
 
 @router.post("/accept-invite", response_model=TokenResponse)
-def accept_invite(body: AcceptInviteRequest, response: Response) -> TokenResponse:
+def accept_invite(body: AcceptInviteRequest, request: Request,
+                  response: Response) -> TokenResponse:
     """Public: an invited teammate activates their membership (sets a password if
     they're a brand-new user) and receives a session token."""
+    # existing-account acceptance verifies the account password, so throttle it too
+    _enforce_rate_limit(request, {"invite_ip": ratelimit.client_ip(request)})
     from app.modules.team import service as team_svc
     with SessionLocal() as db:
         try:
@@ -113,6 +133,7 @@ def accept_invite(body: AcceptInviteRequest, response: Response) -> TokenRespons
         except team_svc.TeamError as e:
             raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
         db.commit()
+    ratelimit.reset("invite_ip", ratelimit.client_ip(request))
     set_auth_cookie(response, res["access_token"])
     return TokenResponse(access_token=res["access_token"], organization_id=res["organization_id"],
                          entity_id=res["entity_id"], role=res["role"])
@@ -131,7 +152,11 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(body: LoginRequest, response: Response) -> TokenResponse:
+def login(body: LoginRequest, request: Request, response: Response) -> TokenResponse:
+    # Throttle by source IP and by targeted account, before the (costly) bcrypt
+    # verify — stops both credential stuffing and a focused per-account attack.
+    _enforce_rate_limit(request, {"login_ip": ratelimit.client_ip(request),
+                                  "login_email": body.email})
     with SessionLocal() as db:
         # users carries no RLS; resolving the user's org needs the pre-tenant
         # bootstrap scope (memberships crosses tenants until we know the org).
@@ -155,6 +180,9 @@ def login(body: LoginRequest, response: Response) -> TokenResponse:
         ).scalars().first()
         principal = Principal(user_id=str(user.id), organization_id=str(membership.organization_id),
                               role=membership.role, email=user.email)
+        # success: clear the attempt counters so honest users aren't throttled later
+        ratelimit.reset("login_ip", ratelimit.client_ip(request))
+        ratelimit.reset("login_email", body.email)
         token = create_access_token(principal)
         set_auth_cookie(response, token)
         return TokenResponse(access_token=token,

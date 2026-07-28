@@ -58,6 +58,11 @@ class Settings(BaseSettings):
     # JWT is never exposed to JavaScript. Secure is off only in dev (plain http).
     auth_cookie_name: str = "regis_session"
 
+    # Auth rate limiting (brute-force guard): max attempts per IP and per account
+    # within the window, on login + invite acceptance.
+    login_max_attempts: int = 10
+    login_window_seconds: int = 300
+
     @property
     def auth_cookie_secure(self) -> bool:
         return self.env != "dev"

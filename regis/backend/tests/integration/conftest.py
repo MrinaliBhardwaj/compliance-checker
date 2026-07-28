@@ -15,8 +15,17 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.core import ratelimit
 from app.models import Base, Entity, Membership, Organization, User
 from app.seed.library_loader import seed_database
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limit():
+    """Auth rate-limit state is a process-global counter — clear it between tests
+    so attempt counts don't leak across the shared TestClient's constant IP."""
+    ratelimit.clear()
+    yield
 
 
 @pytest.fixture

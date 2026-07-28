@@ -82,3 +82,22 @@ Append-only log of direction decisions, so future sessions inherit them.
   the API. `regis_entity` (non-sensitive UI state) stays in localStorage.
 - Tests: `_auth` clears the shared TestClient's cookie jar so Bearer-based smoke
   tests stay stateless; `test_httponly_cookie_session` covers the cookie path.
+
+## 2026-07-24 — Login rate limiting (brute-force guard)
+
+- **`app/core/ratelimit.py`** — fixed-window limiter on the auth endpoints. Keys:
+  login is throttled per source IP AND per targeted account (`REGIS_LOGIN_MAX_ATTEMPTS`
+  in `REGIS_LOGIN_WINDOW_SECONDS`, default 10 / 300s); invite acceptance per IP.
+  Checked BEFORE the bcrypt verify, so a flood can't burn CPU. A successful login
+  resets the counters (honest users aren't punished for a few typos).
+- **Backend: Redis when reachable, in-process fallback otherwise.** Redis is the
+  only correct choice in prod (shared across uvicorn workers/replicas — an in-process
+  counter hands an attacker a fresh budget per worker). The app already runs Redis
+  for Arq, so no new infra. **Fails OPEN** on backend errors — throttle attackers,
+  don't lock real users out over a Redis hiccup; the per-account limit still holds
+  if a spoofed X-Forwarded-For defeats the per-IP layer.
+- **Client IP** comes from X-Forwarded-For (first hop) else `request.client.host`;
+  in prod this must sit behind a proxy/LB that sets a trustworthy XFF (Vercel/
+  Railway/ALB do).
+- Tests clear the process-global counter between cases (autouse fixture in
+  `tests/integration/conftest.py`); `test_login_is_rate_limited` covers the 429 path.

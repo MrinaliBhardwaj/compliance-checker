@@ -294,6 +294,30 @@ def test_httponly_cookie_session(client):
     assert c.get("/auth/me").status_code == 401  # cookie cleared -> unauthenticated
 
 
+def test_login_is_rate_limited(client):
+    """Brute force is throttled: after the per-window budget, even correct
+    credentials are refused with 429 + Retry-After."""
+    from app.core.config import get_settings
+    import uuid as _uuid
+    email = f"rl-{_uuid.uuid4().hex[:8]}@acme.example"
+    r = client.post("/auth/signup", json={  # signup itself isn't rate-limited
+        "email": email, "password": "goodpassword1",
+        "organization_name": "RL NBFC", "entity_legal_name": "RL Ltd"})
+    assert r.status_code == 200
+    client.cookies.clear()
+
+    limit = get_settings().login_max_attempts
+    codes = [client.post("/auth/login", json={"email": email, "password": "wrong"}).status_code
+             for _ in range(limit)]
+    assert set(codes) == {401}  # wrong-password attempts up to the limit
+
+    blocked = client.post("/auth/login", json={"email": email, "password": "wrong"})
+    assert blocked.status_code == 429 and blocked.headers.get("retry-after")
+    # the correct password is refused too while throttled — no slipping through
+    good = client.post("/auth/login", json={"email": email, "password": "goodpassword1"})
+    assert good.status_code == 429
+
+
 def test_signup_rejects_short_password(client):
     import uuid as _uuid
     r = client.post("/auth/signup", json={

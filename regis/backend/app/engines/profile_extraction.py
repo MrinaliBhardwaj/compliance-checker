@@ -23,6 +23,13 @@ from dataclasses import asdict, dataclass
 from enum import StrEnum
 
 from .applicability import HARD_FIELDS
+from .thresholds import (
+    CSR_TURNOVER_CR,
+    ESI_EMPLOYEE_COUNT,
+    GST_QRMP_TURNOVER_CR,
+    NDSI_ASSET_CR,
+    SBR_MIDDLE_LAYER_ASSET_CR,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -160,9 +167,11 @@ def derive_regulatory_category(asset_cr, deposit) -> Field:
         return Field("deposit_taking", Source.DERIVED, 0.85, "deposit-taking NBFC")
     if asset_cr is None:
         return Field(None, Source.DEFAULT_UNKNOWN, 0.0, "asset size unknown")
-    if asset_cr >= 500:
-        return Field("nd_si", Source.DERIVED, 0.85, "non-deposit, asset >= Rs.500cr")
-    return Field("icc", Source.DERIVED, 0.85, "non-deposit, asset < Rs.500cr")
+    if asset_cr >= NDSI_ASSET_CR.value:
+        return Field("nd_si", Source.DERIVED, 0.85,
+                     f"non-deposit, asset >= Rs.{NDSI_ASSET_CR.value}cr")
+    return Field("icc", Source.DERIVED, 0.85,
+                 f"non-deposit, asset < Rs.{NDSI_ASSET_CR.value}cr")
 
 
 def derive_rbi_layer(asset_cr, deposit, rbi_designated_upper=False) -> Field:
@@ -172,33 +181,38 @@ def derive_rbi_layer(asset_cr, deposit, rbi_designated_upper=False) -> Field:
         return Field("middle", Source.DERIVED, 0.85, "deposit-taking -> Middle Layer (SBR)")
     if asset_cr is None:
         return Field(None, Source.DEFAULT_UNKNOWN, 0.0, "asset size unknown")
-    if asset_cr >= 1000:
-        return Field("middle", Source.DERIVED, 0.85, "asset >= Rs.1000cr -> Middle Layer")
+    if asset_cr >= SBR_MIDDLE_LAYER_ASSET_CR.value:
+        return Field("middle", Source.DERIVED, 0.85,
+                     f"asset >= Rs.{SBR_MIDDLE_LAYER_ASSET_CR.value}cr -> Middle Layer")
     return Field("base", Source.DERIVED, 0.80,
-                 "asset < Rs.1000cr -> Base Layer (RBI may place higher; confirm)")
+                 f"asset < Rs.{SBR_MIDDLE_LAYER_ASSET_CR.value}cr -> Base Layer "
+                 "(RBI may place higher; confirm)")
 
 
 def derive_esi(employee_count) -> Field:
     if employee_count is None:
         return Field(None, Source.DEFAULT_UNKNOWN, 0.0)
-    return Field(employee_count >= 10, Source.DERIVED, 0.80,
-                 "ESI threshold ~10 employees (state-varying; confirm)")
+    return Field(employee_count >= ESI_EMPLOYEE_COUNT.value, Source.DERIVED, 0.80,
+                 f"ESI threshold ~{ESI_EMPLOYEE_COUNT.value} employees "
+                 "(state-varying; confirm)")
 
 
 def derive_gst_scheme(turnover_cr) -> Field:
     if turnover_cr is None:
         return Field(None, Source.DEFAULT_UNKNOWN, 0.0)
-    scheme = "qrmp" if turnover_cr <= 5 else "regular"
+    scheme = "qrmp" if turnover_cr <= GST_QRMP_TURNOVER_CR.value else "regular"
     return Field(scheme, Source.DERIVED, 0.70,
-                 "QRMP is an election (<= Rs.5cr eligible); confirm choice")
+                 f"QRMP is an election (<= Rs.{GST_QRMP_TURNOVER_CR.value}cr "
+                 "eligible); confirm choice")
 
 
 def derive_csr(turnover_cr) -> Field:
     if turnover_cr is None:
         return Field(None, Source.DEFAULT_UNKNOWN, 0.0,
                      "needs net worth / net profit to confirm s.135")
-    if turnover_cr >= 1000:
-        return Field(True, Source.DERIVED, 0.80, "turnover >= Rs.1000cr (s.135)")
+    if turnover_cr >= CSR_TURNOVER_CR.value:
+        return Field(True, Source.DERIVED, 0.80,
+                     f"turnover >= Rs.{CSR_TURNOVER_CR.value}cr (s.135)")
     return Field(None, Source.DEFAULT_UNKNOWN, 0.0,
                  "below turnover trigger; check net worth/profit")
 
@@ -218,9 +232,10 @@ def consistency_checks(p: dict, asserted: dict) -> list[Issue]:
     asset = p["asset_size_cr"].value
     # user-asserted layer vs derived expectation
     a_layer = asserted.get("rbi_layer")
-    if a_layer == "base" and asset is not None and asset >= 1000:
+    if a_layer == "base" and asset is not None and asset >= SBR_MIDDLE_LAYER_ASSET_CR.value:
         issues.append(Issue("rbi_layer", "contradiction",
-            f"answered Base but asset Rs.{asset}cr implies Middle Layer (>=1000)"))
+            f"answered Base but asset Rs.{asset}cr implies Middle Layer "
+            f"(>={SBR_MIDDLE_LAYER_ASSET_CR.value})"))
     if p["deposit_taking"].value is True and a_layer == "base":
         issues.append(Issue("rbi_layer", "contradiction",
             "deposit-taking NBFCs are Middle Layer under SBR, not Base"))
@@ -233,9 +248,11 @@ def consistency_checks(p: dict, asserted: dict) -> list[Issue]:
         issues.append(Issue("is_listed", "warning",
             "has listed debt securities; confirm equity-listing status"))
     # near-boundary asset size
-    if asset is not None and 900 <= asset <= 1100:
+    low, high = SBR_MIDDLE_LAYER_ASSET_CR.near_band()
+    if asset is not None and low <= asset <= high:
         issues.append(Issue("asset_size_cr", "warning",
-            f"asset Rs.{asset}cr is near the Rs.1000cr layer boundary; confirm exact figure"))
+            f"asset Rs.{asset}cr is near the Rs.{SBR_MIDDLE_LAYER_ASSET_CR.value}cr "
+            "layer boundary; confirm exact figure"))
     return issues
 
 

@@ -159,7 +159,7 @@ def test_per_tenant_commit_persists_every_org(pg_engine):
     # the anti-pattern: writing org A's row while scoped to org B is refused
     with pg_engine.connect() as conn:
         _set_org(conn, org_b)
-        with pytest.raises(Exception):
+        with pytest.raises(DBAPIError):
             conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, created_at) "
                               "VALUES (:i,:o,'reminder','email',now())"), {"i": uuid.uuid4(), "o": org_a})
             conn.commit()

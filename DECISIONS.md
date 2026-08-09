@@ -83,6 +83,42 @@ Append-only log of direction decisions, so future sessions inherit them.
 - Tests: `_auth` clears the shared TestClient's cookie jar so Bearer-based smoke
   tests stay stateless; `test_httponly_cookie_session` covers the cookie path.
 
+## 2026-08-08 — Regulatory thresholds carry provenance (`app/engines/thresholds.py`)
+
+- **A legal threshold is declared exactly once, with its source.** The SBR
+  Middle-Layer figure previously existed as a bare `1000` in THREE places:
+  `derive_rbi_layer`, the `consistency_checks` contradiction test, and the
+  near-boundary warning band (`900 <= asset <= 1100`, plus `Rs.1000cr` hardcoded
+  in the message). One legal fact, four literals — updating one would have left
+  the consistency engine silently disagreeing with the derivation.
+- **`Threshold` carries `value / unit / source / lookup / status / verified_by /
+  verified_on`**, reusing the library's `DRAFT_UNVERIFIED | VERIFIED` vocabulary.
+  `VERIFIED` without both `verified_by` and `verified_on` raises — that invariant
+  is what makes the status mean something.
+- **Never edit `value` without editing `status`, `verified_by`, `verified_on` and
+  `source` in the same change.** `python -m app.engines.thresholds` prints the
+  reviewer worklist (what to look up, and where).
+- **The near-boundary band is derived** (`near_band(pct=0.10)`), not hand-written,
+  so it moves when the threshold moves.
+- **Guard tests use the AST, not text scanning.** A line-based regex flagged regex
+  quantifiers (`\d{5}`) and the `10` inside `0.10`. Integer *constants* via
+  `ast.walk` are exact; a separate narrow check catches `Rs.<n>cr` baked into
+  user-facing message strings.
+- **All 5 thresholds ship DRAFT_UNVERIFIED and no value was changed.** Primary
+  text (`rbi.org.in`, `rbidocs.rbi.org.in`) is unreachable from the sandboxed
+  session — 502 through the egress proxy — and secondary summaries have already
+  been observed conflating the 29 Apr 2026 Amendment Directions (Type I
+  registration exemption, CoR surrender window to 30 Sep 2026) with an SBR
+  Base/Middle/Upper layer revision, which they are **not**. Re-derive from the
+  primary instrument only.
+- **Pre-existing CI breakage fixed in the same pass:** `ruff check .` had 2 errors
+  since `375c5a6` (unsorted imports in `test_api_smoke.py`; `B017` blind
+  `pytest.raises(Exception)` in `test_postgres_hardening.py:162`, narrowed to
+  `DBAPIError` to match lines 82/127 in that file). CI was red; the README badge
+  is load-bearing.
+- **README metrics re-verified** (they were stale by the rate-limiting commit):
+  now **158 tests / 85% coverage**, 153 everywhere + 5 live-Postgres.
+
 ## 2026-07-24 — Login rate limiting (brute-force guard)
 
 - **`app/core/ratelimit.py`** — fixed-window limiter on the auth endpoints. Keys:

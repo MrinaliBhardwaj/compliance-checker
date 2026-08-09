@@ -30,10 +30,28 @@ def test_profile_b_summary(library, profile_b):
 
 
 def test_profile_c_summary(library, profile_c):
+    """
+    61 -> 65 when the four ML/UL obligations were re-keyed from the superseded
+    nbfc_category ND-SI test onto rbi_layer (SBR para 2.7). Profile C declares
+    rbi_layer 'middle' with nbfc_category 'icc', so it was previously excluded
+    from CRILC / CRILC-SMA / CRAR / concentration despite being Middle Layer.
+    Profiles A and B are unmoved: A is Base Layer, B is Middle and matched
+    under both keys.
+    """
     s = generate_compliance_universe(library, profile_c)["summary"]
-    assert s["applicable"] == 61
+    assert s["applicable"] == 65
     assert s["needs_review"] == 27
-    assert s["not_applicable"] == 18
+    assert s["not_applicable"] == 14
+
+
+def test_middle_layer_obligations_key_off_layer_not_category(library, profile_c):
+    """
+    Guards the re-key itself: these four must follow rbi_layer. Profile C is
+    Middle Layer with nbfc_category 'icc' -- under the old ND-SI keying it
+    matched none of them.
+    """
+    got = {r["template_id"] for r in generate_compliance_universe(library, profile_c)["applicable"]}
+    assert {"rbi_crilc", "rbi_crilc_sma_weekly", "sbr_crar", "rbi_concentration"} <= got
 
 
 def test_profile_b_state_expansion(library, profile_b):

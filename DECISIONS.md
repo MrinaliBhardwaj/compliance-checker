@@ -83,6 +83,39 @@ Append-only log of direction decisions, so future sessions inherit them.
 - Tests: `_auth` clears the shared TestClient's cookie jar so Bearer-based smoke
   tests stay stateless; `test_httponly_cookie_session` covers the cookie path.
 
+## 2026-08-08 — Four ML/UL obligations re-keyed from `nbfc_category` to `rbi_layer`
+
+- **`rbi_crilc`, `rbi_crilc_sma_weekly`, `sbr_crar`, `rbi_concentration` now key on
+  `rbi_layer: ["middle","upper"]`**, replacing `nbfc_category: ["nd_si","deposit_taking"]`.
+  SBR para 2.7 reads references to NBFC-ND-SI as NBFC-ML/UL and to NBFC-D as ML/UL,
+  so the two rules denote the same set — but via a classification that SBR retired.
+- **Why it mattered in practice:** the ND-SI line is Rs.500cr; the Middle-Layer line
+  is Rs.1000cr. A non-deposit-taking NBFC between them is Base Layer under SBR but
+  was being served four Middle-Layer obligations. Over-compliance, and the exact
+  "marked N/A" churn signal the PRD treats as the content-accuracy proxy.
+- **Golden movement is exactly profile C: 61 -> 65 applicable, 18 -> 14 not applicable.**
+  Profiles A (Base) and B (Middle) are unmoved — B matched under both keys, A under
+  neither. Profile C declares `rbi_layer: middle` with `nbfc_category: icc` at
+  Rs.520cr, so it was previously excluded despite being Middle Layer.
+  `test_middle_layer_obligations_key_off_layer_not_category` guards the re-key.
+  The 367-instance goldens are unaffected (they run profile B).
+- **`nbfc_category` now has ZERO consumers** in applicability rules (`rbi_layer` has
+  10). `derive_regulatory_category` still populates it and `NDSI_ASSET_CR` still
+  feeds that, but nothing downstream reads either. Both **kept, not deleted** —
+  Rs.500cr appears to survive as a live threshold in the Prudential Framework for
+  Resolution of Stressed Assets and in a group-asset aggregation rule, so CRILC in
+  particular may need re-keying BACK onto an explicit Rs.500cr rule citing the
+  instrument that retains it. If no obligation needs it, retire `nbfc_category` and
+  `NDSI_ASSET_CR` together.
+- **Sourcing caveat:** para 2.7 is from secondary analysis (Vinod Kothari, Lexology).
+  `rbi.org.in`, `vinodkothari.com`, `lexology.com` and the FIDC mirror of the Master
+  Direction are all unreachable through the sandbox egress proxy. **Confirm against
+  primary text before this reaches a customer.**
+- **Known asymmetry, deliberately left:** `consistency_checks` flags "answered Base
+  but asset >= Rs.1000cr" and NOT the reverse. That is correct — RBI may place an
+  NBFC in a higher layer than asset size implies (`derive_rbi_layer` says as much),
+  so declaring Middle at Rs.520cr is legitimate, not a contradiction.
+
 ## 2026-08-08 — Regulatory thresholds carry provenance (`app/engines/thresholds.py`)
 
 - **A legal threshold is declared exactly once, with its source.** The SBR

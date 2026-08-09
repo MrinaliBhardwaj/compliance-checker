@@ -395,9 +395,9 @@
         "working_day_adjustment": "next"
       },
       "applicability_rule": {
-        "nbfc_category": [
-          "nd_si",
-          "deposit_taking"
+        "rbi_layer": [
+          "middle",
+          "upper"
         ]
       },
       "required_evidence": [
@@ -423,9 +423,9 @@
         "working_day_adjustment": "next"
       },
       "applicability_rule": {
-        "nbfc_category": [
-          "nd_si",
-          "deposit_taking"
+        "rbi_layer": [
+          "middle",
+          "upper"
         ]
       },
       "required_evidence": [
@@ -1817,9 +1817,9 @@
         "days": 15
       },
       "applicability_rule": {
-        "nbfc_category": [
-          "nd_si",
-          "deposit_taking"
+        "rbi_layer": [
+          "middle",
+          "upper"
         ]
       },
       "required_evidence": [
@@ -2643,9 +2643,9 @@
         "days": 15
       },
       "applicability_rule": {
-        "nbfc_category": [
-          "nd_si",
-          "deposit_taking"
+        "rbi_layer": [
+          "middle",
+          "upper"
         ]
       },
       "required_evidence": [

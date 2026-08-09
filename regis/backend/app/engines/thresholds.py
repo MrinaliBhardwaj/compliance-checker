@@ -101,22 +101,24 @@ NDSI_ASSET_CR = Threshold(
     source="RBI Master Direction — Scale Based Regulation for NBFCs, "
            "para 2.7 and its footnote",
     lookup=RBI_MASTER_DIRECTIONS,
-    note="CONFLATED — this constant does two different jobs and is wrong for one "
-         "of them. As a *classification* the ND-SI category is superseded: SBR "
-         "para 2.7 reads references to NBFC-ND-SI as NBFC-ML/UL, and its "
-         "footnote reclassifies existing ND-SIs of Rs.500cr-Rs.1000cr as Base "
-         "Layer, i.e. the systemic-importance line moved to Rs.1000cr. As a "
-         "*threshold for specific retained regulations* Rs.500cr appears to "
-         "survive (e.g. the Prudential Framework for Resolution of Stressed "
-         "Assets, and a group-asset aggregation rule). "
-         "derive_regulatory_category still emits 'nd_si' at >=500cr, and four "
-         "templates gate on it — rbi_crilc, rbi_crilc_sma_weekly, sbr_crar, "
-         "rbi_concentration — so a non-deposit-taking NBFC between Rs.500cr and "
-         "Rs.1000cr is Base Layer under SBR but is currently served Middle-Layer "
-         "obligations. Reviewer: decide per template whether it is layer-driven "
-         "(re-key to rbi_layer) or genuinely retained at Rs.500cr (keep, and "
-         "cite the instrument that retains it). Secondary sources only — "
-         "rbi.org.in unreachable; confirm para 2.7 against primary text.",
+    note="VESTIGIAL as of the 2026-08-08 re-key — no obligation template reads "
+         "nbfc_category any more. As a *classification* the ND-SI category is "
+         "superseded: SBR para 2.7 reads references to NBFC-ND-SI as NBFC-ML/UL, "
+         "and its footnote reclassifies existing ND-SIs of Rs.500cr-Rs.1000cr as "
+         "Base Layer, i.e. the systemic-importance line moved to Rs.1000cr. The "
+         "four templates that gated on 'nd_si' (rbi_crilc, rbi_crilc_sma_weekly, "
+         "sbr_crar, rbi_concentration) now key off rbi_layer ['middle','upper']. "
+         "derive_regulatory_category still emits nd_si/icc into the profile, but "
+         "nothing downstream consumes it. "
+         "KEPT, not deleted, because Rs.500cr appears to survive as a live "
+         "threshold in specific retained regulations — the Prudential Framework "
+         "for Resolution of Stressed Assets, and a group-asset aggregation rule. "
+         "Reviewer: (a) confirm para 2.7 against primary text; (b) decide whether "
+         "any obligation should be re-keyed BACK onto a Rs.500cr rule citing the "
+         "instrument that retains it — CRILC is the likeliest candidate, since it "
+         "is tied to the stressed-assets framework; (c) if nothing is, retire "
+         "nbfc_category and this constant together. Secondary sources only — "
+         "rbi.org.in unreachable from the authoring sandbox.",
 )
 
 # ---------------------------------------------------------------------------

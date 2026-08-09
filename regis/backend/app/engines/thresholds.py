@@ -98,12 +98,25 @@ NDSI_ASSET_CR = Threshold(
     key="ndsi_asset_cr",
     value=500,
     unit="INR crore",
-    source="RBI Master Direction — Scale Based Regulation for NBFCs "
-           "(systemically important non-deposit-taking classification)",
+    source="RBI Master Direction — Scale Based Regulation for NBFCs, "
+           "para 2.7 and its footnote",
     lookup=RBI_MASTER_DIRECTIONS,
-    note="Drives the ND-SI vs ICC regulatory category in derive_nbfc_category. "
-         "Confirm this classification still carries regulatory effect under the "
-         "current framework rather than surviving only as legacy vocabulary.",
+    note="CONFLATED — this constant does two different jobs and is wrong for one "
+         "of them. As a *classification* the ND-SI category is superseded: SBR "
+         "para 2.7 reads references to NBFC-ND-SI as NBFC-ML/UL, and its "
+         "footnote reclassifies existing ND-SIs of Rs.500cr-Rs.1000cr as Base "
+         "Layer, i.e. the systemic-importance line moved to Rs.1000cr. As a "
+         "*threshold for specific retained regulations* Rs.500cr appears to "
+         "survive (e.g. the Prudential Framework for Resolution of Stressed "
+         "Assets, and a group-asset aggregation rule). "
+         "derive_regulatory_category still emits 'nd_si' at >=500cr, and four "
+         "templates gate on it — rbi_crilc, rbi_crilc_sma_weekly, sbr_crar, "
+         "rbi_concentration — so a non-deposit-taking NBFC between Rs.500cr and "
+         "Rs.1000cr is Base Layer under SBR but is currently served Middle-Layer "
+         "obligations. Reviewer: decide per template whether it is layer-driven "
+         "(re-key to rbi_layer) or genuinely retained at Rs.500cr (keep, and "
+         "cite the instrument that retains it). Secondary sources only — "
+         "rbi.org.in unreachable; confirm para 2.7 against primary text.",
 )
 
 # ---------------------------------------------------------------------------

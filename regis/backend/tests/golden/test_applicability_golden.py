@@ -7,6 +7,7 @@ or library change that shifts them fails CI. Verified against the live seed.
 import pytest
 
 from app.engines.applicability import diff_universe, generate_compliance_universe
+from app.engines.profile_extraction import derive_regulatory_category
 
 pytestmark = pytest.mark.golden
 
@@ -31,27 +32,61 @@ def test_profile_b_summary(library, profile_b):
 
 def test_profile_c_summary(library, profile_c):
     """
-    61 -> 65 when the four ML/UL obligations were re-keyed from the superseded
-    nbfc_category ND-SI test onto rbi_layer (SBR para 2.7). Profile C declares
-    rbi_layer 'middle' with nbfc_category 'icc', so it was previously excluded
-    from CRILC / CRILC-SMA / CRAR / concentration despite being Middle Layer.
-    Profiles A and B are unmoved: A is Base Layer, B is Middle and matched
-    under both keys.
+    61 -> 63: CRAR and concentration were re-keyed onto rbi_layer (they are
+    Middle/Upper Layer prudential norms), so Profile C -- declared Middle Layer
+    -- now picks them up. CRILC and CRILC-SMA stay on the Rs.500cr keying and
+    Profile C does NOT pick those up, because its fixture declares
+    nbfc_category 'icc'. See test_profile_c_fixture_is_internally_inconsistent:
+    at Rs.520cr the engine's own derivation says 'nd_si', so this number rests
+    on a fixture bug, not on the rule.
+
+    Profiles A and B are unmoved by either change.
     """
     s = generate_compliance_universe(library, profile_c)["summary"]
-    assert s["applicable"] == 65
+    assert s["applicable"] == 63
     assert s["needs_review"] == 27
-    assert s["not_applicable"] == 14
+    assert s["not_applicable"] == 16
 
 
-def test_middle_layer_obligations_key_off_layer_not_category(library, profile_c):
-    """
-    Guards the re-key itself: these four must follow rbi_layer. Profile C is
-    Middle Layer with nbfc_category 'icc' -- under the old ND-SI keying it
-    matched none of them.
-    """
+def test_prudential_norms_key_off_layer(library, profile_c):
+    """CRAR and concentration are Middle/Upper Layer norms -- they follow rbi_layer."""
     got = {r["template_id"] for r in generate_compliance_universe(library, profile_c)["applicable"]}
-    assert {"rbi_crilc", "rbi_crilc_sma_weekly", "sbr_crar", "rbi_concentration"} <= got
+    assert {"sbr_crar", "rbi_concentration"} <= got
+
+
+def test_crilc_keys_off_the_notified_threshold_not_layer(library, profile_b):
+    """
+    CRILC applies to deposit-taking NBFCs and non-deposit-taking NBFCs at
+    Rs.500cr and above -- independent of SBR layer, so a Base Layer NBFC
+    between Rs.500cr and Rs.1000cr is still in scope. It must NOT be keyed on
+    rbi_layer.
+    """
+    lib_rule = {t["template_id"]: t["applicability_rule"]
+                for t in library["obligation_templates"]}
+    for tid in ("rbi_crilc", "rbi_crilc_sma_weekly"):
+        assert "rbi_layer" not in lib_rule[tid], f"{tid} must not gate on layer"
+        assert lib_rule[tid] == {"nbfc_category": ["nd_si", "deposit_taking"]}
+
+    got = {r["template_id"] for r in generate_compliance_universe(library, profile_b)["applicable"]}
+    assert {"rbi_crilc", "rbi_crilc_sma_weekly"} <= got
+
+
+def test_profile_c_fixture_is_internally_inconsistent(profile_c):
+    """
+    Documents a known fixture bug rather than hiding it: Profile C declares
+    nbfc_category 'icc' at Rs.520cr, but derive_regulatory_category returns
+    'nd_si' at >= Rs.500cr. consistency_checks does not catch category/asset
+    disagreement (it only checks layer/asset), so nothing flags it at runtime.
+
+    Fixing the fixture would move the Profile C golden from 63 to 65 and put
+    CRILC back in scope. Left for the content reviewer to decide -- delete this
+    test in the same change that fixes the fixture.
+    """
+    derived = derive_regulatory_category(
+        profile_c["asset_size_cr"], profile_c["deposit_taking"]).value
+    assert profile_c["nbfc_category"] == "icc"
+    assert derived == "nd_si"
+    assert profile_c["nbfc_category"] != derived
 
 
 def test_profile_b_state_expansion(library, profile_b):

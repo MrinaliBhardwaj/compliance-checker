@@ -83,6 +83,39 @@ Append-only log of direction decisions, so future sessions inherit them.
 - Tests: `_auth` clears the shared TestClient's cookie jar so Bearer-based smoke
   tests stay stateless; `test_httponly_cookie_session` covers the cookie path.
 
+## 2026-08-08 — CRILC reverted to the Rs.500cr keying (corrects the entry below)
+
+- **The four templates were never a homogeneous group.** They were lumped under one
+  rule because they share one pre-SBR `law_id` ("NBFC-ND-SI / NBFC-D Prudential
+  Norms"), not because they share a scope. Re-keying all four as a batch was wrong.
+- **`rbi_crilc` and `rbi_crilc_sma_weekly` are back on
+  `nbfc_category: ["nd_si","deposit_taking"]`.** CRILC reporting and weekly
+  SMA/default reporting apply to deposit-taking NBFCs and non-deposit-taking NBFCs
+  at **Rs.500cr and above, independent of layer** — a Base Layer NBFC between
+  Rs.500cr and Rs.1000cr is in scope. Keying them on `rbi_layer` made the product
+  **miss** an obligation for exactly that band, which is the dangerous direction of
+  error, unlike the over-compliance the original keying caused for CRAR.
+- **`sbr_crar` and `rbi_concentration` stay on `rbi_layer: ["middle","upper"]`.**
+  The 15% CRAR is a Middle/Upper Layer requirement, and the numerical concentration
+  ceilings (25% single / 40% group) are ML/UL. Base Layer has only a board-approved
+  internal concentration policy and no prescribed numerical limits — **which is a
+  missing Base Layer template**, not something these two should cover.
+- **`nbfc_category` is NOT vestigial.** It is the only way this rule DSL can express
+  `(non-deposit AND >= Rs.500cr) OR deposit-taking` — keys within a rule are ANDed,
+  so the derived-field-with-list-membership trick is doing real work. The original
+  author was right. Consider renaming the emitted value `nd_si` -> `crilc_notified`
+  so it stops reading as a live SBR classification.
+- **Golden: profile C 61 -> 63** (gains CRAR + concentration; does not gain CRILC).
+  A and B unmoved throughout.
+- **Fixture bug found, deliberately NOT fixed:** profile C declares
+  `nbfc_category: "icc"` at Rs.520cr, but `derive_regulatory_category` returns
+  `"nd_si"` at >= Rs.500cr. `consistency_checks` only compares layer against asset
+  size, never category, so nothing flags it. The 63 therefore rests on a wrong
+  fixture — correcting it to `nd_si` would give 65 and put CRILC in scope.
+  `test_profile_c_fixture_is_internally_inconsistent` pins this; delete that test in
+  the same change that fixes the fixture.
+- Sourcing unchanged: secondary analysis only, `rbi.org.in` unreachable.
+
 ## 2026-08-08 — Four ML/UL obligations re-keyed from `nbfc_category` to `rbi_layer`
 
 - **`rbi_crilc`, `rbi_crilc_sma_weekly`, `sbr_crar`, `rbi_concentration` now key on

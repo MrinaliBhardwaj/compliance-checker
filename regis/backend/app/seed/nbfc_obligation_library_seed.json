@@ -395,9 +395,9 @@
         "working_day_adjustment": "next"
       },
       "applicability_rule": {
-        "rbi_layer": [
-          "middle",
-          "upper"
+        "nbfc_category": [
+          "nd_si",
+          "deposit_taking"
         ]
       },
       "required_evidence": [
@@ -423,9 +423,9 @@
         "working_day_adjustment": "next"
       },
       "applicability_rule": {
-        "rbi_layer": [
-          "middle",
-          "upper"
+        "nbfc_category": [
+          "nd_si",
+          "deposit_taking"
         ]
       },
       "required_evidence": [

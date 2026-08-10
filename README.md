@@ -21,7 +21,7 @@ a content-team flag flips it.
 | Document intelligence | **98.4%** evidence-to-obligation classification on the reference corpus (192/195) |
 | API surface | **34** REST endpoints across 9 modules |
 | Database | **27** PostgreSQL tables, row-level security (tenant isolation), append-only audit log, Alembic migrations |
-| Tests | **159** tests at **85%** coverage — 154 run everywhere; 5 RLS/append-only hardening tests run against live Postgres in CI |
+| Tests | **161** tests at **85%** coverage — 156 run everywhere; 5 RLS/append-only hardening tests run against live Postgres in CI |
 
 ## Modules
 
@@ -49,7 +49,7 @@ deterministic-only offline mode by default.
 # backend (SQLite quickstart — no infra needed)
 cd regis/backend
 pip install -e ".[dev]"
-pytest                                   # 154 passed, 5 skipped
+pytest                                   # 156 passed, 5 skipped
 
 REGIS_DATABASE_URL="sqlite+pysqlite:///dev.db" REGIS_JWT_SECRET=dev python -c \
   "from app.core.db import engine, SessionLocal; from app.models import Base; \

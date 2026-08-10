@@ -101,24 +101,25 @@ NDSI_ASSET_CR = Threshold(
     source="RBI Master Direction — Scale Based Regulation for NBFCs, "
            "para 2.7 and its footnote",
     lookup=RBI_MASTER_DIRECTIONS,
-    note="VESTIGIAL as of the 2026-08-08 re-key — no obligation template reads "
-         "nbfc_category any more. As a *classification* the ND-SI category is "
-         "superseded: SBR para 2.7 reads references to NBFC-ND-SI as NBFC-ML/UL, "
-         "and its footnote reclassifies existing ND-SIs of Rs.500cr-Rs.1000cr as "
-         "Base Layer, i.e. the systemic-importance line moved to Rs.1000cr. The "
-         "four templates that gated on 'nd_si' (rbi_crilc, rbi_crilc_sma_weekly, "
-         "sbr_crar, rbi_concentration) now key off rbi_layer ['middle','upper']. "
-         "derive_regulatory_category still emits nd_si/icc into the profile, but "
-         "nothing downstream consumes it. "
-         "KEPT, not deleted, because Rs.500cr appears to survive as a live "
-         "threshold in specific retained regulations — the Prudential Framework "
-         "for Resolution of Stressed Assets, and a group-asset aggregation rule. "
-         "Reviewer: (a) confirm para 2.7 against primary text; (b) decide whether "
-         "any obligation should be re-keyed BACK onto a Rs.500cr rule citing the "
-         "instrument that retains it — CRILC is the likeliest candidate, since it "
-         "is tied to the stressed-assets framework; (c) if nothing is, retire "
-         "nbfc_category and this constant together. Secondary sources only — "
-         "rbi.org.in unreachable from the authoring sandbox.",
+    note="LIVE — this is the CRILC / 'notified NBFC' threshold, not a dead "
+         "classification. Two distinct things share the Rs.500cr figure and only "
+         "one of them died. (1) As an SBR *layer* classification, ND-SI is "
+         "superseded: para 2.7 reads references to NBFC-ND-SI as NBFC-ML/UL and "
+         "its footnote puts existing ND-SIs of Rs.500cr-Rs.1000cr in the Base "
+         "Layer, so the systemic-importance line moved to Rs.1000cr. (2) As the "
+         "scope of specific notified obligations, Rs.500cr is retained: CRILC "
+         "reporting and weekly SMA/default reporting apply to deposit-taking "
+         "NBFCs and non-deposit-taking NBFCs at Rs.500cr and above, independent "
+         "of layer — so a Base Layer NBFC between Rs.500cr and Rs.1000cr is in "
+         "scope. The Prudential Framework for Resolution of Stressed Assets and a "
+         "group-asset aggregation rule reportedly keep the same figure. "
+         "rbi_crilc and rbi_crilc_sma_weekly therefore gate on nbfc_category "
+         "['nd_si','deposit_taking'], which is the only way this DSL can express "
+         "(non-deposit AND >=Rs.500cr) OR deposit-taking — ANDed keys cannot. "
+         "sbr_crar and rbi_concentration are genuinely layer-driven and gate on "
+         "rbi_layer instead. Reviewer: confirm against primary text, and consider "
+         "renaming the emitted value from 'nd_si' to something like "
+         "'crilc_notified' so it stops reading as a live SBR classification.",
 )
 
 # ---------------------------------------------------------------------------

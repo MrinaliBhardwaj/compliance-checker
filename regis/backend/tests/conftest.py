@@ -60,9 +60,15 @@ def profile_b() -> dict:
 
 @pytest.fixture(scope="session")
 def profile_c() -> dict:
-    """Profile C — Incomplete profile (soft flags unanswered). Golden: 61 / 27 / 18."""
+    """Profile C — Incomplete profile (soft flags unanswered). Golden: 65 / 27 / 14.
+
+    nbfc_category is nd_si, not icc: at Rs.520cr derive_regulatory_category
+    returns nd_si (>= the Rs.500cr CRILC/notified threshold), so icc was a
+    fixture bug that silently kept CRILC out of scope. rbi_layer stays 'middle'
+    — legitimate below Rs.1000cr, since RBI may place an NBFC higher.
+    """
     return {
-        "rbi_registered": True, "nbfc_category": "icc", "rbi_layer": "middle",
+        "rbi_registered": True, "nbfc_category": "nd_si", "rbi_layer": "middle",
         "deposit_taking": False, "is_listed": False, "has_listed_debt": False,
         "asset_size_cr": 520, "turnover_cr": 60, "employee_count": 80,
         "branch_count": 5, "operating_states": ["MH"],

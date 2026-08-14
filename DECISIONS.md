@@ -83,7 +83,29 @@ Append-only log of direction decisions, so future sessions inherit them.
 - Tests: `_auth` clears the shared TestClient's cookie jar so Bearer-based smoke
   tests stay stateless; `test_httponly_cookie_session` covers the cookie path.
 
-## 2026-08-08 — CRILC reverted to the Rs.500cr keying (corrects the entry below)
+## 2026-08-08 — Profile C fixture corrected to `nd_si` (closes the item below)
+
+- **`profile_c` now declares `nbfc_category: "nd_si"`**, which is what
+  `derive_regulatory_category` actually returns at Rs.520cr (>= the Rs.500cr CRILC
+  threshold). The old `"icc"` was a fixture bug that silently held CRILC out of
+  scope, so the previous golden of 63 was measuring the bug, not the rule.
+  **Golden: profile C 63 -> 65 / 27 / 14.** A and B unmoved.
+- **`rbi_layer` stays `"middle"` at Rs.520cr.** That is legitimate, not a second
+  bug — RBI may place an NBFC in a higher layer than asset size implies, which is
+  why `consistency_checks` flags only the Base-with-large-assets direction.
+- **The pin became a real invariant.** `test_profile_c_fixture_is_internally_inconsistent`
+  is replaced by `test_fixture_categories_agree_with_the_engine`, parametrized over
+  all three profiles: a fixture declaring a category the engine would not derive
+  makes every golden resting on it meaningless.
+- **Added `test_crilc_covers_base_layer_above_the_notified_threshold`** — a Base
+  Layer NBFC at Rs.700cr must get CRILC and must NOT get the ML/UL prudential
+  norms. That is precisely the case the layer keying got wrong, and nothing
+  covered it before.
+- **Still open:** `consistency_checks` compares layer against asset size but never
+  category against asset size, so this class of contradiction is caught only in
+  tests, not at runtime for a real customer profile.
+
+## 2026-08-08 — CRILC reverted to the Rs.500cr keying (corrects the entry above/below)
 
 - **The four templates were never a homogeneous group.** They were lumped under one
   rule because they share one pre-SBR `law_id` ("NBFC-ND-SI / NBFC-D Prudential

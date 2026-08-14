@@ -32,20 +32,18 @@ def test_profile_b_summary(library, profile_b):
 
 def test_profile_c_summary(library, profile_c):
     """
-    61 -> 63: CRAR and concentration were re-keyed onto rbi_layer (they are
-    Middle/Upper Layer prudential norms), so Profile C -- declared Middle Layer
-    -- now picks them up. CRILC and CRILC-SMA stay on the Rs.500cr keying and
-    Profile C does NOT pick those up, because its fixture declares
-    nbfc_category 'icc'. See test_profile_c_fixture_is_internally_inconsistent:
-    at Rs.520cr the engine's own derivation says 'nd_si', so this number rests
-    on a fixture bug, not on the rule.
+    61 -> 65. Two independent corrections landed on this profile: CRAR and
+    concentration moved onto rbi_layer (Middle/Upper Layer prudential norms),
+    and the fixture's nbfc_category was corrected from 'icc' to 'nd_si', which
+    is what derive_regulatory_category actually returns at Rs.520cr -- putting
+    CRILC and CRILC-SMA back in scope.
 
     Profiles A and B are unmoved by either change.
     """
     s = generate_compliance_universe(library, profile_c)["summary"]
-    assert s["applicable"] == 63
+    assert s["applicable"] == 65
     assert s["needs_review"] == 27
-    assert s["not_applicable"] == 16
+    assert s["not_applicable"] == 14
 
 
 def test_prudential_norms_key_off_layer(library, profile_c):
@@ -71,22 +69,33 @@ def test_crilc_keys_off_the_notified_threshold_not_layer(library, profile_b):
     assert {"rbi_crilc", "rbi_crilc_sma_weekly"} <= got
 
 
-def test_profile_c_fixture_is_internally_inconsistent(profile_c):
+@pytest.mark.parametrize("name", ["profile_a", "profile_b", "profile_c"])
+def test_fixture_categories_agree_with_the_engine(request, name):
     """
-    Documents a known fixture bug rather than hiding it: Profile C declares
-    nbfc_category 'icc' at Rs.520cr, but derive_regulatory_category returns
-    'nd_si' at >= Rs.500cr. consistency_checks does not catch category/asset
-    disagreement (it only checks layer/asset), so nothing flags it at runtime.
+    Replaces the pin on Profile C's old 'icc'/Rs.520cr contradiction. A fixture
+    that declares a category the engine would not derive makes every golden
+    resting on it meaningless -- and consistency_checks never compares category
+    against asset size, so nothing catches it at runtime.
+    """
+    p = request.getfixturevalue(name)
+    derived = derive_regulatory_category(p["asset_size_cr"], p["deposit_taking"]).value
+    assert p["nbfc_category"] == derived, (
+        f"{name} declares nbfc_category {p['nbfc_category']!r} but the engine "
+        f"derives {derived!r} from asset_size_cr={p['asset_size_cr']}"
+    )
 
-    Fixing the fixture would move the Profile C golden from 63 to 65 and put
-    CRILC back in scope. Left for the content reviewer to decide -- delete this
-    test in the same change that fixes the fixture.
+
+def test_crilc_covers_base_layer_above_the_notified_threshold(library, profile_a):
     """
-    derived = derive_regulatory_category(
-        profile_c["asset_size_cr"], profile_c["deposit_taking"]).value
-    assert profile_c["nbfc_category"] == "icc"
-    assert derived == "nd_si"
-    assert profile_c["nbfc_category"] != derived
+    The case the layer keying got wrong: a Base Layer NBFC at Rs.700cr is below
+    the Rs.1000cr Middle-Layer line but at or above the Rs.500cr CRILC
+    threshold, so CRILC applies while the ML/UL prudential norms do not.
+    """
+    p = dict(profile_a, asset_size_cr=700, nbfc_category="nd_si", rbi_layer="base")
+    got = {r["template_id"] for r in generate_compliance_universe(library, p)["applicable"]}
+
+    assert {"rbi_crilc", "rbi_crilc_sma_weekly"} <= got, "CRILC must not depend on layer"
+    assert not ({"sbr_crar", "rbi_concentration"} & got), "ML/UL norms must not reach Base Layer"
 
 
 def test_profile_b_state_expansion(library, profile_b):

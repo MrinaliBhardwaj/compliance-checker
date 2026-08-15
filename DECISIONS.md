@@ -83,6 +83,41 @@ Append-only log of direction decisions, so future sessions inherit them.
 - Tests: `_auth` clears the shared TestClient's cookie jar so Bearer-based smoke
   tests stay stateless; `test_httponly_cookie_session` covers the cookie path.
 
+## 2026-08-08 — Base Layer concentration policy template added (107th)
+
+- **`sbr_concentration_policy_bl`** — Board-approved internal policy on
+  credit/investment concentration limits for single borrower/party and single group.
+  Base Layer has **no RBI-prescribed numerical ceilings**, but exposure computation
+  must follow NBFC-ML requirements. Source: **RBI/2023-24/112, 15 January 2024**
+  (Credit/Investment Concentration Norms – Credit Risk Transfer), which harmonised
+  computation across BL and ML. `law_rbi_sbr`, annual, `annual_board_review`,
+  `rbi_layer: ["base"]`, medium risk, ships DRAFT_UNVERIFIED like everything else.
+- **It pairs with `rbi_concentration`** (the ML/UL numerical ceilings) and the two
+  are mutually exclusive on layer — pinned by
+  `test_base_layer_concentration_policy_pairs_with_the_ml_norms`.
+- **Goldens moved as expected:** profile A 69 -> 70 applicable (Base Layer, gains
+  it); B and C gain one not-applicable each (13 -> 14, 14 -> 15); seed counts
+  106 -> 107.
+- **The evidence corpus grew 192 -> 195 and all three new strings type cleanly**
+  (POLICY_DOC / BOARD_SECRETARIAL / COMPUTATION_RECON), so OTHER stays at 3 and the
+  classification rate goes 189/192 = 98.4% -> 192/195 = 98.5%. Note the README
+  previously read "98.4% ... (192/195)", which mixed the old percentage with the
+  new fraction — it was never internally consistent. Now corrected.
+
+### Found while doing this — NOT fixed, pinned instead
+
+- **`parse_amount_cr("around 3 thousand crore")` returns 1.5, not 3000.** The
+  "thousand" -> "000" substitution yields "3 000", which the band branch reads as
+  the band [3.0, 0.0] and averages. A real customer entering their asset size as
+  free text in that shape is classified **Base Layer instead of Middle Layer and
+  silently loses the entire Middle/Upper Layer obligation set** — a missed-obligation
+  bug, the dangerous direction. It is also why RAW_MESSY picked up the new Base
+  Layer template (61 -> 62): that golden has been measuring a Rs.1.5cr entity, not
+  the Rs.3000cr one its fixture comment describes.
+  `test_messy_asset_size_misparses_thousand` pins it; delete that test in the same
+  change that fixes `parse_amount_cr`, and expect the messy golden to move well
+  above 62.
+
 ## 2026-08-08 — Category/asset consistency check (closes the open item below)
 
 - **`consistency_checks` now compares `nbfc_category` against asset size and the

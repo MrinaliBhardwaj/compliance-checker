@@ -83,6 +83,28 @@ Append-only log of direction decisions, so future sessions inherit them.
 - Tests: `_auth` clears the shared TestClient's cookie jar so Bearer-based smoke
   tests stay stateless; `test_httponly_cookie_session` covers the cookie path.
 
+## 2026-08-08 — Category/asset consistency check (closes the open item below)
+
+- **`consistency_checks` now compares `nbfc_category` against asset size and the
+  deposit-taking flag**, so the Profile C class of contradiction is caught at
+  runtime on a real customer profile, not only in fixtures.
+- **Asymmetric, mirroring the layer checks — the asymmetry is the design:**
+  - *understating* (`icc` at/above Rs.500cr, non-deposit) → **contradiction**. This
+    is the direction that silently drops CRILC scope, i.e. a missed obligation.
+  - *overstating* (`nd_si` below Rs.500cr) → **warning only**. Legitimate causes
+    exist: an NBFC-Factor is notified regardless of size, and group-asset
+    aggregation pulls in individually smaller NBFCs. A contradiction here would be
+    a false positive.
+  - category disagreeing with `deposit_taking` in either direction →
+    **contradiction** (direct field conflict, no legitimate reading).
+- **An unasserted category is never flagged** — a derived-only profile must not
+  contradict itself.
+- **`asserted` now carries `nbfc_category`** alongside `rbi_layer` in
+  `extract_profile`. Neither golden raw payload asserts a category, so the
+  extraction goldens are unmoved.
+- Also formats asset figures with `:g` in all three contradiction/warning messages
+  — they rendered as "Rs.520.0cr" to a compliance officer.
+
 ## 2026-08-08 — Profile C fixture corrected to `nd_si` (closes the item below)
 
 - **`profile_c` now declares `nbfc_category: "nd_si"`**, which is what

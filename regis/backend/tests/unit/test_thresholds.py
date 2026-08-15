@@ -192,6 +192,51 @@ def test_consistency_check_agrees_with_derivation_at_the_boundary():
     assert not contradictions(boundary - 1), "asserted Base below the boundary is valid"
 
 
+def _cat_issues(asset, deposit, asserted_cat):
+    p = _profile(asset)
+    p["deposit_taking"] = pe.Field(deposit, pe.Source.ASKED, 0.97)
+    return [i for i in pe.consistency_checks(p, {"nbfc_category": asserted_cat})
+            if i.field == "nbfc_category"]
+
+
+def test_understating_category_above_the_threshold_is_a_contradiction():
+    """
+    The Profile C bug, now caught at runtime: 'icc' at or above Rs.500cr drops
+    CRILC scope, which is a missed obligation.
+    """
+    boundary = int(th.NDSI_ASSET_CR.value)
+    issues = _cat_issues(boundary, False, "icc")
+    assert [i.severity for i in issues] == ["contradiction"]
+    assert "CRILC" in issues[0].detail
+
+    assert _cat_issues(boundary + 500, False, "icc")
+    assert not _cat_issues(boundary - 1, False, "icc"), "icc below the threshold is correct"
+
+
+def test_overstating_category_is_only_a_warning():
+    """
+    nd_si below Rs.500cr is legitimate -- an NBFC-Factor is notified regardless
+    of size, and group-asset aggregation pulls in individually smaller NBFCs.
+    Flagging it as a contradiction would be a false positive.
+    """
+    issues = _cat_issues(int(th.NDSI_ASSET_CR.value) - 1, False, "nd_si")
+    assert [i.severity for i in issues] == ["warning"]
+    assert "aggregation" in issues[0].detail
+
+
+def test_category_must_agree_with_the_deposit_taking_flag():
+    assert [i.severity for i in _cat_issues(100, True, "icc")] == ["contradiction"]
+    assert [i.severity for i in _cat_issues(100, True, "nd_si")] == ["contradiction"]
+    assert not _cat_issues(100, True, "deposit_taking")
+    assert [i.severity for i in _cat_issues(100, False, "deposit_taking")] == ["contradiction"]
+
+
+def test_unasserted_category_is_never_flagged():
+    """Derived-only profiles must not generate a self-contradiction."""
+    assert not _cat_issues(3000, False, None)
+    assert not _cat_issues(3000, False, "")
+
+
 def test_near_boundary_warning_tracks_the_band():
     low, high = th.SBR_MIDDLE_LAYER_ASSET_CR.near_band()
     asserted = {"rbi_layer": "middle"}

@@ -234,11 +234,34 @@ def consistency_checks(p: dict, asserted: dict) -> list[Issue]:
     a_layer = asserted.get("rbi_layer")
     if a_layer == "base" and asset is not None and asset >= SBR_MIDDLE_LAYER_ASSET_CR.value:
         issues.append(Issue("rbi_layer", "contradiction",
-            f"answered Base but asset Rs.{asset}cr implies Middle Layer "
+            f"answered Base but asset Rs.{asset:g}cr implies Middle Layer "
             f"(>={SBR_MIDDLE_LAYER_ASSET_CR.value})"))
     if p["deposit_taking"].value is True and a_layer == "base":
         issues.append(Issue("rbi_layer", "contradiction",
             "deposit-taking NBFCs are Middle Layer under SBR, not Base"))
+    # user-asserted regulatory category vs derived expectation.
+    # Asymmetric on purpose, mirroring the layer checks: understating the
+    # category drops CRILC scope (a missed obligation), while overstating it has
+    # legitimate causes and is only a warning.
+    a_cat = asserted.get("nbfc_category")
+    deposit = p["deposit_taking"].value
+    if a_cat:
+        if deposit is True and a_cat != "deposit_taking":
+            issues.append(Issue("nbfc_category", "contradiction",
+                f"answered {a_cat} but a deposit-taking NBFC's category is deposit_taking"))
+        elif deposit is False and a_cat == "deposit_taking":
+            issues.append(Issue("nbfc_category", "contradiction",
+                "answered deposit_taking but deposit_taking is No"))
+        elif (deposit is not True and a_cat != "nd_si" and asset is not None
+              and asset >= NDSI_ASSET_CR.value):
+            issues.append(Issue("nbfc_category", "contradiction",
+                f"answered {a_cat} but asset Rs.{asset:g}cr is at/above the "
+                f"Rs.{NDSI_ASSET_CR.value}cr notified threshold — this drops CRILC scope"))
+        elif (deposit is not True and a_cat == "nd_si" and asset is not None
+              and asset < NDSI_ASSET_CR.value):
+            issues.append(Issue("nbfc_category", "warning",
+                f"answered nd_si below Rs.{NDSI_ASSET_CR.value}cr — legitimate for an "
+                "NBFC-Factor or under group-asset aggregation; confirm the basis"))
     # states vs branches
     if p["branch_count"].value and not p["operating_states"].value:
         issues.append(Issue("operating_states", "warning",
@@ -251,7 +274,7 @@ def consistency_checks(p: dict, asserted: dict) -> list[Issue]:
     low, high = SBR_MIDDLE_LAYER_ASSET_CR.near_band()
     if asset is not None and low <= asset <= high:
         issues.append(Issue("asset_size_cr", "warning",
-            f"asset Rs.{asset}cr is near the Rs.{SBR_MIDDLE_LAYER_ASSET_CR.value}cr "
+            f"asset Rs.{asset:g}cr is near the Rs.{SBR_MIDDLE_LAYER_ASSET_CR.value}cr "
             "layer boundary; confirm exact figure"))
     return issues
 
@@ -370,7 +393,8 @@ def extract_profile(raw: dict, library: dict | None = None) -> dict:
             F[flag] = Field(None, Source.DEFAULT_UNKNOWN, 0.0, "ask or confirm")
 
     # consistency
-    asserted = {"rbi_layer": str(raw.get("rbi_layer", "")).lower() or None}
+    asserted = {"rbi_layer": str(raw.get("rbi_layer", "")).lower() or None,
+                "nbfc_category": str(raw.get("nbfc_category", "")).lower() or None}
     issues = id_issues + consistency_checks(F, asserted)
 
     # assemble engine profile (value-only) + provenance + review list

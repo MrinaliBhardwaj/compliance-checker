@@ -27,13 +27,13 @@ def _count(db, model):
 
 
 def test_seed_loaded(db, seeded_org):
-    assert _count(db, ObligationTemplate) == 106
+    assert _count(db, ObligationTemplate) == 107
     # all DRAFT_UNVERIFIED on load
     n_unverified = db.execute(
         select(func.count()).select_from(ObligationTemplate)
         .where(ObligationTemplate.verification_status == "DRAFT_UNVERIFIED")
     ).scalar_one()
-    assert n_unverified == 106
+    assert n_unverified == 107
 
 
 def test_persist_chain_profile_b(db, seeded_org, profile_b):
@@ -84,7 +84,7 @@ def test_profile_change_diff_and_deactivation(db, seeded_org, profile_a, profile
         select(func.count()).select_from(CompanyObligation)
         .where(CompanyObligation.is_active.is_(False))
     ).scalar_one()
-    assert active == 69
+    assert active == 70
     assert inactive > 0  # deactivated, not deleted
 
 

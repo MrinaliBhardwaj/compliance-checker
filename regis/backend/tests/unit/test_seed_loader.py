@@ -14,14 +14,14 @@ from app.seed.library_loader import (
 def test_counts(library):
     stats = library_stats(library)
     assert stats["laws"] == 29
-    assert stats["templates"] == 106
+    assert stats["templates"] == 107
     assert stats["due_rule_types"] == 30
 
 
 def test_all_templates_draft_unverified(library):
     """The DRAFT_UNVERIFIED content gate is real data, not a doc footnote."""
     stats = library_stats(library)
-    assert stats["by_verification"] == {"DRAFT_UNVERIFIED": 106}
+    assert stats["by_verification"] == {"DRAFT_UNVERIFIED": 107}
 
 
 def test_load_is_pure_and_repeatable():

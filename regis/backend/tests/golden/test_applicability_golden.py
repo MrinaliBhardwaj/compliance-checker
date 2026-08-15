@@ -14,7 +14,7 @@ pytestmark = pytest.mark.golden
 
 def test_profile_a_summary(library, profile_a):
     s = generate_compliance_universe(library, profile_a)["summary"]
-    assert s["applicable"] == 69
+    assert s["applicable"] == 70
     assert s["needs_review"] == 1
     assert s["not_applicable"] == 39
     assert s["laws_touched"] == 22
@@ -25,7 +25,7 @@ def test_profile_b_summary(library, profile_b):
     s = generate_compliance_universe(library, profile_b)["summary"]
     assert s["applicable"] == 100
     assert s["needs_review"] == 1
-    assert s["not_applicable"] == 13
+    assert s["not_applicable"] == 14
     assert s["laws_touched"] == 26
     assert s["library_provisional"] is True
 
@@ -43,7 +43,7 @@ def test_profile_c_summary(library, profile_c):
     s = generate_compliance_universe(library, profile_c)["summary"]
     assert s["applicable"] == 65
     assert s["needs_review"] == 27
-    assert s["not_applicable"] == 14
+    assert s["not_applicable"] == 15
 
 
 def test_prudential_norms_key_off_layer(library, profile_c):
@@ -133,3 +133,18 @@ def test_diff_added_removed(library, profile_a, profile_b):
     # added/removed/unchanged partition the union with no overlap
     assert not (set(d["added"]) & set(d["removed"]))
     assert not (set(d["added"]) & set(d["unchanged"]))
+
+
+def test_base_layer_concentration_policy_pairs_with_the_ml_norms(library, profile_a, profile_b):
+    """
+    Base Layer has a Board-approved internal concentration policy but no
+    RBI-prescribed numerical ceilings; Middle/Upper Layer has the ceilings.
+    The two templates must be mutually exclusive on layer.
+    """
+    base = {r["template_id"] for r in generate_compliance_universe(library, profile_a)["applicable"]}
+    mid = {r["template_id"] for r in generate_compliance_universe(library, profile_b)["applicable"]}
+
+    assert "sbr_concentration_policy_bl" in base
+    assert "rbi_concentration" not in base
+    assert "rbi_concentration" in mid
+    assert "sbr_concentration_policy_bl" not in mid

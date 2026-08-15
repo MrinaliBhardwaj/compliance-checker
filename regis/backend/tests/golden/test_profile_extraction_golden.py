@@ -3,12 +3,14 @@ Golden regression — profile extraction (loop closure into applicability).
 
 Locked: clean payload -> 99 applicable downstream; messy payload -> states
 normalized, malformed CIN flagged, FDI gap (+3) ranked above intl-txn (+1),
-61 applicable / 33 review composition.
+62 applicable / 33 review composition (the messy payload's asset size
+parses to Rs.1.5cr -- see test_messy_composition -- so it lands in the Base
+Layer and picks up the Base Layer concentration policy).
 """
 import pytest
 
 from app.engines.applicability import generate_compliance_universe
-from app.engines.profile_extraction import extract_profile
+from app.engines.profile_extraction import extract_profile, parse_amount_cr
 
 pytestmark = pytest.mark.golden
 
@@ -74,10 +76,32 @@ def test_messy_gap_ranking_fdi_before_intl(library):
     assert fields.index("has_foreign_investment") < fields.index("has_international_transactions")
 
 
-def test_messy_composition_61_33(library):
+def test_messy_asset_size_misparses_thousand(library):
+    """
+    KNOWN ENGINE BUG, pinned so it stays visible.
+
+    parse_amount_cr("around 3 thousand crore") returns 1.5, not 3000. The
+    "thousand" -> "000" substitution produces "3 000", which the band branch
+    reads as the two-number band [3.0, 0.0] and averages to 1.5.
+
+    Consequence for a real customer: an NBFC that types its asset size as free
+    text in that shape is classified Base Layer instead of Middle Layer and
+    silently loses its entire Middle/Upper Layer obligation set. That is a
+    missed-obligation bug, not a cosmetic one.
+
+    Fixing it moves the messy composition golden from 62 well upward. Delete
+    this test in the same change that fixes parse_amount_cr.
+    """
+    assert parse_amount_cr("around 3 thousand crore").value == 1.5
+    r = extract_profile(RAW_MESSY, library)
+    assert r["profile"]["rbi_layer"] == "base"      # should be middle at Rs.3000cr
+    assert r["profile"]["asset_size_cr"] == 1.5
+
+
+def test_messy_composition_62_33(library):
     r = extract_profile(RAW_MESSY, library)
     s = generate_compliance_universe(library, r["profile"])["summary"]
-    assert s["applicable"] == 61
+    assert s["applicable"] == 62
     assert s["needs_review"] == 33
 
 

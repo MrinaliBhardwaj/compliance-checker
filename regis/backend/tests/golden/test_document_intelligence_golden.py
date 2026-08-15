@@ -1,7 +1,7 @@
 """
 Golden regression — document intelligence (deterministic core).
 
-Locked: 192 evidence strings mapped, 3 OTHER (98.4% typed); ITNS-281 challan vs
+Locked: 195 evidence strings mapped, 3 OTHER (98.5% typed); ITNS-281 challan vs
 TDS-Mar-2026 instance all-PASS; dedupe exact->block / near->warn; completeness
 50% / primary_present / eligible.
 """
@@ -22,8 +22,8 @@ def test_evidence_taxonomy_coverage(library):
     all_ev = [e for o in library["obligation_templates"] for e in o["required_evidence"]]
     mapped = [(e, map_evidence_to_type(e).value) for e in all_ev]
     other = [e for e, t in mapped if t == "OTHER"]
-    assert len(all_ev) == 192
-    assert len(other) == 3  # 98.4% typed; 3 contract-like items legitimately OTHER
+    assert len(all_ev) == 195
+    assert len(other) == 3  # 98.5% typed; 3 contract-like items legitimately OTHER
 
 
 def test_tds_challan_validates_all_pass(library):

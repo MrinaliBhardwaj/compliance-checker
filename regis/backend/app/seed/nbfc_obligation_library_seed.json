@@ -4,7 +4,7 @@
     "version": "0.1-draft",
     "status": "DRAFT_UNVERIFIED — every entry requires verification by a qualified Company Secretary / Chartered Accountant against the latest statutes, RBI Master Directions, and CIMS return taxonomy before production use.",
     "scope": "Indian NBFC (Base/Middle Layer under RBI Scale-Based Regulation). Phase-1 seed.",
-    "obligation_count": 106,
+    "obligation_count": 107,
     "law_count": 29,
     "table": "obligation_templates"
   },
@@ -2654,6 +2654,33 @@
       "default_owner_role": "preparer",
       "risk_level": "medium",
       "penalty_note": "Prudential breach inviting supervisory action.",
+      "form_reference": "",
+      "dependencies": [],
+      "verification_status": "DRAFT_UNVERIFIED"
+    },
+    {
+      "template_id": "sbr_concentration_policy_bl",
+      "law_id": "law_rbi_sbr",
+      "category": "rbi",
+      "title": "Credit/Investment Concentration Policy (Base Layer)",
+      "description": "Maintain a Board-approved internal policy on credit/investment concentration limits for both single borrower/party and single group of borrowers/parties. Base Layer NBFCs have no RBI-prescribed numerical ceilings, but the computation of exposure must follow the requirements applicable to NBFC-ML. Review annually with the Board.",
+      "frequency": "annual",
+      "due_rule": {
+        "type": "annual_board_review"
+      },
+      "applicability_rule": {
+        "rbi_layer": [
+          "base"
+        ]
+      },
+      "required_evidence": [
+        "Board-approved concentration policy",
+        "Board resolution / minutes recording the review",
+        "Exposure computation working"
+      ],
+      "default_owner_role": "compliance_admin",
+      "risk_level": "medium",
+      "penalty_note": "Absence of a Board-approved policy is a governance gap inviting supervisory action; Middle/Upper Layer numerical ceilings do not apply.",
       "form_reference": "",
       "dependencies": [],
       "verification_status": "DRAFT_UNVERIFIED"

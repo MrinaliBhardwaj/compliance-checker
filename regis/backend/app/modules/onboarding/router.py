@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.core.deps import DbSession
+from app.core.ratelimit import expensive_operation
 from app.core.security import Principal, require_role
 from app.engines.profile_extraction import extract_profile
 from app.modules.onboarding.service import generate_calendar, save_profile
@@ -38,7 +39,7 @@ class GenerateRequest(BaseModel):
     window_end: date | None = None
 
 
-@router.post("/calendar/generate")
+@router.post("/calendar/generate", dependencies=[Depends(expensive_operation("generate"))])
 def calendar_generate(body: GenerateRequest, db: DbSession,
                       principal: Principal = Depends(_admin)) -> dict:
     """Commit the confirmed profile, then generate + persist the calendar."""

@@ -65,6 +65,16 @@ class Settings(BaseSettings):
     login_max_attempts: int = 10
     login_window_seconds: int = 300
 
+    # General API rate limiting. The auth limits above are a credential-stuffing
+    # guard; these bound ordinary abuse and runaway clients. Two tiers, because
+    # a calendar generation writes ~367 rows and an upload spends I/O, while a
+    # dashboard read costs almost nothing — one shared budget would either
+    # throttle normal browsing or leave the expensive routes wide open.
+    api_max_requests: int = 300
+    api_window_seconds: int = 60
+    expensive_max_requests: int = 10
+    expensive_window_seconds: int = 60
+
     @property
     def auth_cookie_secure(self) -> bool:
         return self.env != "dev"

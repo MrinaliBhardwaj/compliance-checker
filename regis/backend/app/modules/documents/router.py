@@ -5,12 +5,13 @@ elsewhere (Maker-Checker). All rows are org-scoped (RLS) and audited.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.deps import DbSession
+from app.core.ratelimit import expensive_operation
 from app.core.security import CurrentPrincipal
 from app.models.evidence import Document
 from app.modules.documents import service as svc
@@ -39,7 +40,7 @@ def _doc_out(d: Document) -> dict:
             "expiry_date": d.expiry_date.isoformat() if d.expiry_date else None}
 
 
-@router.post("/upload")
+@router.post("/upload", dependencies=[Depends(expensive_operation("upload"))])
 async def upload(db: DbSession, principal: CurrentPrincipal,
                  file: UploadFile = File(...), entity_id: str = Form(...)) -> dict:
     content = await _read_capped(file, get_settings().max_upload_bytes)

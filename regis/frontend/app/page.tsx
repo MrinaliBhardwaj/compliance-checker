@@ -15,8 +15,14 @@ export default function AuthPage() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // already signed in -> skip the login screen
-  useEffect(() => { if (!loading && principal) router.replace("/dashboard"); }, [loading, principal, router]);
+  // Already signed in on arrival -> skip the login screen. The `busy` guard
+  // matters: signup calls refresh() before routing, which populates `principal`
+  // and used to fire this effect first, replacing the /onboarding push with
+  // /dashboard. Every new account then landed on an empty dashboard instead of
+  // the wizard — the PRD's first-value moment, silently skipped.
+  useEffect(() => {
+    if (!loading && principal && !busy) router.replace("/dashboard");
+  }, [loading, principal, busy, router]);
 
   const submit = async () => {
     setErr(null); setBusy(true);
@@ -30,7 +36,9 @@ export default function AuthPage() {
       router.push(mode === "signup" ? "/onboarding" : "/dashboard");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Something went wrong");
-    } finally {
+      // Only cleared on failure. On success the route change is already in
+      // flight and clearing it would re-arm the signed-in redirect above,
+      // racing /onboarding back to /dashboard.
       setBusy(false);
     }
   };

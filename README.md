@@ -21,7 +21,7 @@ a content-team flag flips it.
 | Document intelligence | **98.5%** evidence-to-obligation classification on the reference corpus (192/195) |
 | API surface | **34** REST endpoints across 9 modules |
 | Database | **27** PostgreSQL tables, row-level security (tenant isolation), append-only audit log, Alembic migrations |
-| Tests | **178** tests at **85%** coverage — 173 run everywhere; 5 RLS/append-only hardening tests run against live Postgres in CI |
+| Tests | **182** backend tests at **86%** coverage (177 everywhere, 5 live-Postgres) plus **6** end-to-end browser paths |
 | Operations | structured JSON logging with tenant context, per-organisation failure isolation in the worker, recorded notification delivery outcomes |
 
 ## Modules
@@ -50,7 +50,7 @@ deterministic-only offline mode by default.
 # backend (SQLite quickstart — no infra needed)
 cd regis/backend
 pip install -e ".[dev]"
-pytest                                   # 173 passed, 5 skipped
+pytest                                   # 177 passed, 5 skipped
 
 REGIS_DATABASE_URL="sqlite+pysqlite:///dev.db" REGIS_JWT_SECRET=dev python -c \
   "from app.core.db import engine, SessionLocal; from app.models import Base; \
@@ -81,4 +81,6 @@ README before repeating any data-residency claim.
 
 - [`regis/README.md`](regis/README.md) — engine reference results and module detail
 - [`BUILD_PLAN.md`](BUILD_PLAN.md) — architecture rationale and phase plan
+- [`SECURITY_POSTURE.md`](SECURITY_POSTURE.md) — for the NBFC security questionnaire
+- [`regis/frontend/e2e/`](regis/frontend/e2e) — the three end-to-end demo paths
 - [`Compliance docs/`](Compliance%20docs) — engine specs and the obligation library source

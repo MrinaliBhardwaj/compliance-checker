@@ -83,6 +83,43 @@ Append-only log of direction decisions, so future sessions inherit them.
 - Tests: `_auth` clears the shared TestClient's cookie jar so Bearer-based smoke
   tests stay stateless; `test_httponly_cookie_session` covers the cookie path.
 
+## 2026-08-18 — Phase 2: made it demonstrable
+
+- **Three end-to-end paths, run against a real browser + API + database**
+  (`regis/frontend/e2e/`): signup → onboarding → populated calendar; evidence
+  upload → classify → link → audit trail; invite → accept → roster. Six tests,
+  ~17s. They assert **outcomes, not URLs** — a populated table, the validation
+  chips, a second member — because an empty dashboard satisfies a URL check and
+  is still a dead demo.
+- **`retries: 0` on purpose.** A retry lets a real race pass on the second
+  attempt and reach a customer.
+- **The first E2E run found a real bug on the primary demo path.** `app/page.tsx`
+  had an "already signed in → /dashboard" effect; signup calls `refresh()` before
+  routing, which populated `principal` and fired that effect first, so
+  `router.replace("/dashboard")` beat `router.push("/onboarding")`. **Every new
+  account landed on an empty dashboard instead of the wizard** — the PRD's
+  first-value moment, silently skipped, with nothing downstream routing them
+  back. Fixed by guarding the effect with `busy` and clearing `busy` only on
+  failure, so the success path cannot re-arm the redirect mid-navigation.
+- **CI gained an `e2e` job** (seeded SQLite API + built SPA + Playwright), with
+  traces uploaded on failure. `PLAYWRIGHT_CHROMIUM_PATH` lets a runner reuse an
+  already-installed browser instead of downloading one.
+- **Rate limiting extended past auth** — see the 2026-08-18 commit: a global
+  per-IP ceiling in middleware, and per-organisation limits on generation and
+  upload. `/health` is exempt: the load balancer and container HEALTHCHECK poll
+  it, and throttling it would pull a healthy task under exactly the load the
+  limit exists to survive.
+- **`SECURITY_POSTURE.md` for the NBFC security questionnaire.** Written *after*
+  Phase 1 so every claim is true today, each one naming the file that implements
+  it. It opens with **what is not true yet** — nothing deployed, no pen test, no
+  SOC 2, library unverified, no IR runbook — because procurement will check, and
+  an overstated control is worse than a missing one. Two claims were verified
+  before shipping rather than assumed: the test counts (182/86%) and that
+  field-level encryption is genuinely wired (`EncryptedStr` + Fernet on CIN/PAN)
+  rather than merely declared in config.
+- Also verified in passing: the Phase 1 `output: "standalone"` change builds
+  cleanly, which the earlier commit could only assert.
+
 ## 2026-08-18 — Phase 1: made the backend operable
 
 Written against the technical review. The theme: the codebase was built to be

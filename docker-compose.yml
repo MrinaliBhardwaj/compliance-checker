@@ -1,0 +1,68 @@
+# Production-shaped local stack: Postgres with RLS, Redis for Arq, the API, the
+# worker, and the SPA. The SQLite quickstart in the README stays the zero-infra
+# path; this is the one that matches how it actually runs.
+#
+#   docker compose up --build
+#   docker compose exec api alembic upgrade head
+#   docker compose exec api python -m app.seed.cli
+#
+# The api and worker are the same image with different commands, so the worker
+# can never drift from the code the API is running.
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: regis
+      POSTGRES_PASSWORD: regis
+      POSTGRES_DB: regis
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U regis -d regis"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./regis/backend
+    environment: &backend_env
+      REGIS_ENV: dev
+      REGIS_DATABASE_URL: postgresql+psycopg://regis:regis@db:5432/regis
+      REGIS_REDIS_URL: redis://redis:6379/0
+      REGIS_JWT_SECRET: dev-only-change-me
+      REGIS_LOG_FORMAT: text
+      REGIS_LOG_LEVEL: INFO
+    ports: ["8000:8000"]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+
+  worker:
+    build: ./regis/backend
+    command: ["arq", "app.jobs.worker.WorkerSettings"]
+    # Same image, same env, different role — the nightly sweep and the API can
+    # never run different versions of the engines.
+    environment: *backend_env
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+
+  web:
+    build: ./regis/frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:8000
+    ports: ["3000:3000"]
+    depends_on: [api]
+
+volumes:
+  pgdata:

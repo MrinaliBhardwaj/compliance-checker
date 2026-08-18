@@ -21,7 +21,8 @@ a content-team flag flips it.
 | Document intelligence | **98.5%** evidence-to-obligation classification on the reference corpus (192/195) |
 | API surface | **34** REST endpoints across 9 modules |
 | Database | **27** PostgreSQL tables, row-level security (tenant isolation), append-only audit log, Alembic migrations |
-| Tests | **170** tests at **85%** coverage — 165 run everywhere; 5 RLS/append-only hardening tests run against live Postgres in CI |
+| Tests | **178** tests at **85%** coverage — 173 run everywhere; 5 RLS/append-only hardening tests run against live Postgres in CI |
+| Operations | structured JSON logging with tenant context, per-organisation failure isolation in the worker, recorded notification delivery outcomes |
 
 ## Modules
 
@@ -49,7 +50,7 @@ deterministic-only offline mode by default.
 # backend (SQLite quickstart — no infra needed)
 cd regis/backend
 pip install -e ".[dev]"
-pytest                                   # 165 passed, 5 skipped
+pytest                                   # 173 passed, 5 skipped
 
 REGIS_DATABASE_URL="sqlite+pysqlite:///dev.db" REGIS_JWT_SECRET=dev python -c \
   "from app.core.db import engine, SessionLocal; from app.models import Base; \
@@ -64,8 +65,17 @@ npm install && npm run dev               # http://localhost:3000 (proxies /api -
 ```
 
 Sign up, run onboarding, and the dashboard fills with your generated calendar.
-For production-shaped dev (Postgres + RLS), point `REGIS_DATABASE_URL` at Postgres
-and run `alembic upgrade head`.
+For production-shaped dev (Postgres + RLS, Redis, the Arq worker, the SPA):
+
+```bash
+docker compose up --build
+docker compose exec api alembic upgrade head
+docker compose exec api python -m app.seed.cli
+```
+
+[`infra/terraform`](infra/terraform) provisions the ap-south-1 managed services
+(RDS, ElastiCache, S3 + KMS). **It has been written but never applied** — see its
+README before repeating any data-residency claim.
 
 ## Deeper docs
 

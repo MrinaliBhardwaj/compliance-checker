@@ -63,3 +63,65 @@ jobs:
         run: npm ci
       - name: Build (includes TypeScript typecheck)
         run: npm run build
+
+  e2e:
+    name: E2E — the three demo paths
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: regis/frontend/package-lock.json
+
+      - name: Install backend
+        working-directory: regis/backend
+        run: pip install -e ".[dev]"
+
+      # A throwaway SQLite file, seeded with the full library. The paths under
+      # test are UI behaviour, not RLS — tenant isolation is covered by the
+      # live-Postgres job above.
+      - name: Seed and start the API
+        working-directory: regis/backend
+        env:
+          REGIS_DATABASE_URL: sqlite+pysqlite:////tmp/e2e.db
+          REGIS_JWT_SECRET: e2e-secret
+        run: |
+          python -c "from app.core.db import engine, SessionLocal; from app.models import Base; \
+            from app.seed.library_loader import seed_database; \
+            Base.metadata.create_all(engine); s=SessionLocal(); seed_database(s); s.commit()"
+          uvicorn app.main:app --port 8000 --host 127.0.0.1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8000/health && break || sleep 1; done
+
+      - name: Install frontend
+        working-directory: regis/frontend
+        run: npm ci
+
+      - name: Install Playwright browser
+        working-directory: regis/frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Build and start the SPA
+        working-directory: regis/frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+        run: |
+          npm run build
+          npx next start -p 3000 -H 127.0.0.1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:3000/ && break || sleep 1; done
+
+      - name: Run the three paths
+        working-directory: regis/frontend
+        run: npm run e2e
+
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: regis/frontend/test-results/
+          retention-days: 7

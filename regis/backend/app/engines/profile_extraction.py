@@ -87,25 +87,65 @@ def normalize_states(raw) -> Field:
     return Field(out, src, CONF[Source.ASKED] if out else 0.0, note)
 
 
+_NUM = r"\d+(?:\.\d+)?"
+
+# Multipliers are folded into their number before band detection, so "3 thousand"
+# is one value and never looks like the pair [3, 000].
+_MULTIPLIERS = {"thousand": 1_000, "k": 1_000, "lakh": 0.01, "lakhs": 0.01,  # not-a-threshold
+                "lac": 0.01, "lacs": 0.01}
+_MULTIPLIER_RE = re.compile(rf"({_NUM})\s*(thousand|k|lakhs?|lacs?)\b")
+
+# A band needs an explicit separator. Adjacency is not a range.
+_BAND_RE = re.compile(rf"({_NUM})\s*(?:-|–|—|to)\s*({_NUM})")
+
+
+def _expand_multiplier(m: re.Match) -> str:
+    """Fold "<n> thousand" into a plain number. Lakh is 0.01 crore."""
+    return f"{float(m.group(1)) * _MULTIPLIERS[m.group(2)]:g}"
+
+
 def parse_amount_cr(raw) -> Field:
-    """Parse asset size / turnover to a number in Rs. crore; keep band awareness."""
+    """Parse asset size / turnover to a number in Rs. crore; keep band awareness.
+
+    Two rules, both learned from a real misparse. `"around 3 thousand crore"`
+    used to return **1.5**: the `"thousand"` -> `"000"` substitution produced
+    `"3 000"`, which the band branch read as the pair [3.0, 0.0] and averaged.
+    An NBFC entering its asset size that way was classified Base Layer instead
+    of Middle Layer and silently lost its whole ML/UL obligation set.
+
+    So: multipliers are folded into the number they modify *before* any band
+    detection, and a band is only a band when an explicit separator says so
+    (``-``, ``to``, ``between x and y``). Two bare numbers side by side are a
+    parse failure, not a range.
+    """
     if raw is None:
         return Field(None, Source.DEFAULT_UNKNOWN, 0.0, "amount not provided")
     if isinstance(raw, (int, float)):
         return Field(float(raw), Source.ASKED, CONF[Source.ASKED])
-    s = str(raw).lower().replace(",", "").replace("₹", "").replace("rs", "")
-    s = s.replace("crore", "").replace("cr", "").strip()
-    # word numbers (light touch)
-    s = s.replace("thousand", "000").replace("around", "").replace("approx", "").strip()
-    # band like "500-1000" or ">5000" or "5000+"
-    band = re.findall(r"\d+\.?\d*", s)
-    if not band:
+
+    s = str(raw).lower().replace(",", "").replace("₹", "")
+    s = re.sub(r"\brs\.?\b", " ", s)                      # word-bounded: never eat "rs" inside a word
+    s = re.sub(r"\b(crores?|cr)\b", " ", s)
+    s = re.sub(r"\b(around|approx|approximately|about|roughly|over|under)\b", " ", s)
+    s = s.replace("~", " ").strip()
+
+    s = _MULTIPLIER_RE.sub(_expand_multiplier, s)          # "3 thousand" -> "3000"
+
+    m = _BAND_RE.search(s)
+    if m:
+        lo, hi = float(m.group(1)), float(m.group(2))
+        val = (lo + hi) / 2
+        return Field(val, Source.ASKED, 0.80, f"band [{lo:g}, {hi:g}] -> midpoint {val:g}")
+
+    nums = re.findall(_NUM, s)
+    if not nums:
         return Field(None, Source.DEFAULT_UNKNOWN, 0.0, f"unparseable amount '{raw}'")
-    nums = [float(x) for x in band]
-    if len(nums) >= 2:  # a band -> use midpoint, flag near-boundary
-        val = sum(nums[:2]) / 2
-        return Field(val, Source.ASKED, 0.80, f"band {nums[:2]} -> midpoint {val}")
-    return Field(nums[0], Source.ASKED, CONF[Source.ASKED])
+    if len(nums) > 1:
+        # Ambiguous: several numbers with no range separator. Guessing here is
+        # how the old midpoint bug silently mis-tiered an NBFC.
+        return Field(None, Source.DEFAULT_UNKNOWN, 0.0,
+                     f"ambiguous amount '{raw}' — {len(nums)} numbers, no range separator")
+    return Field(float(nums[0]), Source.ASKED, CONF[Source.ASKED])
 
 
 def normalize_bool(raw) -> Field:

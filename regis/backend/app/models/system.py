@@ -41,6 +41,12 @@ class Notification(Base):
     payload: Mapped[dict] = mapped_column(JSONB, default=dict)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Delivery outcome is recorded, not inferred. "sent_at is NULL" cannot
+    # distinguish never-attempted from attempted-and-failed, and for a deadline
+    # product that is the question an auditor actually asks.
+    delivery_status: Mapped[str] = mapped_column(
+        String(10), default="pending", server_default="pending", nullable=False)
+    delivery_error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = created_at_col()
 
 

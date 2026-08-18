@@ -83,6 +83,60 @@ Append-only log of direction decisions, so future sessions inherit them.
 - Tests: `_auth` clears the shared TestClient's cookie jar so Bearer-based smoke
   tests stay stateless; `test_httponly_cookie_session` covers the cookie path.
 
+## 2026-08-18 — Phase 1: made the backend operable
+
+Written against the technical review. The theme: the codebase was built to be
+*correct* and never built to be *operated*.
+
+- **Structured logging (`app/core/logging.py`), stdlib only — no new hard dep.**
+  JSON on stdout, `REGIS_LOG_FORMAT=text` for local. `bind()` attaches tenant
+  context to every line in a block; a log line without an `organization_id` is
+  nearly useless in a multi-tenant worker. **Logging never raises** — a
+  formatting failure must not take down the sweep it exists to make observable.
+  Sentry initialises lazily only when `REGIS_SENTRY_DSN` is set, and a failed
+  init warns rather than exits.
+- **Per-organisation failure isolation in the worker.** Both jobs previously
+  walked every org with *no exception handling at all*: one bad row or one SES
+  failure aborted the loop and every later org silently got no overdue flips and
+  no reminders. The earlier DECISIONS claim that "per-org commit makes one bad
+  org non-fatal for the rest of the sweep" was **wrong in the half that
+  mattered** — the commit made completed orgs durable, nothing kept the loop
+  alive. `_for_each_org` now rolls back, logs with the org id, counts, and
+  continues, returning a per-org tally. It takes an injectable session factory
+  so the isolation is testable (`test_worker_isolation.py`).
+- **`cron_jobs` was an empty list** — the sweep would never have fired even once
+  deployed. Now 00:30 and 09:00 IST (19:00 / 03:30 UTC; arq cron is UTC).
+- **Notification delivery is a recorded outcome** (migration `0004`):
+  `delivery_status` (pending|sent|failed) + `delivery_error`. `sent_at IS NULL`
+  could not distinguish never-attempted from attempted-and-failed. `emit()`
+  catches channel exceptions rather than letting SES/Slack failures escape into
+  the worker loop.
+- **`parse_amount_cr` no longer mis-tiers an NBFC.** `"around 3 thousand crore"`
+  returned **1.5** (the `thousand`→`000` substitution made `"3 000"`, read as
+  the band [3.0, 0.0] and averaged), so a customer entering asset size that way
+  was classified Base Layer and silently lost the whole ML/UL set. Multipliers
+  now fold into their number *before* band detection, and a band needs an
+  explicit separator — adjacency is not a range, so `"3 000"` is **refused as
+  ambiguous** rather than guessed. Messy extraction golden 62 → 73.
+- **Request logging middleware** with an `x-request-id` echoed to the caller.
+  It cannot raise: an unhandled error is logged with its id and returned as a
+  generic 500, detail to the log rather than the client.
+- **Deployment exists now, on paper.** `docker-compose.yml` (Postgres/Redis/api/
+  worker/web — api and worker are the *same image*, different command, so the
+  engines can never drift), Dockerfiles for both apps (non-root, healthchecked,
+  Next.js `output: "standalone"`), and `infra/terraform` for ap-south-1 (RDS,
+  ElastiCache, S3+KMS; `var.region` validation rejects anything outside
+  `ap-south-*`).
+  **Never applied, and no Docker daemon was available to build the images** —
+  syntax-checked only. The config docstring previously pointed at an
+  `infra/terraform` that did not exist; it now points at one that does and says
+  plainly that residency is intent, not yet evidence. **Do not repeat the data
+  residency claim to a customer until someone applies it.**
+- **The threshold guard caught `1_000` in the new multiplier map** — a genuine
+  false positive. Added an explicit `# not-a-threshold` opt-out rather than
+  weakening the guard, so skipping is visible in review.
+- 170 → 173 tests passing; 85% coverage.
+
 ## 2026-08-08 — Base Layer concentration policy template added (107th)
 
 - **`sbr_concentration_policy_bl`** — Board-approved internal policy on

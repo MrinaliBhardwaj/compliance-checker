@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Emit a self-contained server bundle so the container image ships only the
+  // files actually reachable at runtime, not the whole node_modules tree.
+  output: "standalone",
   // Keep TypeScript type-checking ON during build (validates the typed API layer);
   // ESLint is style-only here, skip it so the build doesn't fail on lint opinions.
   eslint: { ignoreDuringBuilds: true },

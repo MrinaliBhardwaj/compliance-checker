@@ -1,8 +1,10 @@
 """
 Application settings (pydantic-settings). Env-driven; safe dev defaults.
 
-Data residency note: in production every managed service (RDS, ElastiCache, S3,
-Bedrock/Anthropic endpoint) is pinned to AWS ap-south-1 — see infra/terraform.
+Data residency note: every managed service (RDS, ElastiCache, S3) is pinned to
+AWS ap-south-1 by `infra/terraform`, whose `region` variable rejects anything
+outside `ap-south-*`. That module has been written but not yet applied — until
+it has, treat residency as intent rather than an evidenced claim.
 """
 from __future__ import annotations
 

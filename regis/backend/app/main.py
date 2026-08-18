@@ -8,12 +8,13 @@ from __future__ import annotations
 
 import time
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.core.logging import bind, configure_logging, get_logger, new_request_id
+from app.core.ratelimit import client_ip, enforce
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
 from app.modules.copilot.router import router as copilot_router
@@ -89,6 +90,34 @@ async def request_context(request: Request, call_next):
                     extra={"status": response.status_code, "duration_ms": ms})
         response.headers["x-request-id"] = request_id
         return response
+
+
+# Paths that must never be throttled: health is polled by the load balancer and
+# the container healthcheck, and throttling it would take a healthy task out of
+# service under exactly the load the limit exists to survive.
+_NO_LIMIT = frozenset({"/health", "/docs", "/redoc", "/openapi.json"})
+
+
+@app.middleware("http")
+async def global_rate_limit(request: Request, call_next):
+    """Blunt per-IP ceiling across the whole API.
+
+    Deliberately keyed on IP, not org: this runs before auth resolves, and its
+    job is to bound an unauthenticated flood. Per-organisation limits on the
+    genuinely expensive routes are enforced as route dependencies, where the
+    principal already exists.
+    """
+    if request.url.path not in _NO_LIMIT:
+        s = get_settings()
+        try:
+            enforce("api_ip", client_ip(request),
+                    limit=s.api_max_requests, window=s.api_window_seconds)
+        except HTTPException as exc:
+            log.warning("rate limited", extra={"scope": "api_ip", "status": 429})
+            return JSONResponse(status_code=exc.status_code,
+                                content={"detail": exc.detail},
+                                headers=exc.headers)
+    return await call_next(request)
 
 
 @app.get("/health", tags=["system"])

@@ -16,9 +16,10 @@ from __future__ import annotations
 import threading
 import time
 
-from fastapi import Request
+from fastapi import HTTPException, Request, status
 
 from app.core.config import get_settings
+from app.core.security import CurrentPrincipal
 
 
 class RateLimitExceeded(Exception):
@@ -127,3 +128,40 @@ def clear() -> None:
         _get_backend().clear()
     except Exception:
         pass
+
+
+def enforce(scope: str, identifier: str, *, limit: int, window: int,
+            message: str = "Too many requests. Please slow down.") -> None:
+    """`hit()` translated into the HTTP surface, so every caller returns the same
+    429 shape with a Retry-After the client can honour."""
+    try:
+        hit(scope, identifier, limit=limit, window=window)
+    except RateLimitExceeded as e:
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS, message,
+            headers={"Retry-After": str(e.retry_after)},
+        ) from None
+
+
+def expensive_operation(scope: str):
+    """FastAPI dependency: throttle a costly route per organisation.
+
+    Keyed on the org rather than the IP because the cost lands on shared
+    infrastructure per tenant, and one tenant behind a NAT should not be able to
+    exhaust the budget of another sharing its egress address. Auth-layer limits
+    stay per-IP — there is no org yet at that point.
+
+    CurrentPrincipal is imported at module level on purpose: this module uses
+    `from __future__ import annotations`, so `_dep`'s annotation is the *string*
+    "CurrentPrincipal". FastAPI resolves it against this module's globals, and a
+    function-local import leaves it unresolvable — the route then silently
+    degrades to a 422 instead of enforcing anything. app.core.security does not
+    import this module, so there is no cycle.
+    """
+    def _dep(principal: CurrentPrincipal) -> None:
+        s = get_settings()
+        enforce(scope, str(principal.organization_id),
+                limit=s.expensive_max_requests, window=s.expensive_window_seconds,
+                message="This operation is rate limited. Please wait a moment.")
+
+    return _dep

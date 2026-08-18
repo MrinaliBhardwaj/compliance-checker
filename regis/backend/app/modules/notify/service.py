@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.core import audit
 from app.core.config import get_settings
+from app.core.logging import get_logger
 from app.models.compliance import CompanyObligation, ObligationInstance
 from app.models.system import Notification
 from app.models.tenancy import Membership, User
@@ -35,6 +36,9 @@ OVERDUE_ESCALATION = ((1, "owner"), (3, "compliance_admin"), (7, "head"))
 # ---------------------------------------------------------------------------
 # Pure: which notifications fall on `today` for a set of instances
 # ---------------------------------------------------------------------------
+log = get_logger(__name__)
+
+
 def reminder_intents(instances: list[dict], today: date) -> list[dict]:
     """Pure schedule. Each intent: {instance_id, kind, target_role, lead, scheduled_for}."""
     out: list[dict] = []
@@ -97,10 +101,30 @@ def emit(session: Session, *, organization_id, user_id, type_: str, channel: str
                        channel=channel, payload=payload)
     session.add(row)
     session.flush()
-    delivered = get_channel(channel).send(to=to_email, subject=subject, body=body,
-                                          meta={"from": get_settings().email_from})
+
+    # The channel talks to SES/Slack. A bounce, a throttle, or a stale webhook
+    # used to raise straight out of here into the per-org worker loop, which had
+    # no handler — so one bad address stopped reminders for every later tenant.
+    # Delivery failure is now a recorded outcome on the row, never an exception
+    # that escapes: the notification itself is already persisted and the caller's
+    # transaction must not be lost because a third party was unavailable.
+    delivered, error = False, None
+    try:
+        delivered = get_channel(channel).send(to=to_email, subject=subject, body=body,
+                                              meta={"from": get_settings().email_from})
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {exc}"
+        log.warning("notification delivery failed", extra={
+            "channel": channel, "type": type_, "notification_id": str(row.id),
+            "error": error})
+
     if delivered:
         row.sent_at = datetime.now(UTC)
+        row.delivery_status = "sent"
+    else:
+        row.delivery_status = "failed"
+        row.delivery_error = error or "channel reported no delivery"
+
     payload["delivered"] = delivered
     return row
 

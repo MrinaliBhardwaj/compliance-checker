@@ -107,3 +107,62 @@ def test_assignment_notification(db, seeded_org, profile_b):
         select(Notification).where(Notification.type == "assignment")
     ).scalars().all()
     assert any(str(n.user_id) == str(prep.id) for n in assigns)
+
+
+def test_delivery_failure_is_recorded_not_raised(db, seeded_org, monkeypatch):
+    """
+    A channel raising must not escape emit(). It used to propagate into the
+    per-org worker loop, which had no handler, so one bad address silently
+    stopped reminders for every later tenant.
+    """
+    from app.modules.notify import service as notify_service
+
+    class Exploding:
+        def send(self, **kwargs):
+            raise RuntimeError("SES throttled")
+
+    monkeypatch.setattr(notify_service, "get_channel", lambda channel: Exploding())
+
+    org_id = seeded_org["org_id"]
+    row = notify_service.emit(
+        db, organization_id=org_id, user_id=None, type_="reminder", channel="email",
+        payload={}, to_email="someone@example.test", subject="s", body="b")
+    db.flush()
+
+    assert row.delivery_status == "failed"
+    assert "SES throttled" in row.delivery_error
+    assert row.sent_at is None
+
+
+def test_successful_delivery_is_recorded(db, seeded_org, monkeypatch):
+    from app.modules.notify import service as notify_service
+
+    class Ok:
+        def send(self, **kwargs):
+            return True
+
+    monkeypatch.setattr(notify_service, "get_channel", lambda channel: Ok())
+
+    org_id = seeded_org["org_id"]
+    row = notify_service.emit(
+        db, organization_id=org_id, user_id=None, type_="reminder", channel="email",
+        payload={}, to_email="someone@example.test", subject="s", body="b")
+    db.flush()
+
+    assert row.delivery_status == "sent"
+    assert row.sent_at is not None
+    assert row.delivery_error is None
+
+
+def test_null_channel_records_failure_rather_than_silent_pending(db, seeded_org):
+    """The offline Null channel reports no delivery; that is a recorded outcome."""
+    from app.modules.notify import service as notify_service
+
+    org_id = seeded_org["org_id"]
+    row = notify_service.emit(
+        db, organization_id=org_id, user_id=None, type_="reminder", channel="email",
+        payload={}, to_email="someone@example.test", subject="s", body="b")
+    db.flush()
+
+    assert row.delivery_status == "failed"
+    assert row.delivery_error

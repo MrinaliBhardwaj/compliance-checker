@@ -74,6 +74,12 @@ _GUARDED = {int(t.value) for t in th.ALL}
 _RUPEE_IN_TEXT = re.compile(r"Rs\.(\d+)cr")
 
 
+# A literal that is genuinely not a regulatory figure (a unit multiplier, a
+# byte size) declares itself with this marker. Opting out is visible in review;
+# loosening the guard would not be.
+_OPT_OUT = "# not-a-threshold"
+
+
 def _int_literals(source: str) -> list[tuple[int, int]]:
     """(lineno, value) for every integer constant in real code.
 
@@ -103,7 +109,7 @@ def test_no_bare_regulatory_literals_in_engine_logic():
         source = path.read_text()
         lines = source.splitlines()
         for lineno, value in _int_literals(source):
-            if value in _GUARDED:
+            if value in _GUARDED and _OPT_OUT not in lines[lineno - 1]:
                 offenders.append(f"{path.name}:{lineno}: {lines[lineno - 1].strip()}")
     assert not offenders, (
         "regulatory value appears as a bare literal; source it from "
@@ -130,6 +136,15 @@ def test_guards_are_not_vacuous():
     assert not _int_literals('p = r"^\\d{5}[A-Z]{2}$"\n')
     assert not [v for _, v in _int_literals("BAND = 0.10\n") if v == 10]
     assert _RUPEE_IN_TEXT.findall('f"near the Rs.1000cr boundary"') == ["1000"]
+
+
+def test_opt_out_marker_is_required_to_skip_a_guarded_literal():
+    """The escape hatch must be explicit, not implicit."""
+    assert _OPT_OUT in Path(pe.__file__).read_text(), (
+        "the multiplier map should carry the marker"
+    )
+    plain = "X = 1000\n"
+    assert [v for _, v in _int_literals(plain) if v in _GUARDED] == [1000]
 
 
 def test_near_band_is_derived_from_the_threshold():

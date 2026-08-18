@@ -6,10 +6,14 @@ All AI is read-only/assistive; the deterministic cores are the source of truth.
 """
 from __future__ import annotations
 
-from fastapi import FastAPI
+import time
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
+from app.core.logging import bind, configure_logging, get_logger, new_request_id
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
 from app.modules.copilot.router import router as copilot_router
@@ -20,6 +24,9 @@ from app.modules.obligations.router import router as obligations_router
 from app.modules.onboarding.router import router as onboarding_router
 from app.modules.reports.router import router as reports_router
 from app.modules.team.router import router as team_router
+
+configure_logging()
+log = get_logger(__name__)
 
 settings = get_settings()
 settings.assert_production_ready()
@@ -49,6 +56,39 @@ if settings.cors_origins:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+
+@app.middleware("http")
+async def request_context(request: Request, call_next):
+    """One structured line per request, with a request id echoed to the caller.
+
+    Nothing here may raise: an observability layer that can 500 a healthy
+    request is worse than no observability. An unhandled error is logged with
+    its request id and returned as a generic 500 — the detail goes to the log,
+    not to the client.
+    """
+    request_id = request.headers.get("x-request-id") or new_request_id()
+    started = time.perf_counter()
+
+    with bind(request_id=request_id, method=request.method, path=request.url.path):
+        try:
+            response = await call_next(request)
+        except Exception:
+            ms = round((time.perf_counter() - started) * 1000, 1)
+            log.exception("request failed", extra={"duration_ms": ms, "status": 500})
+            return JSONResponse(
+                status_code=500,
+                content={"detail": "Internal server error", "request_id": request_id},
+                headers={"x-request-id": request_id},
+            )
+
+        ms = round((time.perf_counter() - started) * 1000, 1)
+        # Health checks fire constantly and would drown the log.
+        if request.url.path != "/health":
+            log.log(40 if response.status_code >= 500 else 20, "request",
+                    extra={"status": response.status_code, "duration_ms": ms})
+        response.headers["x-request-id"] = request_id
+        return response
 
 
 @app.get("/health", tags=["system"])

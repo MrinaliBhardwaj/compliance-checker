@@ -3,14 +3,12 @@ Golden regression — profile extraction (loop closure into applicability).
 
 Locked: clean payload -> 99 applicable downstream; messy payload -> states
 normalized, malformed CIN flagged, FDI gap (+3) ranked above intl-txn (+1),
-62 applicable / 33 review composition (the messy payload's asset size
-parses to Rs.1.5cr -- see test_messy_composition -- so it lands in the Base
-Layer and picks up the Base Layer concentration policy).
+73 applicable / 33 review composition.
 """
 import pytest
 
 from app.engines.applicability import generate_compliance_universe
-from app.engines.profile_extraction import extract_profile, parse_amount_cr
+from app.engines.profile_extraction import extract_profile
 
 pytestmark = pytest.mark.golden
 
@@ -76,33 +74,40 @@ def test_messy_gap_ranking_fdi_before_intl(library):
     assert fields.index("has_foreign_investment") < fields.index("has_international_transactions")
 
 
-def test_messy_asset_size_misparses_thousand(library):
+def test_messy_composition_73_33(library):
     """
-    KNOWN ENGINE BUG, pinned so it stays visible.
-
-    parse_amount_cr("around 3 thousand crore") returns 1.5, not 3000. The
-    "thousand" -> "000" substitution produces "3 000", which the band branch
-    reads as the two-number band [3.0, 0.0] and averages to 1.5.
-
-    Consequence for a real customer: an NBFC that types its asset size as free
-    text in that shape is classified Base Layer instead of Middle Layer and
-    silently loses its entire Middle/Upper Layer obligation set. That is a
-    missed-obligation bug, not a cosmetic one.
-
-    Fixing it moves the messy composition golden from 62 well upward. Delete
-    this test in the same change that fixes parse_amount_cr.
+    62 -> 73 when parse_amount_cr stopped misreading "around 3 thousand crore"
+    as Rs.1.5cr. The messy payload is a Rs.3000cr Middle Layer NBFC and now
+    resolves as one; it previously landed in the Base Layer and lost the whole
+    ML/UL set. Still short of the clean payload's 99 because its soft flags are
+    unanswered and route to needs_review.
     """
-    assert parse_amount_cr("around 3 thousand crore").value == 1.5
     r = extract_profile(RAW_MESSY, library)
-    assert r["profile"]["rbi_layer"] == "base"      # should be middle at Rs.3000cr
-    assert r["profile"]["asset_size_cr"] == 1.5
+    p = r["profile"]
+    assert p["asset_size_cr"] == 3000.0
+    assert p["rbi_layer"] == "middle"
 
-
-def test_messy_composition_62_33(library):
-    r = extract_profile(RAW_MESSY, library)
-    s = generate_compliance_universe(library, r["profile"])["summary"]
-    assert s["applicable"] == 62
+    s = generate_compliance_universe(library, p)["summary"]
+    assert s["applicable"] == 73
     assert s["needs_review"] == 33
+
+
+def test_amount_parsing_edge_cases():
+    """The band/multiplier boundary that the Rs.1.5cr bug lived on."""
+    from app.engines.profile_extraction import parse_amount_cr as parse
+
+    assert parse("around 3 thousand crore").value == 3000.0
+    assert parse("2k cr").value == 2000.0
+    assert parse("50 lakh").value == 0.5
+    assert parse("₹4,50 Cr").value == 450.0
+    assert parse("500-1000").value == 750.0        # explicit separator -> band
+    assert parse("500 to 1000").value == 750.0
+    assert parse(">5000").value == 5000.0
+
+    # Adjacency is not a range: refuse rather than silently average.
+    ambiguous = parse("3 000")
+    assert ambiguous.value is None
+    assert "no range separator" in ambiguous.note
 
 
 def test_review_list_is_unknown_union_lowconf(library):

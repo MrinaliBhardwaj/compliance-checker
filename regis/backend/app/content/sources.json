@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "purpose": "Primary instruments every obligation template and regulatory threshold derives from. A sign-off cites a source id and the digest of the exact bytes reviewed.",
+    "mirroring": "A human downloads the instrument from `url`, saves it under app/content/mirror/, and runs `python -m app.content.pipeline mirror <id> <file> --by \"Name, ACS 12345\"`. Nothing here is fetched automatically.",
+    "warning": "Secondary summaries are not sources. Law-firm notes and news write-ups have been observed conflating the 29 Apr 2026 Amendment Directions with an SBR layer revision, which they are not."
+  },
+  "sources": [
+    {
+      "id": "rbi_sbr_md_2023",
+      "citation": "RBI Master Direction — Non-Banking Financial Company – Scale Based Regulation Directions, 2023",
+      "regulator": "RBI",
+      "url": "https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx",
+      "published": "2023-10-19",
+      "note": "Governs the Base/Middle/Upper layer boundaries. Para 2.7 and its footnote read references to NBFC-ND-SI as NBFC-ML/UL and place existing ND-SIs of Rs.500cr-Rs.1000cr in the Base Layer. Source for sbr_middle_layer_asset_cr and ndsi_asset_cr."
+    },
+    {
+      "id": "rbi_reg_exempt_sbr_2025",
+      "citation": "RBI (Non-Banking Financial Companies – Registration, Exemptions and Framework for Scale Based Regulation) Directions, 2025",
+      "regulator": "RBI",
+      "url": "https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx",
+      "note": "Consolidating directions amended by the 29 Apr 2026 Amendment below."
+    },
+    {
+      "id": "rbi_amendment_2026_04_29",
+      "citation": "RBI (NBFC – Registration, Exemptions and Framework for Scale Based Regulation) Amendment Directions, 2026",
+      "regulator": "RBI",
+      "url": "https://www.rbi.org.in/Scripts/BS_ViewNBFCNotification.aspx",
+      "published": "2026-04-29",
+      "supersedes": [],
+      "note": "In force 1 Jul 2026. Creates the Unregistered Type I NBFC category and opens a CoR surrender window to 30 Sep 2026. Registration relief — NOT a Base/Middle/Upper layer revision, despite the title carrying 'Scale Based Regulation'. Confirm before letting it touch any layer constant."
+    },
+    {
+      "id": "rbi_crilc_nbfc",
+      "citation": "RBI circular — Reporting to the Central Repository of Information on Large Credits (CRILC) by NBFCs",
+      "regulator": "RBI",
+      "url": "https://www.rbi.org.in/Scripts/BS_ViewNBFCNotification.aspx",
+      "note": "Scope reportedly deposit-taking NBFCs plus non-deposit-taking at Rs.500cr and above, independent of SBR layer. Source for rbi_crilc and rbi_crilc_sma_weekly. The layer-independence is the specific claim to verify."
+    },
+    {
+      "id": "rbi_concentration_2024_01_15",
+      "citation": "RBI/2023-24/112 — Credit/Investment Concentration Norms – Credit Risk Transfer",
+      "regulator": "RBI",
+      "url": "https://www.rbi.org.in/Scripts/BS_ViewNBFCNotification.aspx",
+      "published": "2024-01-15",
+      "note": "Harmonised concentration computation across Base and Middle Layers; Base Layer keeps a Board-approved internal policy with no prescribed numerical ceilings. Source for sbr_concentration_policy_bl and rbi_concentration."
+    },
+    {
+      "id": "rbi_cco_2022_04_11",
+      "citation": "RBI circular — Compliance Function and Role of Chief Compliance Officer (CCO) – NBFCs",
+      "regulator": "RBI",
+      "url": "https://www.rbi.org.in/Scripts/BS_ViewNBFCNotification.aspx",
+      "published": "2022-04-11",
+      "note": "Applies to NBFC-UL and NBFC-ML. Source for sbr_cco. Dated 2022, not 2026 — the CCO requirement is four years old and must never be pitched as new."
+    },
+    {
+      "id": "rbi_governance_2025",
+      "citation": "RBI (Non-Banking Financial Companies – Governance) Directions, 2025",
+      "regulator": "RBI",
+      "url": "https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx",
+      "published": "2025-11-28",
+      "note": "Board oversight, committee composition, KMP compensation with mandatory deferral. First governance-specific penalty followed on 9 Mar 2026."
+    },
+    {
+      "id": "companies_act_2013_s135",
+      "citation": "Companies Act, 2013 — section 135 (Corporate Social Responsibility)",
+      "regulator": "Parliament",
+      "url": "https://www.mca.gov.in/content/mca/global/en/acts-rules/ebooks/acts.html",
+      "note": "Three independent triggers: turnover, net worth, net profit. csr_turnover_cr models only the turnover limb; the other two are unmodelled."
+    },
+    {
+      "id": "cgst_qrmp",
+      "citation": "CGST Rules — Quarterly Return Monthly Payment (QRMP) scheme eligibility",
+      "regulator": "CBIC",
+      "url": "https://www.gst.gov.in/",
+      "note": "An eligibility ceiling, not an automatic classification — QRMP is an election. Source for gst_qrmp_turnover_cr."
+    },
+    {
+      "id": "esi_act_1948",
+      "citation": "Employees' State Insurance Act, 1948 — section 2(12), as applied by state notification",
+      "regulator": "state",
+      "url": "https://www.esic.gov.in/",
+      "note": "State-varying: several states notify 20 rather than 10. esi_employee_count is a single national constant and therefore a known simplification."
+    }
+  ]
+}

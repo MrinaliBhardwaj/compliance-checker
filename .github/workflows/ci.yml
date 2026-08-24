@@ -41,6 +41,13 @@ jobs:
           psql -h localhost -U postgres -c "CREATE DATABASE regis_test OWNER regis;"
       - name: Lint (ruff)
         run: ruff check .
+      # Fails only on blocking items -- a broken mirror or a sign-off whose
+      # source was amended. An unverified library is the honest expected state
+      # before a reviewer is engaged; failing on it would train everyone to
+      # ignore the check.
+      - name: Content pipeline gate
+        run: python -m app.content.pipeline check
+
       - name: Tests + coverage (includes live-Postgres RLS + migration drift)
         env:
           REGIS_TEST_PG_URL: postgresql+psycopg://regis:regis@localhost:5432/regis_test

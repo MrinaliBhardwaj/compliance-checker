@@ -49,8 +49,10 @@ class Threshold:
     source: str                  # exact instrument to re-derive from
     lookup: str                  # where to find that instrument
     status: str = DRAFT_UNVERIFIED
+    source_id: str | None = None     # id in app/content/sources.json
     verified_by: str | None = None   # named CS/CA who signed this off
     verified_on: str | None = None   # ISO date of that sign-off
+    verified_against: str | None = None  # sha256 of the exact bytes reviewed
     note: str = ""
 
     @property
@@ -69,10 +71,16 @@ class Threshold:
     def __post_init__(self) -> None:
         if self.status not in (DRAFT_UNVERIFIED, VERIFIED):
             raise ValueError(f"{self.key}: invalid status {self.status!r}")
-        if self.verified and not (self.verified_by and self.verified_on):
-            raise ValueError(
-                f"{self.key}: VERIFIED requires both verified_by and verified_on"
-            )
+        if self.verified:
+            missing = [n for n in ("source_id", "verified_by", "verified_on",
+                                   "verified_against") if not getattr(self, n)]
+            if missing:
+                raise ValueError(
+                    f"{self.key}: VERIFIED requires {', '.join(missing)}. A sign-off "
+                    "names a reviewer, a date, and the digest of the exact document "
+                    "reviewed — binding to a source alone is meaningless once that "
+                    "document is amended."
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -81,6 +89,7 @@ class Threshold:
 
 SBR_MIDDLE_LAYER_ASSET_CR = Threshold(
     key="sbr_middle_layer_asset_cr",
+    source_id="rbi_sbr_md_2023",
     value=1000,
     unit="INR crore",
     source="RBI Master Direction — Scale Based Regulation for NBFCs "
@@ -96,6 +105,7 @@ SBR_MIDDLE_LAYER_ASSET_CR = Threshold(
 
 NDSI_ASSET_CR = Threshold(
     key="ndsi_asset_cr",
+    source_id="rbi_sbr_md_2023",
     value=500,
     unit="INR crore",
     source="RBI Master Direction — Scale Based Regulation for NBFCs, "
@@ -128,6 +138,7 @@ NDSI_ASSET_CR = Threshold(
 
 CSR_TURNOVER_CR = Threshold(
     key="csr_turnover_cr",
+    source_id="companies_act_2013_s135",
     value=1000,
     unit="INR crore",
     source="Companies Act, 2013 — s.135(1)",
@@ -143,6 +154,7 @@ CSR_TURNOVER_CR = Threshold(
 
 GST_QRMP_TURNOVER_CR = Threshold(
     key="gst_qrmp_turnover_cr",
+    source_id="cgst_qrmp",
     value=5,
     unit="INR crore",
     source="CGST Rules — Quarterly Return Monthly Payment scheme eligibility",
@@ -157,6 +169,7 @@ GST_QRMP_TURNOVER_CR = Threshold(
 
 ESI_EMPLOYEE_COUNT = Threshold(
     key="esi_employee_count",
+    source_id="esi_act_1948",
     value=10,
     unit="employees",
     source="Employees' State Insurance Act, 1948 — s.2(12), as applied by "
@@ -181,6 +194,23 @@ ALL: tuple[Threshold, ...] = (
 )
 
 BY_KEY: dict[str, Threshold] = {t.key: t for t in ALL}
+
+
+def stale(register: dict, thresholds: tuple[Threshold, ...] | None = None) -> list[Threshold]:
+    """VERIFIED thresholds whose source has been re-mirrored since sign-off.
+
+    This is what makes content a subscription rather than a snapshot: an amended
+    instrument invalidates every derivation from the old text automatically,
+    instead of when somebody remembers to look.
+    """
+    out = []
+    for t in (thresholds if thresholds is not None else ALL):
+        if not t.verified or not t.source_id:
+            continue
+        src = register.get(t.source_id)
+        if src and src.mirrored and src.digest != t.verified_against:
+            out.append(t)
+    return out
 
 
 def unverified() -> list[Threshold]:

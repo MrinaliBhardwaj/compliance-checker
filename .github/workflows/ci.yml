@@ -7,7 +7,7 @@ on:
 
 jobs:
   backend:
-    name: Backend — ruff + pytest (SQLite & live Postgres RLS)
+    name: Backend — ruff + pytest (SQLite & live Postgres RLS + migrations)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -41,7 +41,7 @@ jobs:
           psql -h localhost -U postgres -c "CREATE DATABASE regis_test OWNER regis;"
       - name: Lint (ruff)
         run: ruff check .
-      - name: Tests + coverage (includes live-Postgres RLS hardening)
+      - name: Tests + coverage (includes live-Postgres RLS + migration drift)
         env:
           REGIS_TEST_PG_URL: postgresql+psycopg://regis:regis@localhost:5432/regis_test
         run: pytest --cov=app --cov-report=term

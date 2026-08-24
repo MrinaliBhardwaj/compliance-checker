@@ -142,12 +142,12 @@ def test_per_tenant_commit_persists_every_org(pg_engine):
     with pg_engine.connect() as conn:
         # per-org: write each org's row under its own scope, commit between
         _set_org(conn, org_a)
-        conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, created_at) "
-                          "VALUES (:i,:o,'reminder','email',now())"), {"i": uuid.uuid4(), "o": org_a})
+        conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, payload, created_at) "
+                          "VALUES (:i,:o,'reminder','email','{}'::jsonb,now())"), {"i": uuid.uuid4(), "o": org_a})
         conn.commit()
         _set_org(conn, org_b)
-        conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, created_at) "
-                          "VALUES (:i,:o,'reminder','email',now())"), {"i": uuid.uuid4(), "o": org_b})
+        conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, payload, created_at) "
+                          "VALUES (:i,:o,'reminder','email','{}'::jsonb,now())"), {"i": uuid.uuid4(), "o": org_b})
         conn.commit()
 
     with pg_engine.connect() as conn:
@@ -156,12 +156,15 @@ def test_per_tenant_commit_persists_every_org(pg_engine):
         _set_org(conn, org_b)
         assert conn.execute(text("SELECT count(*) FROM notifications")).scalar_one() == 1
 
-    # the anti-pattern: writing org A's row while scoped to org B is refused
+    # The anti-pattern: writing org A's row while scoped to org B is refused.
+    # Matched on the RLS message, not a bare DBAPIError: these inserts once
+    # omitted the NOT NULL `payload` column, so this assertion passed on a
+    # constraint violation while never exercising the policy at all.
     with pg_engine.connect() as conn:
         _set_org(conn, org_b)
-        with pytest.raises(DBAPIError):
-            conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, created_at) "
-                              "VALUES (:i,:o,'reminder','email',now())"), {"i": uuid.uuid4(), "o": org_a})
+        with pytest.raises(DBAPIError, match="row-level security"):
+            conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, payload, created_at) "
+                              "VALUES (:i,:o,'reminder','email','{}'::jsonb,now())"), {"i": uuid.uuid4(), "o": org_a})
             conn.commit()
 
 

@@ -130,14 +130,19 @@ def dashboard(db: DbSession, principal: CurrentPrincipal) -> dict:
     due_week = sum(1 for i in rows
                    if i.due_date and today <= i.due_date <= week
                    and _effective_status(i, today) in _OPEN)
-    total = len(rows) or 1
+    # Backfill from before the org onboarded (PRD 14.2) is part of the FY record
+    # but not work this org owes, so it is surfaced on its own tile and kept out
+    # of the health denominator — otherwise a mid-year signup is scored against
+    # filings that predate them. Mirrors reports.service.build_compliance_report.
+    historical = counts.get("historical", 0)
+    total = (len(rows) - historical) or 1
     completed = counts.get("completed", 0)
     health = round(100 * (1 - overdue / total))
     return {
         "health_score": health,
         "tiles": {"overdue": overdue, "due_this_week": due_week,
                   "awaiting_review": counts.get("ready_for_review", 0),
-                  "completed": completed},
+                  "completed": completed, "historical": historical},
         "by_status": dict(counts),
         "total_instances": len(rows),
     }

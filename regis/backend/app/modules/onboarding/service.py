@@ -29,7 +29,7 @@ from app.models.calendar import EventListener
 from app.models.compliance import CompanyObligation, ObligationInstance
 from app.models.content import ObligationTemplate
 from app.models.profile import CompanyProfile
-from app.modules.onboarding.calendar_chain import build_company_obligations
+from app.modules.onboarding.calendar_chain import build_company_obligations, default_window
 from app.seed.library_loader import load_library
 
 LIBRARY_VERSION = "0.1-draft"
@@ -43,6 +43,10 @@ class GenerationResult:
     parked: int
     generation_run_id: str
     diff: dict
+    # Of `instances`, how many fell due before this org onboarded. Surfaced
+    # rather than hidden: a customer should see "these predate you" instead of
+    # wondering why their first quarter is missing.
+    historical: int = 0
 
 
 def _library_dict(session: Session) -> dict:
@@ -95,9 +99,12 @@ def save_profile(session: Session, *, organization_id, entity_id, raw_input: dic
     return existing
 
 
+HISTORICAL = "historical"
+
+
 def generate_calendar(session: Session, *, organization_id, entity_id, profile: dict,
                       ctx: dict | None = None, library: dict | None = None,
-                      actor_user_id=None) -> GenerationResult:
+                      actor_user_id=None, onboarded_on: date | None = None) -> GenerationResult:
     """
     Run applicability + instance generation and persist the result idempotently.
 
@@ -150,8 +157,14 @@ def generate_calendar(session: Session, *, organization_id, entity_id, profile: 
         existing_cobs[appl_id].is_active = False
 
     # --- instance generation per the due rules ---
+    # An explicitly supplied window IS the caller's tracking period, so nothing
+    # inside it is historical — that is what a caller means by naming one, and it
+    # keeps deliberate backfills and fixtures from being silently reclassified.
+    # Only the derived-window path (the real onboarding flow) treats work due
+    # before today as predating the customer.
+    onboarded_on = onboarded_on or (ctx or {}).get("window_start") or date.today()
     ctx = ctx or {
-        "window_start": date(2026, 4, 1), "window_end": date(2027, 3, 31),
+        **default_window(onboarded_on),
         "anchors": {"agm_date": date(2026, 9, 25), "tds_return_date": date(2026, 7, 31)},
         "license_expiry": date(2026, 11, 30),
     }
@@ -159,6 +172,7 @@ def generate_calendar(session: Session, *, organization_id, entity_id, profile: 
 
     # map generator's company_obligation_id (co_<appl_id>) back to the DB row
     inst_count = 0
+    historical_count = 0
     for inst in gen["instances"]:
         appl_id = inst.company_obligation_id.removeprefix("co_")
         co = co_rows.get(appl_id)
@@ -171,13 +185,25 @@ def generate_calendar(session: Session, *, organization_id, entity_id, profile: 
             )
         ).scalar_one_or_none()
         if exists is None:
+            due = date.fromisoformat(inst.due_date)
+            # PRD 14.2 — mid-period onboarding. An obligation that fell due before
+            # this organisation onboarded was almost certainly filed, just not
+            # here. Generating it keeps the financial-year record complete;
+            # marking it `historical` keeps it out of the overdue tiles, the
+            # health score and the reminder ladder, so a new customer is not met
+            # with a wall of red for work they already did elsewhere.
+            historical = due < onboarded_on
             session.add(ObligationInstance(
                 company_obligation_id=co.id, organization_id=organization_id,
-                period_label=inst.period_label, due_date=date.fromisoformat(inst.due_date),
-                status=inst.status, working_day_adjusted=inst.working_day_adjusted,
-                generation_source=inst.generation_source, owner_user_id=co.owner_user_id,
+                period_label=inst.period_label, due_date=due,
+                status=HISTORICAL if historical else inst.status,
+                working_day_adjusted=inst.working_day_adjusted,
+                generation_source="backfill" if historical else inst.generation_source,
+                owner_user_id=None if historical else co.owner_user_id,
             ))
             inst_count += 1
+            if historical:
+                historical_count += 1
         # existing instances are left untouched (status may have advanced)
 
     # --- register event-driven listeners (not pre-generated) ---
@@ -211,5 +237,5 @@ def generate_calendar(session: Session, *, organization_id, entity_id, profile: 
     return GenerationResult(
         company_obligations=len(co_rows), instances=inst_count,
         event_listeners=listener_count, parked=len(gen["parked"]),
-        generation_run_id=run_id, diff=diff,
+        generation_run_id=run_id, diff=diff, historical=historical_count,
     )

@@ -11,6 +11,8 @@ never blocks a legitimate transition.
                     |          (reject)  \____________| (reopen, admin)
        any open ----+--------------------------------> not_applicable (admin)
 
+    historical --(reopen, admin)--> in_progress
+
 Maker  = preparer submits (-> ready_for_review)
 Checker = compliance_admin / head approves (-> completed) or rejects
 """
@@ -19,7 +21,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 OPEN_STATES = ("pending", "in_progress", "ready_for_review", "overdue")
-TERMINAL_STATES = ("completed", "not_applicable")
+# `historical` is backfill from before the org onboarded (PRD 14.2): a record of
+# the financial year, not work anybody here is accountable for. Terminal, so the
+# maker-checker actions refuse it explicitly rather than by omission — but an
+# admin can `reopen` one, for the case where the filing genuinely was missed and
+# the org wants to track it after all.
+TERMINAL_STATES = ("completed", "not_applicable", "historical")
 
 
 class LifecycleError(Exception):
@@ -52,8 +59,8 @@ ACTIONS: dict[str, Action] = {
                      frozenset({"compliance_admin", "head"})),
     "mark_na": Action("mark_na", None, "not_applicable",
                       frozenset({"compliance_admin"})),
-    "reopen": Action("reopen", frozenset({"completed", "not_applicable"}), "in_progress",
-                     frozenset({"compliance_admin"})),
+    "reopen": Action("reopen", frozenset({"completed", "not_applicable", "historical"}),
+                     "in_progress", frozenset({"compliance_admin"})),
 }
 
 

@@ -83,6 +83,42 @@ Append-only log of direction decisions, so future sessions inherit them.
 - Tests: `_auth` clears the shared TestClient's cookie jar so Bearer-based smoke
   tests stay stateless; `test_httponly_cookie_session` covers the cookie path.
 
+## 2026-08-25 — Mid-period onboarding (PRD 14.2), found by running the app
+
+- **A new customer was told it was 135 filings behind on day one.** `window_start`
+  was hardcoded to `date(2026, 4, 1)` in three places, so anyone onboarding
+  mid-year got the whole financial year generated in the past and immediately
+  rendered OVERDUE. The first board-ready report opened with "Health 61%. 135
+  obligation(s) are overdue and need immediate attention" — for returns the
+  customer had almost certainly filed, just not here. PRD 14.2 specified this
+  edge case and it was never implemented.
+- **Found by launching the product, not by a test.** The whole suite was green.
+- **The fix: generate the FY, mark the backfill.** `default_window` now derives
+  the financial year containing the signup date (`fy_start`/`fy_end`). Instances
+  due before `onboarded_on` are persisted as `status="historical"` with
+  `generation_source="backfill"` and no owner. The FY record stays complete —
+  dropping the period would leave a hole in the audit trail — but nothing that
+  predates the customer is presented as their failure.
+- **`historical` is terminal, with an admin `reopen`.** Maker-checker refuses it
+  explicitly rather than by omission, and it is outside `_OPEN`, so it can never
+  become overdue and never enters the reminder ladder. If a filing genuinely was
+  missed, an admin can reopen it into `in_progress`.
+- **Excluded from the health denominator** in both `reports.service` and the
+  `/obligations/dashboard` endpoint (two separate tile computations — the second
+  was missed on the first pass and only surfaced by probing the live API).
+- **Surfaced, not hidden.** A "Before you joined" tile shows the count, and the
+  priority queue filters historical out — it was burying the actionable items
+  under months of prior filings. The queue's sort comparator also had no entry
+  for the new status, returning NaN and silently degenerating to date order.
+- **`default_window`'s `months` parameter did nothing** — it computed a date and
+  discarded it, so the end was always the hardcoded 2027-03-31. Now honoured.
+- **An explicitly supplied `ctx` window marks nothing historical.** Naming a
+  window means "this is my tracking period", which keeps deliberate backfills and
+  every existing fixture from being silently reclassified.
+- Verified by re-running the app: overdue 135 → 0, health 61% → 100%, 346 dated
+  items still generated, priority queue now showing 28 Aug → 15 Sep work.
+  200 backend tests + 6 E2E green.
+
 ## 2026-08-18 — Phase 3b: the content pipeline (the moat)
 
 - **`app/content/` is a register of primary instruments, not a scraper.** A human

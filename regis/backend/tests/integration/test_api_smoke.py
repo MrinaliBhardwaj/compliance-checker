@@ -138,9 +138,12 @@ def test_evidence_and_maker_checker_over_http(client):
                       "has_listed_debt": "Yes", "operating_states": ["MH", "KA", "TN", "DL"],
                       "employee_count": 260, "gst_registered": "Yes"},
     })
-    # grab a pending instance
+    # Grab a *trackable* instance. Backfill from before the org onboarded is
+    # persisted as `historical` and is terminal, so instances[0] is not
+    # necessarily something the maker-checker flow can act on.
     instances = client.get("/obligations/instances", headers=headers).json()
-    inst_id = instances[0]["id"]
+    inst_id = next(i["id"] for i in instances
+                   if i["status"] not in ("historical", "completed", "not_applicable"))
 
     # start -> upload -> classify -> link -> submit -> approve
     assert client.post(f"/obligations/instances/{inst_id}/start", headers=headers,

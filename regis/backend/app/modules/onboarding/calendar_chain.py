@@ -10,7 +10,7 @@ is to persist what these return and write audit rows.
 """
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 
 from app.engines.applicability import generate_compliance_universe
 from app.engines.instance_generator import generate_instances
@@ -38,12 +38,32 @@ def build_company_obligations(universe: dict, library: dict) -> list[dict]:
     return cobs
 
 
+def fy_start(on: date) -> date:
+    """Indian financial year containing `on` — 1 April to 31 March."""
+    return date(on.year if on.month >= 4 else on.year - 1, 4, 1)
+
+
+def fy_end(on: date) -> date:
+    return date(fy_start(on).year + 1, 3, 31)
+
+
 def default_window(start: date | None = None, months: int = 12) -> dict:
-    """A 12-month rolling horizon, FY-aligned by default for the golden run."""
-    start = start or date(2026, 4, 1)
-    date(start.year + 1, start.month, 1) if months == 12 else start
-    # default golden window is the full FY2026-27
-    return {"window_start": start, "window_end": date(2027, 3, 31)}
+    """The financial year containing `start`, so the FY audit trail is complete.
+
+    Instances dated before the org actually onboarded are marked `historical` at
+    persistence time rather than excluded here — see PRD 14.2. Generating them
+    and labelling them is what keeps the FY record whole without accusing a new
+    customer of missing filings they made before they had this product.
+
+    `months` is honoured for a non-FY horizon; it previously computed a date and
+    threw it away, so the parameter did nothing and the end was always hardcoded.
+    """
+    start = start or date.today()
+    if months == 12:
+        return {"window_start": fy_start(start), "window_end": fy_end(start)}
+    end_year, end_month = divmod((start.month - 1) + months, 12)
+    return {"window_start": start,
+            "window_end": date(start.year + end_year, end_month + 1, 1) - timedelta(days=1)}
 
 
 def run_chain(library: dict, profile: dict, ctx: dict | None = None) -> dict:

@@ -214,7 +214,10 @@ export const entityAudit = (entity_type: string, entity_id: string) =>
 
 // ---- types ----
 export type Status =
-  | "pending" | "in_progress" | "ready_for_review" | "completed" | "overdue" | "not_applicable";
+  | "pending" | "in_progress" | "ready_for_review" | "completed" | "overdue" | "not_applicable"
+  // Backfill from before the org onboarded (PRD 14.2): part of the financial-year
+  // record, terminal, and never presented as overdue.
+  | "historical";
 
 export interface Instance {
   id: string; period_label: string; due_date: string | null; status: Status;
@@ -257,7 +260,7 @@ export interface GenerateResult {
 }
 export interface Dashboard {
   health_score: number;
-  tiles: { overdue: number; due_this_week: number; awaiting_review: number; completed: number };
+  tiles: { overdue: number; due_this_week: number; awaiting_review: number; completed: number; historical: number };
   by_status: Record<string, number>; total_instances: number;
 }
 export interface CopilotTurn {
@@ -281,7 +284,7 @@ export interface Report {
   organization: string; entity: string; as_of: string; library_version: string;
   provisional: boolean; health_score: number;
   totals: { instances: number; by_status: Record<string, number> };
-  tiles: { overdue: number; due_this_week: number; awaiting_review: number; completed: number };
+  tiles: { overdue: number; due_this_week: number; awaiting_review: number; completed: number; historical: number };
   narrative: string; by_category: Record<string, Record<string, number>>;
   sections: Record<string, { period_label: string; title: string; due_date: string | null;
     form_reference: string | null; risk_level: string; status: string; evidence_count?: number }[]>;

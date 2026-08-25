@@ -39,8 +39,15 @@ function DashboardInner() {
   const order: Record<string, number> = {
     overdue: 0, ready_for_review: 1, in_progress: 2, pending: 3, completed: 4, not_applicable: 5,
   };
+  // `historical` is backfill from before this org onboarded — a record of the
+  // financial year, not work anyone here owes. It has its own tile; leaving it
+  // in the queue buried the actionable items under months of prior filings
+  // (and it is absent from `order`, so the comparator returned NaN and the
+  // sort silently degenerated to plain date order).
   const top = [...(queue.data ?? [])]
-    .sort((a, b) => (order[a.status] - order[b.status]) || (a.due_date ?? "").localeCompare(b.due_date ?? ""))
+    .filter((i) => i.status !== "historical")
+    .sort((a, b) => ((order[a.status] ?? 99) - (order[b.status] ?? 99))
+      || (a.due_date ?? "").localeCompare(b.due_date ?? ""))
     .slice(0, 12);
 
   return (
@@ -70,6 +77,10 @@ function DashboardInner() {
                 onClick={() => router.push("/obligations?status=ready_for_review")} />
               <Tile n={dash.data.tiles.completed} label="Completed"
                 onClick={() => router.push("/obligations?status=completed")} />
+              {dash.data.tiles.historical > 0 && (
+                <Tile n={dash.data.tiles.historical} label="Before you joined"
+                  onClick={() => router.push("/obligations?status=historical")} />
+              )}
             </div>
           </>
         )}

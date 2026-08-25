@@ -21,6 +21,10 @@ from app.models.tenancy import Entity, Organization
 
 LIBRARY_VERSION = "0.1-draft"
 _OPEN = ("pending", "in_progress", "ready_for_review")
+# Backfilled from before the org onboarded (PRD 14.2). Not open, so it never
+# becomes overdue; excluded from the health denominator so a mid-year signup is
+# not scored on filings that predate them.
+HISTORICAL = "historical"
 
 
 def _effective_status(status: str, due: date | None, today: date) -> str:
@@ -78,7 +82,9 @@ def build_compliance_report(session: Session, *, organization_id, today: date,
         if eff == "completed":
             completed.append({**item, "evidence_count": ev_counts.get(inst.id, 0)})
 
-    total = len(triples) or 1
+    n_historical = by_status.get(HISTORICAL, 0)
+    # Health measures what this organisation is accountable for here.
+    total = (len(triples) - n_historical) or 1
     n_overdue = by_status.get("overdue", 0)
     health = round(100 * (1 - n_overdue / total))
     overdue.sort(key=lambda x: x["due_date"] or "")
@@ -96,7 +102,8 @@ def build_compliance_report(session: Session, *, organization_id, today: date,
         "health_score": health,
         "totals": {"instances": len(triples), "by_status": dict(by_status)},
         "tiles": {"overdue": n_overdue, "due_this_week": len(due_week),
-                  "awaiting_review": len(awaiting), "completed": by_status.get("completed", 0)},
+                  "awaiting_review": len(awaiting), "completed": by_status.get("completed", 0),
+                  "historical": n_historical},
         "narrative": narrative,
         "by_category": {k: dict(v) for k, v in by_category.items()},
         "sections": {

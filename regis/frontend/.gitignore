@@ -4,3 +4,6 @@
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+
+# tsc --noEmit incremental cache
+tsconfig.tsbuildinfo

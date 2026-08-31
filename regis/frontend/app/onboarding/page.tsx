@@ -15,7 +15,8 @@ export default function Onboarding() {
   const [raw, setRaw] = useState<Record<string, unknown>>({
     asset_size: "3000", turnover: "450", deposit_taking: "No", has_listed_debt: "Yes",
     operating_states: ["MH", "KA", "TN", "DL"], branch_count: 22, employee_count: 260,
-    gst_registered: "Yes", has_foreign_investment: "Yes",
+    gst_registered: "Yes", has_foreign_investment: "Yes", is_listed: "No",
+    net_worth: "", net_profit: "",
   });
   const [preview, setPreview] = useState<ProfilePreview | null>(null);
   const [busy, setBusy] = useState(false);
@@ -24,9 +25,14 @@ export default function Onboarding() {
 
   const set = (k: string, v: unknown) => setRaw((r) => ({ ...r, [k]: v }));
 
+  // Blank means "not answered". Sending "" would reach the parser as an
+  // unparseable amount rather than an honest unknown, so strip it here.
+  const payload = () =>
+    Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== "" && v !== undefined));
+
   const runPreview = async () => {
     setBusy(true);
-    try { setPreview(await profilePreview(raw)); }
+    try { setPreview(await profilePreview(payload())); }
     catch (e) { toast(e instanceof Error ? e.message : "Failed", "err"); }
     finally { setBusy(false); }
   };
@@ -34,7 +40,7 @@ export default function Onboarding() {
     if (!entityId) { toast("No entity selected", "err"); return; }
     setBusy(true);
     try {
-      const res = await generateCalendar(entityId, raw);
+      const res = await generateCalendar(entityId, payload());
       toast(`Generated ${res.company_obligations} obligations · ${res.instances} dated items`, "ok");
       router.push("/dashboard");
     } catch (e) {
@@ -53,9 +59,14 @@ export default function Onboarding() {
         <div className="grid-cards" style={{ gridTemplateColumns: "repeat(2,1fr)" }}>
           <F label="Asset size (₹ cr)" v={String(raw.asset_size ?? "")} on={(v) => set("asset_size", v)} />
           <F label="Turnover (₹ cr)" v={String(raw.turnover ?? "")} on={(v) => set("turnover", v)} />
+          <F label="Net worth (₹ cr)" v={String(raw.net_worth ?? "")} on={(v) => set("net_worth", v)} />
+          <F label="Net profit (₹ cr)" v={String(raw.net_profit ?? "")} on={(v) => set("net_profit", v)} />
           <F label="Employees" v={String(raw.employee_count ?? "")} on={(v) => set("employee_count", Number(v) || 0)} />
           <F label="Branches" v={String(raw.branch_count ?? "")} on={(v) => set("branch_count", Number(v) || 0)} />
+          <F label="Operating states" v={statesText(raw.operating_states)}
+             on={(v) => set("operating_states", v.split(",").map((s) => s.trim()).filter(Boolean))} />
           <YN label="Deposit-taking?" v={raw.deposit_taking} on={(v) => set("deposit_taking", v)} />
+          <YN label="Equity listed?" v={raw.is_listed} on={(v) => set("is_listed", v)} />
           <YN label="Listed debt (NCDs)?" v={raw.has_listed_debt} on={(v) => set("has_listed_debt", v)} />
           <YN label="GST registered?" v={raw.gst_registered} on={(v) => set("gst_registered", v)} />
           <YN label="Foreign investment?" v={raw.has_foreign_investment} on={(v) => set("has_foreign_investment", v)} />
@@ -88,13 +99,38 @@ export default function Onboarding() {
             </Card>
           )}
 
-          <Card title="Quick questions (high-impact first)">
-            {preview.gap_questions.slice(0, 6).map((g) => (
-              <div key={g.field} style={{ padding: "5px 0", borderBottom: "1px solid var(--line)" }}>
-                <span className="chip">+{g.yield}</span> {g.hard ? "key" : "optional"} — {g.question}
-              </div>
-            ))}
-          </Card>
+          {preview.gap_questions.length > 0 && (
+            <Card title={`Quick questions (${preview.gap_questions.length} left — high-impact first)`}>
+              <p className="muted" style={{ marginTop: 0 }}>
+                Every question you skip leaves its obligation undecided rather than
+                dropped — we will not guess &quot;No&quot; on your behalf.
+              </p>
+              {preview.gap_questions.map((g) => (
+                <div key={g.field} style={{ display: "flex", alignItems: "center", gap: 10,
+                  padding: "7px 0", borderBottom: "1px solid var(--line)" }}>
+                  <span className="chip">+{g.yield}</span>
+                  <span style={{ flex: 1 }}>{g.hard ? "key" : "optional"} — {g.question}</span>
+                  {NUMERIC_GAPS.has(g.field) ? (
+                    <input className="input" style={{ width: 110 }} placeholder="₹ cr"
+                      value={String(raw[rawKey(g.field)] ?? "")}
+                      onChange={(e) => set(rawKey(g.field), e.target.value)} />
+                  ) : (
+                    <select className="input" style={{ width: 130 }}
+                      value={String(raw[rawKey(g.field)] ?? "")}
+                      onChange={(e) => set(rawKey(g.field), e.target.value)}>
+                      <option value="">Not sure</option>
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
+                    </select>
+                  )}
+                </div>
+              ))}
+              <button className="btn" onClick={runPreview} disabled={busy}
+                style={{ marginTop: 12, justifyContent: "center" }}>
+                {busy ? <Spinner /> : "Re-analyze with my answers"}
+              </button>
+            </Card>
+          )}
 
           <button className="btn primary" onClick={confirm} disabled={busy} style={{ justifyContent: "center" }}>
             {busy ? <Spinner /> : "Confirm & generate my calendar"}
@@ -104,6 +140,20 @@ export default function Onboarding() {
     </main>
   );
 }
+
+// Gap fields the engine reads as amounts rather than yes/no.
+const NUMERIC_GAPS = new Set(["turnover_cr", "net_worth_cr", "net_profit_cr",
+  "asset_size_cr", "employee_count", "branch_count"]);
+
+// Engine field name -> the key extract_profile() actually reads it from. Most
+// match; the amounts are parsed from an unsuffixed key.
+const GAP_RAW_KEY: Record<string, string> = {
+  turnover_cr: "turnover", net_worth_cr: "net_worth",
+  net_profit_cr: "net_profit", asset_size_cr: "asset_size",
+};
+const rawKey = (field: string) => GAP_RAW_KEY[field] ?? field;
+
+const statesText = (v: unknown) => (Array.isArray(v) ? v.join(", ") : String(v ?? ""));
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return <section className="card"><h3 style={{ marginTop: 0 }}>{title}</h3>{children}</section>;

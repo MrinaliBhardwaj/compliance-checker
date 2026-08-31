@@ -33,6 +33,8 @@ PROFILE_FIELDS = {
     "has_listed_debt": bool,
     "asset_size_cr": (int, float),
     "turnover_cr": (int, float),
+    "net_worth_cr": (int, float),
+    "net_profit_cr": (int, float),
     "employee_count": int,
     "branch_count": int,
     "operating_states": list,    # ["MH","KA",...]
@@ -52,6 +54,7 @@ PROFILE_FIELDS = {
     "has_ecb": bool,
     "has_odi": bool,
     "has_eligible_bonus_employees": bool,
+    "has_eq_levy": bool,
     "does_digital_lending": bool,
     "has_dlg_arrangements": bool,
     "has_floating_rate_retail": bool,

@@ -24,6 +24,8 @@ from enum import StrEnum
 
 from .applicability import HARD_FIELDS
 from .thresholds import (
+    CSR_NET_PROFIT_CR,
+    CSR_NET_WORTH_CR,
     CSR_TURNOVER_CR,
     ESI_EMPLOYEE_COUNT,
     GST_QRMP_TURNOVER_CR,
@@ -246,15 +248,33 @@ def derive_gst_scheme(turnover_cr) -> Field:
                  "eligible); confirm choice")
 
 
-def derive_csr(turnover_cr) -> Field:
-    if turnover_cr is None:
+def derive_csr(turnover_cr, net_worth_cr=None, net_profit_cr=None) -> Field:
+    """s.135(1) triggers on ANY of turnover / net worth / net profit.
+
+    All three limbs are tested because the turnover limb alone left CSR
+    undecidable for the entire growth-stage segment — a company below the
+    turnover trigger can still be squarely in scope on profit. 'False' is
+    only returned once every limb has a figure and all three are below
+    their trigger; a limb we were never told stays unknown rather than
+    silently counting as a pass.
+    """
+    limbs = (
+        (turnover_cr, CSR_TURNOVER_CR, "turnover"),
+        (net_worth_cr, CSR_NET_WORTH_CR, "net worth"),
+        (net_profit_cr, CSR_NET_PROFIT_CR, "net profit"),
+    )
+    for value, threshold, label in limbs:
+        if value is not None and value >= threshold.value:
+            return Field(True, Source.DERIVED, 0.80,
+                         f"{label} >= Rs.{threshold.value}cr (s.135(1))")
+
+    unknown = [label for value, _, label in limbs if value is None]
+    if unknown:
         return Field(None, Source.DEFAULT_UNKNOWN, 0.0,
-                     "needs net worth / net profit to confirm s.135")
-    if turnover_cr >= CSR_TURNOVER_CR.value:
-        return Field(True, Source.DERIVED, 0.80,
-                     f"turnover >= Rs.{CSR_TURNOVER_CR.value}cr (s.135)")
-    return Field(None, Source.DEFAULT_UNKNOWN, 0.0,
-                 "below turnover trigger; check net worth/profit")
+                     f"below the limbs we know; need {' / '.join(unknown)} "
+                     "to rule s.135 out")
+    return Field(False, Source.DERIVED, 0.80,
+                 "all three s.135(1) limbs below their triggers")
 
 
 # ---------------------------------------------------------------------------
@@ -328,9 +348,17 @@ SOFT_FLAGS = ["has_foreign_investment", "has_nonresident_payments",
               "has_msme_dues", "has_sbo", "has_capital_changes", "has_ecb", "has_odi",
               "has_eligible_bonus_employees", "does_digital_lending",
               "has_dlg_arrangements", "has_floating_rate_retail", "is_secured_lender",
-              "is_large_corporate", "has_borrowings", "is_isd"]
+              "is_large_corporate", "has_borrowings", "is_isd", "has_eq_levy"]
 
 # Targeted one-line follow-ups for gap fields (LLM may rephrase conversationally).
+#
+# Every SOFT_FLAG must appear here. A flag with no question is not a small gap:
+# nobody is ever asked, so the obligation it gates sits in NEEDS_REVIEW forever
+# and the customer is never told which way it went. Eight flags were in exactly
+# that state — CHG-1/CHG-4, CERSAI, DLG cap, bonus, ISD, Large Corporate and
+# equalisation levy — which is 9 of 107 obligations undecidable for a customer
+# who answered every question we put in front of them. test_segment_coverage.py
+# now fails if a flag loses its question.
 FOLLOWUP_TEXT = {
     "turnover_cr": "What was your turnover last financial year?",
     "employee_count": "How many employees do you have?",
@@ -345,10 +373,27 @@ FOLLOWUP_TEXT = {
     "has_capital_changes": "Have you issued or transferred shares this year?",
     "has_ecb": "Any External Commercial Borrowings (ECB)?",
     "has_odi": "Any overseas direct investments (JV/WOS)?",
-    "csr_applicable": "What is your net worth / net profit? (to confirm CSR applicability)",
+    # CSR is derived, so we ask for the limbs rather than for the conclusion —
+    # same pattern as esi_applicable (asked via employee_count) and gst_scheme.
+    "net_worth_cr": "What is your net worth? (s.135 CSR limb)",
+    "net_profit_cr": "What was your net profit last financial year? (s.135 CSR limb)",
     "has_floating_rate_retail": "Do you offer floating-rate retail loans?",
     "does_digital_lending": "Do you lend through digital channels / apps?",
+    "has_borrowings": "Do you have borrowings secured by a charge on company assets?",
+    "is_secured_lender": "Do you lend against security (property, vehicles, receivables)?",
+    "has_dlg_arrangements": "Any Default Loss Guarantee (DLG/FLDG) arrangements with "
+                            "lending partners?",
+    "has_eligible_bonus_employees": "Any employees drawing wages under the Payment of "
+                                    "Bonus Act ceiling?",
+    "is_isd": "Are you registered as an Input Service Distributor (ISD) under GST?",
+    "is_large_corporate": "Are you a Large Corporate under the SEBI borrowing framework?",
+    "has_eq_levy": "Do you pay non-resident digital / e-commerce service providers?",
 }
+
+
+# Derived field -> the asked fields it is computed from. Used to route a
+# derived field's gap-ranking weight onto the questions that actually resolve it.
+DERIVED_INPUTS = {"csr_applicable": ("net_worth_cr", "net_profit_cr")}
 
 
 def field_yield(library: dict) -> dict:
@@ -365,6 +410,12 @@ def field_yield(library: dict) -> dict:
     out = Counter()
     for k, c in raw.items():
         out[alias.get(k, k)] += c
+    # A derived field is never asked for directly, so its yield has to flow to
+    # the inputs we *do* ask for — otherwise the net-worth and net-profit
+    # questions score 0, sort last, and get cut before the customer sees them.
+    for derived, inputs in DERIVED_INPUTS.items():
+        for field_name in inputs:
+            out[field_name] += out.get(derived, 0)
     return dict(out)
 
 
@@ -401,6 +452,8 @@ def extract_profile(raw: dict, library: dict | None = None) -> dict:
     # asked-directly fields
     F["asset_size_cr"] = parse_amount_cr(raw.get("asset_size"))
     F["turnover_cr"] = parse_amount_cr(raw.get("turnover"))
+    F["net_worth_cr"] = parse_amount_cr(raw.get("net_worth"))
+    F["net_profit_cr"] = parse_amount_cr(raw.get("net_profit"))
     F["deposit_taking"] = normalize_bool(raw.get("deposit_taking"))
     F["is_listed"] = normalize_bool(raw.get("is_listed"))
     F["has_listed_debt"] = normalize_bool(raw.get("has_listed_debt"))
@@ -423,7 +476,9 @@ def extract_profile(raw: dict, library: dict | None = None) -> dict:
     F["gst_scheme"] = (derive_gst_scheme(F["turnover_cr"].value)
                        if F["gst_registered"].value else
                        Field(None, Source.DEFAULT_UNKNOWN, 0.0, "not GST-registered"))
-    F["csr_applicable"] = derive_csr(F["turnover_cr"].value)
+    F["csr_applicable"] = derive_csr(F["turnover_cr"].value,
+                                     F["net_worth_cr"].value,
+                                     F["net_profit_cr"].value)
 
     # soft flags: take if explicitly provided, else leave unknown for review
     for flag in SOFT_FLAGS:

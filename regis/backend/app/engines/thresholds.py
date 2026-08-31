@@ -143,9 +143,39 @@ CSR_TURNOVER_CR = Threshold(
     unit="INR crore",
     source="Companies Act, 2013 — s.135(1)",
     lookup=MCA_ACT,
-    note="Turnover limb only. s.135 also triggers on net worth (Rs.500cr) and "
-         "net profit (Rs.5cr); derive_csr currently tests turnover alone and "
-         "returns DEFAULT_UNKNOWN below it, so the other two limbs are unmodelled.",
+    note="Turnover limb of s.135(1). The section triggers on ANY of three limbs — "
+         "turnover, net worth, net profit — so all three are declared here and "
+         "derive_csr ORs them. Testing turnover alone made CSR undecidable for "
+         "every company below Rs.1000cr turnover, which is most of the "
+         "growth-stage segment: a Rs.80cr-turnover NBFC earning over Rs.5cr net "
+         "profit is in scope via the profit limb and was being shown as unknown.",
+)
+
+CSR_NET_WORTH_CR = Threshold(
+    key="csr_net_worth_cr",
+    source_id="companies_act_2013_s135",
+    value=500,
+    unit="INR crore",
+    source="Companies Act, 2013 — s.135(1)",
+    lookup=MCA_ACT,
+    note="Net-worth limb of s.135(1). Independent of the turnover and net-profit "
+         "limbs — any one of the three triggers CSR. Shares the Rs.500cr figure "
+         "with NDSI_ASSET_CR by coincidence of drafting, not by reference; the "
+         "two move independently and must never be collapsed into one constant.",
+)
+
+CSR_NET_PROFIT_CR = Threshold(
+    key="csr_net_profit_cr",
+    source_id="companies_act_2013_s135",
+    value=5,
+    unit="INR crore",
+    source="Companies Act, 2013 — s.135(1)",
+    lookup=MCA_ACT,
+    note="Net-profit limb of s.135(1). This is the limb that actually catches "
+         "profitable growth-stage NBFCs, which is why modelling turnover alone "
+         "under-reported CSR for the launch segment. Reviewer: confirm whether "
+         "'net profit' here is the s.198 computed figure rather than PAT, and "
+         "whether the immediately-preceding-financial-year test applies.",
 )
 
 # ---------------------------------------------------------------------------
@@ -189,6 +219,8 @@ ALL: tuple[Threshold, ...] = (
     SBR_MIDDLE_LAYER_ASSET_CR,
     NDSI_ASSET_CR,
     CSR_TURNOVER_CR,
+    CSR_NET_WORTH_CR,
+    CSR_NET_PROFIT_CR,
     GST_QRMP_TURNOVER_CR,
     ESI_EMPLOYEE_COUNT,
 )

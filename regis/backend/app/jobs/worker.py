@@ -26,10 +26,11 @@ from app.core.db import SessionLocal, set_tenant
 from app.core.logging import bind, configure_logging, get_logger
 from app.models.compliance import ObligationInstance
 from app.models.tenancy import Organization
+from app.engines.statuses import OPEN_STATUSES
 
 log = get_logger(__name__)
 
-_OPEN = ("pending", "in_progress", "ready_for_review")
+_OPEN = OPEN_STATUSES
 
 
 def _for_each_org(job: str, fn: Callable[[Session, object, date], int],

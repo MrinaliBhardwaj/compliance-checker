@@ -22,13 +22,12 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.engines.statuses import INSTANCE_STATUSES as _INSTANCE_STATUSES
 from app.models.base import Base, created_at_col, uuid_pk
 
-# obligation_instances.status values (mirrors the instance-generator state machine)
-INSTANCE_STATUSES = (
-    "pending", "in_progress", "ready_for_review",
-    "completed", "overdue", "not_applicable",
-)
+# obligation_instances.status values — declared in app.engines.statuses so the
+# engines, the lifecycle state machine and the nightly sweep cannot drift apart.
+INSTANCE_STATUSES = _INSTANCE_STATUSES
 
 
 class CompanyObligation(Base):

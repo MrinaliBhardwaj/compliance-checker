@@ -222,3 +222,34 @@ unchanged; everything here is about decision-making, trust and error prevention.
   sideways — due date and status, the two columns a decision needs, were off the
   right edge. Risk is hidden there because priority already encodes it. Verified
   the document cannot pan horizontally.
+
+## 2026-09-02 — Regis mirrored into Figma
+
+- **File:** `https://www.figma.com/design/8qMVRhvaHKN41AHP72kx86/` — pages `01 Foundations`,
+  `02 Components`, `03 Screens`. The code remains the source of truth; the Figma file
+  is a mirror of it, not a parallel design that can drift on its own.
+- **The design system was built from `app/globals.css`, not from a community UI kit.**
+  The file had no libraries attached and the codebase has no Code Connect files, so
+  there was nothing to reuse. Importing someone else's kit would have misrepresented
+  the product. 27 colour variables (collection **Ledger**, Light + Dark modes) and 14
+  text styles are transcribed verbatim from the CSS custom properties.
+- **Every colour is variable-bound, never hardcoded.** `Obligations — Tracker (Dark)`
+  is the same frame with the collection mode flipped to Dark — it proves the bindings
+  are real and mirrors what `data-theme="dark"` does in the app. If a token changes in
+  `globals.css`, update the matching Figma variable rather than recolouring frames.
+- **Components:** Badge (6 tones), Priority (4 bands), Button (5 styles × 2 sizes),
+  Chip, Input, Nav item, Risk meter, Avatar, Sidebar, TopBar. Screens are composed from
+  instances, so a component edit propagates. The sidebar's active item is set per screen
+  via the `State` variant on the nested `nav/*` instance.
+- **Fonts:** Inter and JetBrains Mono, matching `--font` and `--mono`. Verified by
+  reading back all 1,067 text nodes — no fallback families present.
+- **Plugin API traps worth remembering** (all three cost a rebuild here):
+  1. `resize()` **resets both axis sizing modes to FIXED**, so it must be called
+     *before* setting `primaryAxisSizingMode` / `counterAxisSizingMode`, not after.
+  2. On a **vertical** auto-layout, `primaryAxisSizingMode` is the *height* and
+     `counterAxisSizingMode` is the *width* — easy to swap and it silently clips.
+  3. Making a `COMPONENT_SET` auto-layout squeezes its variants to the narrowest
+     common width and truncates their labels. Leave sets non-auto-layout and position
+     variants manually.
+  4. `node.screenshot()` does not render absolutely-positioned overlays (a modal scrim
+     looked absent when it was correct). Use the `get_screenshot` tool to verify those.

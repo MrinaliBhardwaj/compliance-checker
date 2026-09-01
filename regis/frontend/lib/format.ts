@@ -130,3 +130,91 @@ export function initials(nameOrEmail: string): string {
 export function pluralize(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
+
+/* ===========================================================================
+   Triage priority.
+   ---------------------------------------------------------------------------
+   The product used to answer "how many problems do you have?" and never "which
+   one first?". Sorting 109 overdue items by date alone puts a 153-day-late
+   board minute above a 3-day-late RBI return, which inverts real exposure.
+
+   This is deterministic and explained in the UI (see the Definition tooltip on
+   the Priority column). It deliberately uses only fields the tracker list
+   endpoint actually returns — risk level, status and due date. Penalty text
+   lives on the detail record only, so it is NOT part of the score and we do not
+   claim it is.
+   =========================================================================== */
+
+export type PriorityBand = "critical" | "high" | "medium" | "low";
+
+export interface Priority {
+  score: number;
+  band: PriorityBand;
+  /** Plain-language reason, shown on hover and to screen readers. */
+  why: string;
+}
+
+const RISK_WEIGHT: Record<string, number> = { high: 3, medium: 2, low: 1 };
+
+export function priorityOf(i: { risk_level: string; status: string; due_date: string | null }): Priority {
+  const risk = RISK_WEIGHT[(i.risk_level || "low").toLowerCase()] ?? 1;
+  const riskWord = (i.risk_level || "low").toLowerCase();
+  const n = daysFromToday(i.due_date);
+
+  let pressure = 0.5;
+  let timeWord = "not due for a while";
+
+  if (i.status === "completed" || i.status === "not_applicable") {
+    return { score: 0, band: "low", why: "Closed — no action outstanding." };
+  }
+
+  if (i.status === "overdue" || (n !== null && n < 0)) {
+    const late = Math.abs(n ?? 0);
+    // Lateness matters with diminishing returns: something 400 days late is worse
+    // than something 30 days late, but not 13× worse, and letting raw lateness
+    // dominate would bury a fresh high-risk breach under ancient housekeeping.
+    //
+    // A hard cap was tried first and was wrong: on a real portfolio where most
+    // overdue items are months old, every one of them pinned to the same score
+    // and the ranking stopped discriminating at exactly the moment it was needed.
+    // A log curve keeps compressing the tail without ever flattening it.
+    pressure = 3 + Math.log10(1 + late / 7) * 1.5;
+    timeWord = `${late} ${late === 1 ? "day" : "days"} past its statutory date`;
+  } else if (i.status === "ready_for_review") {
+    pressure = 1.5;
+    timeWord = "submitted and waiting on a checker";
+  } else if (n !== null && n <= 3) {
+    pressure = 2.5;
+    timeWord = n === 0 ? "due today" : `due in ${n} ${n === 1 ? "day" : "days"}`;
+  } else if (n !== null && n <= 7) {
+    pressure = 2;
+    timeWord = `due in ${n} days`;
+  } else if (n !== null && n <= 30) {
+    pressure = 1;
+    timeWord = `due in ${n} days`;
+  }
+
+  const score = Math.round(risk * pressure * 10) / 10;
+  const band: PriorityBand =
+    score >= 9 ? "critical" : score >= 6 ? "high" : score >= 3 ? "medium" : "low";
+  // Note: on a badly lapsed portfolio most open items legitimately land in
+  // "critical". That is the honest reading, and the score — not the band — is
+  // what orders the queue.
+
+  return { score, band, why: `${riskWord} risk, ${timeWord}.` };
+}
+
+export const PRIORITY_LABEL: Record<PriorityBand, string> = {
+  critical: "Critical", high: "High", medium: "Medium", low: "Low",
+};
+export const PRIORITY_TONE: Record<PriorityBand, Tone> = {
+  critical: "crit", high: "warn", medium: "info", low: "neutral",
+};
+
+/** The formula, stated once so the UI and any explanation stay in sync. */
+export const PRIORITY_EXPLAINER =
+  "Priority = risk weight (high 3, medium 2, low 1) × time pressure. Time pressure is "
+  + "3 + log(lateness) for anything overdue, so older breaches always rank higher but "
+  + "with diminishing returns; 2.5 if due within 3 days, 2 within a week, 1 within a "
+  + "month, 1.5 while awaiting review. Closed items score 0. Penalty wording is not "
+  + "part of the score — it lives on the obligation record, not the list.";

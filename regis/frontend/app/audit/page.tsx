@@ -7,8 +7,11 @@
 //  • Reasons recorded against an action are shown inline. The reason a filing
 //    was rejected or an evidence gate overridden is the most audit-relevant
 //    field in the record, and it was invisible.
-//  • Overrides and blocked actions are visually distinct — they're what an
-//    inspector looks for first.
+//  • Overrides and blocked actions are visually distinct AND filterable. An
+//    inspection opens with "show me every evidence override"; tinting those
+//    rows red is no help when they are on page 7 of 40. Exceptions are
+//    filtered client-side over the fetched page because the API has no such
+//    parameter — the count is therefore labelled "on this page", not total.
 //  • Keyset paging keeps its position label, and filters no longer silently
 //    reset the offset out from under you.
 import { useQuery } from "@tanstack/react-query";
@@ -40,6 +43,19 @@ function toneFor(e: AuditEvent): Tone {
   }
   if (/uploaded|linked|accepted|generated|invited/.test(e.action)) return "good";
   return "neutral";
+}
+
+/**
+ * The events an inspector asks for first: an evidence gate overridden, an action
+ * the system blocked, a submission sent back, or a member removed. Everything
+ * else is routine activity.
+ */
+function isException(e: AuditEvent): boolean {
+  if (e.action.endsWith("_blocked")) return true;
+  if (e.meta?.override_evidence) return true;
+  if (e.action.includes("removed")) return true;
+  if (e.action === "instance_status_change" && String(e.meta?.action ?? "") === "reject") return true;
+  return false;
 }
 
 function detailOf(e: AuditEvent): string | null {
@@ -78,6 +94,7 @@ function Audit() {
   const [since, setSince] = useState("");
   const [until, setUntil] = useState("");
   const [offset, setOffset] = useState(0);
+  const [exceptionsOnly, setExceptionsOnly] = useState(false);
 
   const catalog = useQuery({
     queryKey: ["audit-catalog"], queryFn: getAuditCatalog, enabled: allowed, staleTime: 600_000,
@@ -91,7 +108,9 @@ function Audit() {
     enabled: allowed,
   });
 
-  const events = page.data?.events ?? [];
+  const allEvents = page.data?.events ?? [];
+  const exceptionCount = allEvents.filter(isException).length;
+  const events = exceptionsOnly ? allEvents.filter(isException) : allEvents;
   const hasMore = page.data?.has_more ?? false;
   const optionGroups = useMemo(
     () => Object.entries(catalog.data?.groups ?? {}), [catalog.data]);
@@ -113,7 +132,7 @@ function Audit() {
     return [7, 30, 90].includes(diff) ? diff : null;
   }, [since, until]);
 
-  const filtersActive = !!(action || q || since || until);
+  const filtersActive = !!(action || q || since || until || exceptionsOnly);
 
   if (!allowed) {
     return (
@@ -172,6 +191,13 @@ function Audit() {
             </select>
           </label>
 
+          <button className="chip" aria-pressed={exceptionsOnly}
+            onClick={() => setExceptionsOnly((v) => !v)}
+            title="Evidence overrides, blocked actions, rejections and member removals">
+            <IconAlert size={12} /> Exceptions
+            <span className="n num">{exceptionCount}</span>
+          </button>
+
           <div className="segmented" role="group" aria-label="Quick date range">
             {([[7, "7d"], [30, "30d"], [90, "90d"], [null, "All"]] as const).map(([d, label]) => (
               <button key={label} aria-pressed={activeDays === d || (d === null && !since && !until)}
@@ -193,7 +219,7 @@ function Audit() {
           </label>
           {filtersActive && (
             <button className="btn sm ghost" onClick={() => change(() => {
-              setAction(""); setQInput(""); setSince(""); setUntil("");
+              setAction(""); setQInput(""); setSince(""); setUntil(""); setExceptionsOnly(false);
             })}>Clear</button>
           )}
         </div>
@@ -204,13 +230,16 @@ function Audit() {
         </div>}
 
         {page.data && events.length === 0 && (
-          <Empty icon={<IconSearch size={16} />} title="No matching events"
-            hint={filtersActive
-              ? "Widen the date range or clear a filter."
-              : "Activity appears here as soon as anyone acts in this workspace."}
+          <Empty icon={exceptionsOnly ? <IconShield size={16} /> : <IconSearch size={16} />}
+            title={exceptionsOnly ? "No exceptions on this page" : "No matching events"}
+            hint={exceptionsOnly
+              ? "No overrides, blocked actions, rejections or removals in the events loaded here. Page back through older events to keep checking."
+              : filtersActive
+                ? "Widen the date range or clear a filter."
+                : "Activity appears here as soon as anyone acts in this workspace."}
             action={filtersActive
               ? <button className="btn" onClick={() => change(() => {
-                  setAction(""); setQInput(""); setSince(""); setUntil("");
+                  setAction(""); setQInput(""); setSince(""); setUntil(""); setExceptionsOnly(false);
                 })}>Clear filters</button>
               : undefined} />
         )}
@@ -283,8 +312,9 @@ function Audit() {
         {page.data && events.length > 0 && (
           <div className="panel-foot between">
             <span className="num">
-              Showing {offset + 1}–{offset + events.length}
-              {!hasMore && offset === 0 ? " (all events)" : ""}
+              {exceptionsOnly
+                ? `${events.length} exception${events.length === 1 ? "" : "s"} in events ${offset + 1}–${offset + allEvents.length}`
+                : `Showing ${offset + 1}–${offset + events.length}${!hasMore && offset === 0 ? " (all events)" : ""}`}
             </span>
             <span className="row" style={{ gap: 8 }}>
               <button className="btn sm" disabled={offset === 0}

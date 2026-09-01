@@ -10,25 +10,33 @@
 //  • Every consequential action routes through a labelled dialog with a
 //    validated reason. Those strings become permanent audit records.
 //  • The evidence gate is explained before it blocks you, not after.
+//  • Prev/next walk the list you came from, so triaging 109 overdue items is one
+//    pass rather than 109 open/close cycles. J/K and the arrow keys work too.
+//  • Evidence can be linked from documents already in the repository. Upload was
+//    previously the only path, and de-duplication rejects a second upload — so a
+//    document satisfying three obligations could only ever reach the first.
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   assignInstance, classifyDocument, entityAudit, getInstance, linkDocument, listAssignable,
-  transitionInstance, uploadDocumentProgress,
-  type AuditEvent, type InstanceDetail, type LifecycleAction, type LinkResult, type Member,
+  listDocuments, transitionInstance, uploadDocumentProgress,
+  type AuditEvent, type DocumentRow, type InstanceDetail, type LifecycleAction,
+  type LinkResult, type Member,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { errMessage, useToast } from "@/lib/toast";
 import {
-  fmtDate, fmtDateTime, humanize, relativeDue, relativeTime, ROLE_SHORT,
+  fmtDate, fmtDateTime, humanize, priorityOf, relativeDue, relativeTime, ROLE_SHORT,
 } from "@/lib/format";
 import {
-  IconAlert, IconCheck, IconCheckCircle, IconClock, IconFile, IconPaperclip,
-  IconPlay, IconShield, IconUpload, IconUser, IconBan, IconUndo, IconXCircle,
+  IconAlert, IconCheck, IconCheckCircle, IconClock, IconFile,
+  IconPaperclip, IconPlay, IconSearch, IconShield, IconUpload, IconUser, IconBan,
+  IconUndo, IconXCircle,
 } from "@/components/icons";
 import {
   Avatar, Badge, ConfirmDialog, Disclosure, Empty, ErrorState, Field, InlineLoading,
-  Meter, Note, RiskMeter, Sheet, Skeleton, Spinner, StatusBadge,
+  Meter, Modal, Note, PriorityBadge, RiskMeter, Sheet, Skeleton, Spinner, StatusBadge,
+  useDebounced,
 } from "@/components/ui";
 
 const DOC_TYPES = [
@@ -39,8 +47,16 @@ const DOC_TYPES = [
 
 type Tab = "overview" | "evidence" | "activity";
 
-export default function ObligationSheet({ instanceId, onClose }:
-  { instanceId: string | null; onClose: () => void }) {
+export default function ObligationSheet({
+  instanceId, onClose, siblingIds, onNavigate, contextLabel,
+}: {
+  instanceId: string | null;
+  onClose: () => void;
+  /** The list the user came from, in the order they were reading it. */
+  siblingIds?: string[];
+  onNavigate?: (id: string) => void;
+  contextLabel?: string;
+}) {
   const qc = useQueryClient();
   const [tab, setTab] = useState<Tab>("overview");
 
@@ -49,6 +65,31 @@ export default function ObligationSheet({ instanceId, onClose }:
     queryFn: () => getInstance(instanceId as string),
     enabled: !!instanceId,
   });
+
+  // Position in the list the user was reading, so "next" is predictable and the
+  // sheet can say how much is left.
+  const idx = instanceId && siblingIds ? siblingIds.indexOf(instanceId) : -1;
+  const hasNav = idx >= 0 && !!onNavigate && (siblingIds?.length ?? 0) > 1;
+  const go = useCallback((delta: number) => {
+    if (!hasNav || !siblingIds || !onNavigate) return;
+    const next = siblingIds[idx + delta];
+    if (next) onNavigate(next);
+  }, [hasNav, siblingIds, onNavigate, idx]);
+
+  // Arrow keys move through the list. Escape is already handled by the Sheet,
+  // and text inputs are excluded so typing a reason doesn't navigate away.
+  useEffect(() => {
+    if (!instanceId || !hasNav) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(t.tagName) || t.isContentEditable) return;
+      const k = e.key.toLowerCase();
+      if (e.key === "ArrowDown" || k === "j") { e.preventDefault(); go(1); }
+      if (e.key === "ArrowUp" || k === "k") { e.preventDefault(); go(-1); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [instanceId, hasNav, go]);
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["instance", instanceId] });
@@ -63,7 +104,12 @@ export default function ObligationSheet({ instanceId, onClose }:
     <Sheet
       open={!!instanceId}
       onClose={onClose}
-      title={d ? <SheetTitle d={d} /> : <Skeleton w={260} h={16} />}
+      title={d ? (
+        <SheetTitle d={d} nav={hasNav ? {
+          index: idx, total: siblingIds!.length, contextLabel,
+          onPrev: () => go(-1), onNext: () => go(1),
+        } : undefined} />
+      ) : <Skeleton w={260} h={16} />}
       tabs={d ? (
         <div className="tabs" role="tablist" aria-label="Obligation detail sections">
           {([
@@ -79,7 +125,10 @@ export default function ObligationSheet({ instanceId, onClose }:
           ))}
         </div>
       ) : undefined}
-      footer={d ? <ActionFooter d={d} onChanged={refresh} /> : undefined}
+      footer={d ? (
+        <ActionFooter d={d} onChanged={refresh}
+          onAdvance={hasNav && idx < (siblingIds!.length - 1) ? () => go(1) : undefined} />
+      ) : undefined}
     >
       {detail.isLoading && (
         <div className="stack">
@@ -96,12 +145,34 @@ export default function ObligationSheet({ instanceId, onClose }:
 
 /* ================================================================== header */
 
-function SheetTitle({ d }: { d: InstanceDetail }) {
+interface SheetNav {
+  index: number; total: number; contextLabel?: string;
+  onPrev: () => void; onNext: () => void;
+}
+
+function SheetTitle({ d, nav }: { d: InstanceDetail; nav?: SheetNav }) {
   const rel = relativeDue(d.due_date);
+  const p = priorityOf(d);
   return (
     <div style={{ minWidth: 0 }}>
+      {nav && (
+        <div className="between" style={{ marginBottom: 7, gap: 8 }}>
+          <span className="sheet-pos">
+            {nav.index + 1} of {nav.total}
+            {nav.contextLabel ? ` in ${nav.contextLabel}` : ""}
+          </span>
+          <span className="sheet-nav">
+            <button className="btn sm ghost" onClick={nav.onPrev} disabled={nav.index === 0}
+              aria-label="Previous obligation" title="Previous (K or ↑)">↑</button>
+            <button className="btn sm ghost" onClick={nav.onNext}
+              disabled={nav.index >= nav.total - 1}
+              aria-label="Next obligation" title="Next (J or ↓)">↓</button>
+          </span>
+        </div>
+      )}
       <div className="row-wrap" style={{ gap: 6, marginBottom: 5 }}>
         <StatusBadge status={d.status} />
+        <PriorityBadge p={p} />
         <RiskMeter level={d.risk_level} />
         {d.verification_status !== "VERIFIED" && (
           <Badge tone="warn" title="Rests on a DRAFT_UNVERIFIED library entry.">Provisional</Badge>
@@ -325,6 +396,7 @@ function EvidenceTab({ d, onChanged }: { d: InstanceDetail; onChanged: () => voi
   const [docType, setDocType] = useState("FILING_ACK");
   const [period, setPeriod] = useState(d.period_label);
   const [linkResult, setLinkResult] = useState<LinkResult | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const canUpload = can("upload_evidence");
 
   const doLink = async (docId: string, override = false) => {
@@ -426,6 +498,15 @@ function EvidenceTab({ d, onChanged }: { d: InstanceDetail; onChanged: () => voi
         <Note tone="mute">Your role can view evidence but not attach it.</Note>
       ) : (
         <>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn" onClick={() => setPickerOpen(true)}>
+              <IconSearch size={13} /> Link an existing document
+            </button>
+            <span className="micro faint">
+              Already uploaded? Link it — one document can satisfy several obligations.
+            </span>
+          </div>
+
           <button type="button" className={`dropzone ${drag ? "drag" : ""}`}
             onClick={() => fileRef.current?.click()}
             onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
@@ -535,9 +616,136 @@ function EvidenceTab({ d, onChanged }: { d: InstanceDetail; onChanged: () => voi
               </div>
             </div>
           )}
+
+          <ExistingDocumentPicker
+            open={pickerOpen} onClose={() => setPickerOpen(false)}
+            alreadyLinked={new Set(d.linked_documents.map((x) => x.id))}
+            required={d.completeness.required}
+            onPick={async (docId) => {
+              setPickerOpen(false);
+              setPendingDoc(null);
+              await doLink(docId);
+            }}
+          />
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * Picks a document already in the repository and links it to this obligation.
+ *
+ * This closes a genuine dead end: uploads are de-duplicated on content hash, so
+ * a second upload of a document that satisfies several obligations is rejected —
+ * and nothing in the UI reached linkDocument() for an existing file. Documents
+ * whose type matches an outstanding requirement are surfaced first, because that
+ * is nearly always what the user came looking for.
+ */
+function ExistingDocumentPicker({ open, onClose, onPick, alreadyLinked, required }: {
+  open: boolean; onClose: () => void; onPick: (docId: string) => Promise<void>;
+  alreadyLinked: Set<string>; required: [string, string][];
+}) {
+  const [qInput, setQInput] = useState("");
+  const q = useDebounced(qInput, 180);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  const docs = useQuery({ queryKey: ["documents"], queryFn: listDocuments, enabled: open });
+  const wantedTypes = useMemo(() => new Set(required.map(([, t]) => t)), [required]);
+
+  const rows = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const list = (docs.data ?? []).filter((doc) => {
+      if (alreadyLinked.has(doc.id)) return false;
+      if (!needle) return true;
+      return (doc.file_name ?? "").toLowerCase().includes(needle)
+        || (doc.ai_doc_type ?? "").toLowerCase().includes(needle);
+    });
+    // Documents matching an outstanding requirement come first.
+    return list.sort((a, b) => {
+      const am = a.ai_doc_type && wantedTypes.has(a.ai_doc_type) ? 0 : 1;
+      const bm = b.ai_doc_type && wantedTypes.has(b.ai_doc_type) ? 0 : 1;
+      return am - bm || (a.file_name ?? "").localeCompare(b.file_name ?? "");
+    });
+  }, [docs.data, q, alreadyLinked, wantedTypes]);
+
+  return (
+    <Modal open={open} onClose={onClose} width={560}
+      title="Link an existing document"
+      description="Documents already held for this entity. Linking runs the same validation checks as an upload."
+      footer={<button className="btn" onClick={onClose}>Close</button>}>
+      <div className="stack-sm">
+        <Field label="Search the repository">
+          {(fp) => (
+            <input className="input" value={qInput} autoFocus
+              onChange={(e) => setQInput(e.target.value)}
+              placeholder="File name or document type…" {...fp} />
+          )}
+        </Field>
+
+        {docs.isLoading && <InlineLoading label="Loading the repository…" />}
+        {docs.isError && <ErrorState error={docs.error} onRetry={docs.refetch} />}
+
+        {docs.data && rows.length === 0 && (
+          <Empty icon={<IconFile size={16} />}
+            title={q.trim() ? "No documents match" : "Nothing left to link"}
+            hint={q.trim()
+              ? "Try a different file name or document type."
+              : "Every document in the repository is already linked here. Upload a new one instead."} />
+        )}
+
+        {rows.length > 0 && (
+          <div className="tbl-wrap" style={{ maxHeight: 320, overflowY: "auto" }}>
+            <table className="tbl">
+              <caption className="sr-only">Documents available to link</caption>
+              <tbody>
+                {rows.slice(0, 40).map((doc: DocumentRow) => {
+                  const matches = !!doc.ai_doc_type && wantedTypes.has(doc.ai_doc_type);
+                  const unclassified = !doc.ai_doc_type || doc.processing_status !== "done";
+                  return (
+                    <tr key={doc.id}>
+                      <td>
+                        <span className="row" style={{ gap: 8 }}>
+                          <IconFile size={13} style={{ color: "var(--ink-3)", flex: "none" }} />
+                          <span style={{ minWidth: 0 }}>
+                            <span className="truncate" style={{ display: "block", maxWidth: 250 }}>
+                              {doc.file_name ?? "Untitled document"}
+                            </span>
+                            <span className="micro faint">
+                              {doc.ai_doc_type
+                                ? humanize(doc.ai_doc_type)
+                                : "Unclassified — classify it before it can satisfy a requirement"}
+                            </span>
+                          </span>
+                        </span>
+                      </td>
+                      <td className="tight">
+                        {matches && <Badge tone="good" dot>Satisfies a requirement</Badge>}
+                      </td>
+                      <td className="tight" style={{ textAlign: "right" }}>
+                        <button className="btn sm" disabled={busyId !== null || unclassified}
+                          title={unclassified
+                            ? "Classify this document on the Evidence page before linking it"
+                            : undefined}
+                          onClick={async () => {
+                            setBusyId(doc.id);
+                            try { await onPick(doc.id); } finally { setBusyId(null); }
+                          }}>
+                          {busyId === doc.id ? <Spinner /> : "Link"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {rows.length > 40 && (
+          <div className="micro faint">Showing the first 40 — narrow the search to see more.</div>
+        )}
+      </div>
+    </Modal>
   );
 }
 
@@ -629,11 +837,28 @@ function describe(e: AuditEvent): { text: string; tone: "crit" | "good" | "warn"
  * status and role, so the same obligation reads differently to a preparer and
  * to a checker — which is the point.
  */
-function ActionFooter({ d, onChanged }: { d: InstanceDetail; onChanged: () => void }) {
+function ActionFooter({ d, onChanged, onAdvance }: {
+  d: InstanceDetail; onChanged: () => void; onAdvance?: () => void;
+}) {
   const { can, role } = useAuth();
   const toast = useToast();
   const [busy, setBusy] = useState<string | null>(null);
   const [dialog, setDialog] = useState<null | "reject" | "mark_na" | "override" | "reopen">(null);
+
+  // Approve and mark-N/A are reversible through reopen, so they are offered with
+  // an Undo rather than a point of no return. Reopen itself is admin-only, so
+  // the affordance only appears for someone who could actually use it.
+  const undo = async (what: string) => {
+    try {
+      await transitionInstance(d.id, "reopen", {
+        reason: `Undo — ${what} reversed by the same user immediately after the action.`,
+      });
+      toast.ok("Reopened", "The obligation is back in the active queue.");
+      onChanged();
+    } catch (e) {
+      toast.err("Couldn’t undo that", errMessage(e));
+    }
+  };
 
   const act = async (action: LifecycleAction,
                      body: { override_evidence?: boolean; reason?: string } = {},
@@ -641,9 +866,17 @@ function ActionFooter({ d, onChanged }: { d: InstanceDetail; onChanged: () => vo
     setBusy(action);
     try {
       await transitionInstance(d.id, action, body);
-      toast.ok(success ?? "Updated");
+      const reversible = (action === "approve" || action === "mark_na") && can("reopen");
+      toast.ok(
+        success ?? "Updated",
+        undefined,
+        reversible ? { label: "Undo", onClick: () => void undo(success ?? "the change") } : undefined,
+      );
       setDialog(null);
       onChanged();
+      // Terminal actions finish this item, so move the user to the next one
+      // rather than leaving them staring at something they just closed.
+      if (action === "approve" || action === "mark_na" || action === "reject") onAdvance?.();
     } catch (e) {
       toast.err("Couldn’t complete that action", errMessage(e));
     } finally { setBusy(null); }

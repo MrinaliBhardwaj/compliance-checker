@@ -321,3 +321,37 @@ export const bulkAssign = (ids: string[], owner_user_id: string) =>
     try { await assignInstance(id, owner_user_id); return { id, ok: true }; }
     catch (e) { return { id, ok: false, error: e instanceof Error ? e.message : "Failed" }; }
   });
+
+// ---- evidence-gate preflight ----
+// Bulk approve used to promise "N obligations will be changed" and then watch
+// every one of them fail, because eligibility was computed from status alone
+// while the server also enforces an evidence gate. The list endpoint carries no
+// completeness, so the only honest fix is to ask per instance before confirming.
+export const getCompleteness = (id: string) =>
+  req<Completeness>(`/obligations/instances/${id}/completeness`);
+
+export interface GateCheck {
+  id: string;
+  /** Undefined when the check itself failed — treated as unknown, never as pass. */
+  completeness?: Completeness;
+  error?: string;
+}
+
+export const checkEvidenceGates = (ids: string[]) =>
+  pool2(ids, 5, async (id): Promise<GateCheck> => {
+    try { return { id, completeness: await getCompleteness(id) }; }
+    catch (e) { return { id, error: e instanceof Error ? e.message : "Check failed" }; }
+  });
+
+async function pool2<T, R>(items: T[], limit: number, run: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = [];
+  let cursor = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      out.push(await run(items[i]));
+    }
+  }));
+  return out;
+}

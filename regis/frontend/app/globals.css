@@ -703,3 +703,84 @@ tr[data-urgency="review"]  td.rail::before { background: var(--info); }
 @media (max-width: 900px) { .auth-aside { display: none; } }
 .auth-main { display: grid; place-items: center; padding: 32px 24px; }
 .auth-form { width: 100%; max-width: 372px; }
+
+/* ------------------------------------------------------------- priority --- */
+/* Band + score together: the number is the sortable truth, the dot is the
+   glance. Never colour alone — the label and the score both encode it. */
+.prio { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; white-space: nowrap; }
+.prio-dot { width: 6px; height: 6px; border-radius: 2px; flex: none; background: var(--rule-2); }
+.prio[data-band="critical"] .prio-dot { background: var(--crit-solid); }
+.prio[data-band="high"]     .prio-dot { background: var(--warn); }
+.prio[data-band="medium"]   .prio-dot { background: var(--info); }
+.prio-label { font-weight: 550; color: var(--ink-2); }
+.prio[data-band="critical"] .prio-label { color: var(--crit); font-weight: 650; }
+.prio[data-band="high"]     .prio-label { color: var(--warn); font-weight: 600; }
+.prio-score { color: var(--ink-3); font-size: 10.5px; }
+
+/* -------------------------------------------------- sheet triage controls -- */
+.sheet-nav { display: flex; align-items: center; gap: 4px; }
+.sheet-pos { font-size: 11.5px; color: var(--ink-3); white-space: nowrap; padding: 0 2px; }
+
+/* Row currently open in the sheet — keeps the reader's place in a long list. */
+.tbl tr[data-open="true"] td { background: var(--accent-wash); }
+.tbl tr[data-open="true"] td:first-child { box-shadow: inset 2px 0 0 var(--accent); }
+
+/* --------------------------------------------------- mobile stacked rows --- */
+/* Below 700px a 8-column table pushes due date and status — the two columns a
+   decision actually needs — off the right edge. The row restructures into two
+   lines instead of scrolling sideways. */
+@media (max-width: 700px) {
+  .tbl-wrap.stack-sm-screen { overflow-x: visible; }
+  .tbl.stackable thead { display: none; }
+  .tbl.stackable, .tbl.stackable tbody, .tbl.stackable tr, .tbl.stackable td { display: block; }
+  .tbl.stackable tbody tr {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 5px 12px;
+    padding: 10px 12px; border-bottom: 1px solid var(--rule); background: var(--surface);
+  }
+  .tbl.stackable tbody tr[data-urgency="overdue"] { box-shadow: inset 2px 0 0 var(--crit-solid); }
+  .tbl.stackable tbody tr[data-urgency="soon"]    { box-shadow: inset 2px 0 0 var(--warn); }
+  .tbl.stackable tbody tr[data-urgency="review"]  { box-shadow: inset 2px 0 0 var(--info); }
+  .tbl.stackable td { border: 0; padding: 0; background: transparent; width: auto; }
+  .tbl.stackable td.rail { padding-left: 0; }
+  .tbl.stackable td.rail::before { display: none; }
+  .tbl.stackable td[data-col="select"]   { order: 1; flex: none; }
+  .tbl.stackable td[data-col="title"]    { order: 2; flex: 1 1 55%; min-width: 0; }
+  .tbl.stackable td[data-col="status"]   { order: 3; flex: none; margin-left: auto; }
+  .tbl.stackable td[data-col="priority"] { order: 4; flex: none; }
+  .tbl.stackable td[data-col="due"]      { order: 5; flex: none; }
+  .tbl.stackable td[data-col="owner"]    { order: 6; flex: none; }
+  /* Priority already encodes risk (its label is derived from it), so the risk
+     column is redundant at this width and only competes for the first line. */
+  .tbl.stackable td[data-col="category"],
+  .tbl.stackable td[data-col="risk"] { display: none; }
+  /* The due cell stacks date over relative text in the table; inline is denser here. */
+  .tbl.stackable td[data-col="due"] > * { display: inline; }
+  .tbl.stackable td[data-col="due"] > * + *::before { content: " · "; color: var(--ink-3); }
+  .tbl.stackable tr.group-row { display: block; padding: 6px 12px; }
+  .tbl.stackable tr.group-row td { display: block; }
+}
+
+/* ---------------------------------------------------- entity context bar --- */
+/* Filing under the wrong legal entity is the most expensive mistake available
+   in this product, so the active entity is stated in the top bar, not tucked
+   into a sidebar footer. */
+.entity-chip {
+  display: inline-flex; align-items: center; gap: 7px; padding: 4px 9px;
+  border: 1px solid var(--rule-2); border-radius: var(--r); background: var(--surface);
+  font-size: 12px; color: var(--ink); max-width: 320px; cursor: default;
+}
+button.entity-chip { cursor: pointer; }
+button.entity-chip:hover { border-color: var(--ink-3); background: var(--surface-2); }
+.entity-chip .ec-label { color: var(--ink-3); font-size: 10.5px; font-weight: 650;
+  letter-spacing: .06em; text-transform: uppercase; flex: none; }
+.entity-chip .ec-name { font-weight: 550; }
+@media (max-width: 700px) { .entity-chip .ec-label { display: none; } }
+
+/* Row activator: a real button so screen readers announce something operable,
+   styled to disappear into the row. The whole row stays clickable for mice. */
+.row-open {
+  border: 0; background: transparent; padding: 0; margin: 0; text-align: left;
+  font: inherit; color: inherit; cursor: pointer; display: block; width: 100%;
+}
+.row-open:hover { text-decoration: underline; text-underline-offset: 2px; }
+.row-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-xs); }

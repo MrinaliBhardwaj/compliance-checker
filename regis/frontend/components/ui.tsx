@@ -15,8 +15,8 @@ import {
   IconAlert, IconCheckCircle, IconChevronDown, IconCheck, IconInfo, IconLock,
   IconMinus, IconSearch, IconX, IconXCircle,
 } from "@/components/icons";
-import type { Tone } from "@/lib/format";
-import { STATUS_META, statusLabel, statusTone } from "@/lib/format";
+import type { PriorityBand, Tone } from "@/lib/format";
+import { PRIORITY_LABEL, STATUS_META, statusLabel, statusTone } from "@/lib/format";
 
 /* ========================================================== overlay plumbing */
 
@@ -149,11 +149,18 @@ export function InlineLoading({ label = "Loading…" }: { label?: string }) {
  * Errors never auto-dismiss and never lose the technical detail — a compliance
  * officer filing a support ticket needs the exact server message.
  */
-export function ErrorState({ error, onRetry, title = "Couldn’t load this" }:
-  { error: unknown; onRetry?: () => void; title?: string }) {
+export function ErrorState({ error, onRetry, title = "Couldn’t load this", deniedWhat, deniedWho }:
+  { error: unknown; onRetry?: () => void; title?: string;
+    deniedWhat?: string; deniedWho?: string }) {
   const [showDetail, setShowDetail] = useState(false);
   const msg = error instanceof Error ? error.message : String(error);
   const status = (error as { status?: number })?.status;
+
+  // A 403 is an answer, not a failure. Retrying it just makes the user wait for
+  // the same refusal, so it renders as a permission state instead of red alarm.
+  if (status === 403) {
+    return <PermissionDenied what={deniedWhat ?? "this"} who={deniedWho ?? "users with a higher role"} />;
+  }
 
   const human = status === 403 ? "You don’t have permission to view this."
     : status === 404 ? "That record no longer exists."
@@ -585,6 +592,51 @@ export function Disclosure({ title, meta, defaultOpen = false, children }: {
       {open && <div className="panel-body" id={id}>{children}</div>}
     </div>
   );
+}
+
+/* =============================================================== priority */
+
+/**
+ * Triage priority. Rendered as a band + numeric score so it sorts meaningfully
+ * and so nobody has to trust a colour: the number and the reason are both there.
+ */
+export function PriorityBadge({ p, compact = false }:
+  { p: { score: number; band: PriorityBand; why: string }; compact?: boolean }) {
+  if (p.score === 0) return <span className="faint" aria-label="No priority — closed">—</span>;
+  return (
+    <span className="prio" data-band={p.band} title={`${PRIORITY_LABEL[p.band]} — ${p.why}`}>
+      <span className="prio-dot" aria-hidden="true" />
+      {!compact && <span className="prio-label">{PRIORITY_LABEL[p.band]}</span>}
+      <span className="prio-score num" aria-hidden="true">{p.score.toFixed(1)}</span>
+      <span className="sr-only">
+        {PRIORITY_LABEL[p.band]} priority, score {p.score.toFixed(1)}. {p.why}
+      </span>
+    </span>
+  );
+}
+
+export function Kbd({ children }: { children: ReactNode }) {
+  return <kbd className="kbd">{children}</kbd>;
+}
+
+/* ============================================================ announcements */
+
+/**
+ * Politely announces transient state that is otherwise only visual — selection
+ * counts, bulk progress, filter results. Sighted users see the bulk bar appear;
+ * without this, screen-reader users get nothing.
+ */
+export function useAnnounce() {
+  const [message, setMessage] = useState("");
+  const announce = useCallback((m: string) => {
+    // Re-announce identical strings by clearing first.
+    setMessage("");
+    window.setTimeout(() => setMessage(m), 30);
+  }, []);
+  const node = (
+    <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">{message}</div>
+  );
+  return { announce, node };
 }
 
 /* ================================================================= re-export */

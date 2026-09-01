@@ -8,8 +8,9 @@
 //  • The health score is defined in the UI. A single number a board might
 //    challenge has to be falsifiable, so the tooltip gives the exact formula
 //    the backend uses and the inputs behind today's value.
-//  • The priority queue carries owner, risk and relative due dates, and every
-//    row opens the same detail sheet the tracker uses.
+//  • The priority queue is ordered by the same explainable triage score the
+//    tracker uses, not by status-then-date. Oldest-overdue is not highest-risk:
+//    a 153-day-late board minute was outranking a 3-day-late RBI return.
 //  • Copilot moved out of a permanent 360px column into a panel that earns its
 //    space — it was occupying the most valuable real estate on the screen while
 //    idle.
@@ -23,7 +24,8 @@ import {
 import { useAuth } from "@/lib/auth";
 import { errMessage, useToast } from "@/lib/toast";
 import {
-  daysFromToday, fmtDate, fmtDateShort, pluralize, relativeDue,
+  daysFromToday, fmtDate, fmtDateShort, PRIORITY_EXPLAINER, priorityOf,
+  pluralize, relativeDue,
 } from "@/lib/format";
 import Shell from "@/components/Shell";
 import Copilot from "@/components/Copilot";
@@ -32,8 +34,8 @@ import {
   IconArrowRight, IconCheckCircle, IconClock, IconDownload, IconList,
 } from "@/components/icons";
 import {
-  Avatar, Badge, Definition, DistBar, Empty, ErrorState, Note, RiskMeter,
-  Skeleton, SkeletonMetrics, SkeletonRows, StatusBadge,
+  Avatar, Badge, Definition, DistBar, Empty, ErrorState, Note, PriorityBadge,
+  RiskMeter, Skeleton, SkeletonMetrics, SkeletonRows, StatusBadge,
 } from "@/components/ui";
 
 export default function DashboardPage() {
@@ -95,16 +97,13 @@ function Today() {
     }
   };
 
-  // Priority order mirrors the tracker's urgency bands so the two screens agree.
-  const order: Record<string, number> = {
-    overdue: 0, ready_for_review: 1, in_progress: 2, pending: 3, completed: 4, not_applicable: 5,
-  };
+  // Same triage score the tracker sorts by, so the two screens never disagree
+  // about what matters most.
   const top = useMemo(() => [...(queue.data ?? [])]
     .filter((i) => !CLOSED.has(i.status))
-    .sort((a, b) => (order[a.status] - order[b.status])
+    .sort((a, b) => priorityOf(b).score - priorityOf(a).score
       || (a.due_date ?? "9999").localeCompare(b.due_date ?? "9999"))
     .slice(0, 10),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [queue.data]);
 
   const unassignedOpen = useMemo(
@@ -332,7 +331,7 @@ function PriorityQueue({ rows, loading, error, onRetry, ownerName, onOpen, canGe
         <div>
           <h3>Priority queue</h3>
           <div className="micro faint" style={{ marginTop: 1 }}>
-            Overdue first, then awaiting review, then by due date
+            <Definition tip={PRIORITY_EXPLAINER}>Ranked by risk and time pressure</Definition>
           </div>
         </div>
         <Link href="/obligations" className="btn sm">
@@ -366,7 +365,7 @@ function PriorityQueue({ rows, loading, error, onRetry, ownerName, onOpen, canGe
             <thead>
               <tr>
                 <th style={{ paddingLeft: 14 }}>Obligation</th>
-                <th className="tight">Risk</th>
+                <th className="tight">Priority</th>
                 <th className="tight">Owner</th>
                 <th className="tight">Due</th>
                 <th className="tight">Status</th>
@@ -391,7 +390,12 @@ function PriorityQueue({ rows, loading, error, onRetry, ownerName, onOpen, canGe
                         {i.form_reference ? <> · <span className="mono">{i.form_reference}</span></> : null}
                       </div>
                     </td>
-                    <td className="tight"><RiskMeter level={i.risk_level} compact /></td>
+                    <td className="tight">
+                      <span className="row" style={{ gap: 8 }}>
+                        <PriorityBadge p={priorityOf(i)} />
+                        <RiskMeter level={i.risk_level} compact />
+                      </span>
+                    </td>
                     <td className="tight">
                       {owner ? (
                         <span className="row" style={{ gap: 6 }}>

@@ -5,8 +5,9 @@
 //  • Sidebar with grouped sections, so the IA is visible rather than a flat row.
 //  • Live counts on Obligations / Notifications: the number of things demanding
 //    attention is nav-level information, not something to discover on a page.
-//  • Entity switcher is a labelled menu, not a bare <select> wedged into a bar —
-//    filing for the wrong legal entity is a serious error, so it stays explicit.
+//  • The active legal entity is stated in the top bar, on every screen. Filing
+//    under the wrong entity is the most expensive mistake available here, and
+//    it used to be resolvable only by scrolling to the sidebar footer.
 //  • Skip link, landmarks, Cmd-K, theme control.
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -164,7 +165,6 @@ function Sidebar({ onLogout }: { onLogout: () => void }) {
       </div>
 
       <div className="sidebar-foot">
-        <EntitySwitcher />
         <UserMenu onLogout={onLogout} />
       </div>
     </nav>
@@ -172,53 +172,59 @@ function Sidebar({ onLogout }: { onLogout: () => void }) {
 }
 
 /**
- * Entity switcher. Filing under the wrong legal entity is an expensive mistake,
- * so the active entity is always named in full — never collapsed to an initial.
+ * Entity context, always on screen.
+ *
+ * Every obligation, document and report is scoped to one legal entity. Getting
+ * that wrong produces a filing that cannot be unwound, so the entity is named in
+ * full in the top bar rather than abbreviated or tucked away. With a single
+ * entity it is a plain label; with several it is a switcher.
  */
-function EntitySwitcher() {
+function EntityContext() {
   const { principal, entityId, setEntityId } = useAuth();
   const [open, setOpen] = useState(false);
   const entities = principal?.entities ?? [];
-  const activeName = entities.find((e) => e.id === entityId)?.legal_name
-    ?? entities[0]?.legal_name ?? "—";
+  const active = entities.find((e) => e.id === entityId) ?? entities[0];
+  if (!active) return null;
 
   if (entities.length <= 1) {
     return (
-      <div className="row" style={{ padding: "6px 8px", gap: 8, color: "var(--ink-2)" }}>
-        <IconBuilding size={14} style={{ flex: "none", opacity: .7 }} />
-        <span className="truncate micro" title={activeName}>{activeName}</span>
-      </div>
+      <span className="entity-chip" title={active.legal_name}>
+        <IconBuilding size={13} style={{ flex: "none", opacity: .65 }} />
+        <span className="ec-label">Entity</span>
+        <span className="ec-name truncate">{active.legal_name}</span>
+      </span>
     );
   }
 
   return (
-    <div className="pop-anchor" style={{ marginBottom: 4 }}>
-      <button className="btn ghost" style={{ width: "100%", justifyContent: "flex-start", gap: 8 }}
-        onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open}>
-        <IconBuilding size={14} style={{ flex: "none", opacity: .7 }} />
-        <span className="truncate" style={{ flex: 1, textAlign: "left" }}>{activeName}</span>
-        <IconChevronDown size={12} />
+    <span className="pop-anchor">
+      <button className="entity-chip" onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu" aria-expanded={open}
+        aria-label={`Active legal entity: ${active.legal_name}. Change entity.`}>
+        <IconBuilding size={13} style={{ flex: "none", opacity: .65 }} />
+        <span className="ec-label">Entity</span>
+        <span className="ec-name truncate">{active.legal_name}</span>
+        <IconChevronDown size={12} style={{ flex: "none", opacity: .6 }} />
       </button>
-      <Popover open={open} onClose={() => setOpen(false)} align="up"
-        className="" >
-        <div className="eyebrow" style={{ padding: "9px 10px 4px" }}>Legal entity</div>
+      <Popover open={open} onClose={() => setOpen(false)} align="left">
+        <div className="eyebrow" style={{ padding: "9px 10px 4px" }}>Switch legal entity</div>
         <div style={{ padding: 4 }}>
           {entities.map((e) => (
             <button key={e.id} className="menu-item" role="menuitemradio"
-              aria-checked={e.id === entityId}
+              aria-checked={e.id === active.id}
               onClick={() => { setEntityId(e.id); setOpen(false); }}>
               <span style={{ width: 14, flex: "none", color: "var(--accent)" }}>
-                {e.id === entityId ? "✓" : ""}
+                {e.id === active.id ? "\u2713" : ""}
               </span>
               <span className="truncate">{e.legal_name}</span>
             </button>
           ))}
         </div>
         <div className="micro faint" style={{ padding: "6px 10px 9px", borderTop: "1px solid var(--rule)" }}>
-          Obligations, evidence and reports are scoped to the selected entity.
+          Obligations, evidence and reports all re-scope to the entity you pick.
         </div>
       </Popover>
-    </div>
+    </span>
   );
 }
 
@@ -285,6 +291,7 @@ function TopBar({ onOpenPalette }: { onOpenPalette: () => void }) {
         <span className="spacer" style={{ textAlign: "left" }}>Search obligations…</span>
         <span className="kbd">⌘K</span>
       </button>
+      <EntityContext />
       <span className="spacer" />
       {principal?.role === "preparer" && (
         <span className="badge t-neutral" title="You see only obligations assigned to you.">

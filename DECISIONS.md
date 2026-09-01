@@ -101,3 +101,59 @@ Append-only log of direction decisions, so future sessions inherit them.
   Railway/ALB do).
 - Tests clear the process-global counter between cases (autouse fixture in
   `tests/integration/conftest.py`); `test_login_is_rate_limited` covers the 429 path.
+
+## 2026-09-01 — Frontend UX + visual system rework ("Ledger")
+
+- **The design language is "Ledger": light-first, editorial, structured by hairline
+  rules rather than cards and shadows.** The old navy `#0b1020` + `#4f86f7` + 10px-radius
+  + drop-shadow theme was the generic dark-SaaS template look. Light is the default
+  because compliance officers work in bright offices and screenshot into board packs;
+  dark is a real second theme (neutral near-black, never navy). Tokens live in
+  `app/globals.css` under `:root` / `[data-theme="dark"]`, stamped pre-paint by
+  `THEME_BOOT_SCRIPT` in `lib/theme.tsx` so there is no flash.
+- **Colour is reserved for meaning.** Status and risk carry colour; chrome does not.
+  Primary buttons are ink-black, not accent-blue. The accent (`--accent`) is only for
+  focus, selection and links. Risk is a 3-bar ramp *plus* a word, so it survives
+  colour-blindness and printing.
+- **No `window.prompt` / `window.confirm` anywhere.** Reject reasons, N/A reasons,
+  evidence overrides and member removals all write permanent audit records, so each
+  gets a labelled, validated dialog (`ConfirmDialog` in `components/ui.tsx`, min. 8
+  chars on required reasons). Native dialogs cannot be validated or styled and were
+  unacceptable for audited input.
+- **Every overlay traps focus, closes on Escape and restores focus** (`useOverlay`).
+  The old drawer *told* users to press Esc without implementing it.
+- **Tracker filter/sort/selection state lives in the URL.** Views are shareable and
+  survive the back button. Saved views (All / My work / Overdue / In review / Next 7
+  days) replaced the wrapping chip wall — the views encode the questions people ask,
+  the chips encoded the data model.
+- **Bulk actions fan out over the existing per-instance lifecycle verbs**
+  (`bulkTransition` / `bulkAssign` in `lib/api.ts`, concurrency 4). No new backend
+  endpoints. Bulk runs are *pre-flighted* — ineligible rows are identified and excluded
+  before the user confirms — and report per-item outcomes, so a partial failure (e.g.
+  the evidence gate blocking an approval) is visible and re-runnable.
+- **`/evidence` is a new route filling an IA hole.** `GET /documents` existed with no
+  UI; the only path to a document was through the obligation it was linked to. It also
+  surfaces unclassified and expired documents, which nothing else did.
+- **Deadlines are stated relatively, not just absolutely** (`relativeDue` in
+  `lib/format.ts`). Absolute-only dates made the user do arithmetic 346 times to answer
+  "is this urgent?".
+- **The health score is defined in the product.** The tooltip states the backend's exact
+  formula — `100 × (1 − overdue ÷ total)` — plus today's inputs. A number a board can
+  challenge but nobody can define is a number nobody should trust. If the backend
+  formula changes, update the `Definition` tooltips in `app/dashboard/page.tsx` and
+  `app/reports/page.tsx`.
+- **Permission denial is a state, not a redirect.** Reports/Audit/Team/Onboarding render
+  `PermissionDenied` naming who *can* do it. Silently bouncing to the dashboard reads
+  as a bug.
+- **Errors never auto-dismiss** and keep the raw server message behind "Show detail";
+  success toasts still expire. Toasts are `aria-live`.
+- **Below 900px the sidebar becomes a horizontal scrolling nav strip.** Note the grid
+  track must be `minmax(0, 1fr)`, not `1fr` — `1fr` defaults to `min-width: auto` and
+  the strip would widen the whole page. The responsive block must also sit *after* the
+  base sidebar rules in `globals.css`, or equal-specificity base rules win.
+- **`components/ObligationDrawer.tsx` was replaced by `components/ObligationSheet.tsx`**
+  (tabs: Overview / Evidence / Activity, single "next action" footer). Don't reintroduce
+  the flat all-expanded drawer.
+- Verified against the live stack on this date: `tsc --noEmit` clean, `next build` clean
+  (14 routes), and the flows exercised in-browser against the seeded SQLite dev DB
+  (`backend/_live.db`) with a 346-obligation demo org.

@@ -286,3 +286,38 @@ export interface Report {
   sections: Record<string, { period_label: string; title: string; due_date: string | null;
     form_reference: string | null; risk_level: string; status: string; evidence_count?: number }[]>;
 }
+
+// ---- bulk operations ----
+// The backend exposes per-instance lifecycle verbs. Bulk work in the UI is a
+// bounded-concurrency fan-out over those, reporting per-item outcomes so a
+// partial failure is visible and re-runnable rather than silently swallowed.
+export interface BulkOutcome { id: string; ok: boolean; error?: string }
+
+async function pool<T>(items: T[], limit: number,
+                       run: (item: T) => Promise<BulkOutcome>): Promise<BulkOutcome[]> {
+  const out: BulkOutcome[] = [];
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      out.push(await run(items[i]));
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+export const bulkTransition = (
+  ids: string[], action: LifecycleAction,
+  body: { override_evidence?: boolean; reason?: string } = {},
+) => pool(ids, 4, async (id) => {
+  try { await transitionInstance(id, action, body); return { id, ok: true }; }
+  catch (e) { return { id, ok: false, error: e instanceof Error ? e.message : "Failed" }; }
+});
+
+export const bulkAssign = (ids: string[], owner_user_id: string) =>
+  pool(ids, 4, async (id) => {
+    try { await assignInstance(id, owner_user_id); return { id, ok: true }; }
+    catch (e) { return { id, ok: false, error: e instanceof Error ? e.message : "Failed" }; }
+  });

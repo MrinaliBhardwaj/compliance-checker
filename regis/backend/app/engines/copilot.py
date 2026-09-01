@@ -27,6 +27,8 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import StrEnum
 
+from .statuses import OUTSTANDING_STATUSES
+
 
 # ---------------------------------------------------------------------------
 # Intent taxonomy
@@ -91,22 +93,22 @@ def scope_instances(instances: list[dict], role: str, user_id: str) -> tuple[lis
 def q_due_window(instances, today: date, query: str):
     q = query.lower()
     if "overdue" in q:
-        sel = [i for i in instances if i["status"] not in ("completed", "not_applicable")
+        sel = [i for i in instances if i["status"] in OUTSTANDING_STATUSES
                and date.fromisoformat(i["due_date"]) < today]
         label = "overdue"
     elif "today" in q:
         sel = [i for i in instances if i["due_date"] == today.isoformat()
-               and i["status"] not in ("completed", "not_applicable")]
+               and i["status"] in OUTSTANDING_STATUSES]
         label = "due today"
     elif "month" in q:
         end = today + timedelta(days=30)
         sel = [i for i in instances if today <= date.fromisoformat(i["due_date"]) <= end
-               and i["status"] not in ("completed", "not_applicable")]
+               and i["status"] in OUTSTANDING_STATUSES]
         label = "due in the next 30 days"
     else:  # default: this week
         end = today + timedelta(days=7)
         sel = [i for i in instances if today <= date.fromisoformat(i["due_date"]) <= end
-               and i["status"] not in ("completed", "not_applicable")]
+               and i["status"] in OUTSTANDING_STATUSES]
         label = "due this week"
     sel.sort(key=lambda i: i["due_date"])
     return sel, [f'instance:{i["id"]}' for i in sel], {"label": label, "count": len(sel)}

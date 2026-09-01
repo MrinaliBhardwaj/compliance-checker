@@ -20,13 +20,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.engines.statuses import TERMINAL_STATUSES
+
 OPEN_STATES = ("pending", "in_progress", "ready_for_review", "overdue")
 # `historical` is backfill from before the org onboarded (PRD 14.2): a record of
 # the financial year, not work anybody here is accountable for. Terminal, so the
 # maker-checker actions refuse it explicitly rather than by omission — but an
 # admin can `reopen` one, for the case where the filing genuinely was missed and
 # the org wants to track it after all.
-TERMINAL_STATES = ("completed", "not_applicable", "historical")
+TERMINAL_STATES = TERMINAL_STATUSES
 
 
 class LifecycleError(Exception):

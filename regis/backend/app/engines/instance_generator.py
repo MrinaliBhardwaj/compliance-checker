@@ -24,6 +24,8 @@ from calendar import monthrange
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+from .statuses import OUTSTANDING_STATUSES
+
 # ---------------------------------------------------------------------------
 # Calendar context
 # ---------------------------------------------------------------------------
@@ -373,7 +375,7 @@ def generate_instances(company_obligations: list[dict], ctx: dict) -> dict:
 # Overdue sweep + reminder schedule (pure functions for the daily job)
 # ---------------------------------------------------------------------------
 def is_overdue(inst: Instance, today: date) -> bool:
-    return (inst.status not in ("completed", "not_applicable")
+    return (inst.status in OUTSTANDING_STATUSES
             and date.fromisoformat(inst.due_date) < today)
 
 

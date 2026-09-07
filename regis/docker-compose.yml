@@ -15,14 +15,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    # A small init service to create a non-superuser test role and test DB
-    # This runs once during container init and is idempotent.
-    command: ["/bin/sh","-c","\
-      set -e; \
-      until pg_isready -U regis; do sleep 1; done; \
-      psql -U regis -c \"CREATE ROLE regis_app WITH LOGIN PASSWORD 'regis_app_pw';\" || true; \
-      psql -U regis -c \"CREATE DATABASE regis_test OWNER regis_app;\" || true; \
-      docker-entrypoint.sh postgres"]
+    # Use the official image entrypoint; one-shot init happens via a
+    # separate `postgres-init` service that depends on the DB being healthy.
 
   redis:
     image: redis:7
@@ -41,6 +35,19 @@ services:
     image: qdrant/qdrant
     ports: ["6333:6333"]
     volumes: ["qdrantdata:/qdrant/storage"]
+
+  # One-shot init helper: creates a non-superuser role and a test DB after
+  # the main postgres service reports healthy. Keeps the postgres service
+  # configuration simple and avoids backgrounding the server process.
+  postgres-init:
+    image: postgres:16
+    depends_on:
+      postgres: {condition: service_healthy}
+    command: >
+      sh -c "set -e; until pg_isready -h postgres -U regis; do sleep 1; done; \
+      printf \"CREATE ROLE regis_app WITH LOGIN PASSWORD 'regis_app_pw';\\nCREATE DATABASE regis_test OWNER regis_app;\\n\" | PGPASSWORD=regis psql -h postgres -U regis -d regis || true; \
+      echo 'postgres-init: done'"
+    restart: 'no'
 
   api:
     build: ./backend

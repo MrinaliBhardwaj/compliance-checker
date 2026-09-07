@@ -14,6 +14,7 @@ from datetime import UTC, date, datetime, time
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from typing import Sequence
 
 from app.models.compliance import CompanyObligation, ObligationInstance
 from app.models.content import ObligationTemplate
@@ -65,7 +66,7 @@ def _day_bounds(d: date, *, end: bool) -> datetime:
     return datetime.combine(d, time.max if end else time.min, tzinfo=UTC)
 
 
-def _resolve_actors(session: Session, rows: list[AuditLog]) -> dict[str, User]:
+def _resolve_actors(session: Session, rows: Sequence[AuditLog]) -> dict[str, User]:
     ids = {r.actor_user_id for r in rows if r.actor_user_id is not None}
     if not ids:
         return {}
@@ -73,7 +74,7 @@ def _resolve_actors(session: Session, rows: list[AuditLog]) -> dict[str, User]:
     return {str(u.id): u for u in users}
 
 
-def _resolve_targets(session: Session, rows: list[AuditLog]) -> dict[tuple[str, str], str]:
+def _resolve_targets(session: Session, rows: Sequence[AuditLog]) -> dict[tuple[str, str], str]:
     """Best-effort human label per (entity_type, entity_id), batched per type."""
     out: dict[tuple[str, str], str] = {}
 

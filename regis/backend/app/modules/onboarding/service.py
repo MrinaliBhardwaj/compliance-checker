@@ -186,10 +186,10 @@ def generate_calendar(session: Session, *, organization_id, entity_id, profile: 
     for c in cobs_input:
         if c["due_rule"].get("type") in EVENT_DRIVEN:
             co = co_rows[c["template_id"]]
-            exists = session.execute(
+            listener_exists = session.execute(
                 select(EventListener).where(EventListener.company_obligation_id == co.id)
             ).scalar_one_or_none()
-            if exists is None:
+            if listener_exists is None:
                 session.add(EventListener(
                     company_obligation_id=co.id, organization_id=organization_id,
                     due_rule_type=c["due_rule"]["type"],

@@ -130,20 +130,22 @@ def remove_member(session: Session, *, organization_id, membership_id, reassign_
         target_user = _resolve_user(session, organization_id, reassign_to)
         if target_user is None:
             raise TeamError("reassign_to is not an active member")
-        reassigned = session.execute(
+        res = session.execute(
             update(ObligationInstance)
             .where(ObligationInstance.organization_id == organization_id,
                    ObligationInstance.owner_user_id == m.user_id)
             .values(owner_user_id=target_user)
-        ).rowcount or 0
+        )
+        reassigned = getattr(res, "rowcount", 0) or 0
     else:
         # no target -> unassign (surfaces as unowned for an admin to pick up)
-        reassigned = session.execute(
+        res = session.execute(
             update(ObligationInstance)
             .where(ObligationInstance.organization_id == organization_id,
                    ObligationInstance.owner_user_id == m.user_id)
             .values(owner_user_id=None)
-        ).rowcount or 0
+        )
+        reassigned = getattr(res, "rowcount", 0) or 0
 
     m.status = "removed"
     audit.record(session, action="member_removed", organization_id=organization_id,

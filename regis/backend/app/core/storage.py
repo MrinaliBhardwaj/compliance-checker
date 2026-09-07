@@ -32,7 +32,8 @@ class LocalStorage(Storage):
     """Filesystem-backed (dev/tests). Root configurable; defaults under the CWD."""
 
     def __init__(self, root: str | None = None) -> None:
-        self.root = Path(root or os.getenv("REGIS_LOCAL_STORAGE", ".regis_storage")).resolve()
+        final_root = str(root) if root is not None else os.getenv("REGIS_LOCAL_STORAGE", ".regis_storage")
+        self.root = Path(final_root).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
 
     def _path(self, key: str) -> Path:

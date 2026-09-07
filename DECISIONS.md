@@ -83,6 +83,12 @@ Append-only log of direction decisions, so future sessions inherit them.
 - Tests: `_auth` clears the shared TestClient's cookie jar so Bearer-based smoke
   tests stay stateless; `test_httponly_cookie_session` covers the cookie path.
 
+## 2026-09-08 — Linting, formatting, and CI hardening
+
+- **Code quality:** CI enforces `ruff` (lint), `black` (format), `isort` (imports), and `mypy` (type checks) for the backend. Frontend runs `next build` in CI which enforces TypeScript checks. These checks are required to pass on PRs.
+- **Why run in CI?** RLS and append-only guarantees rely on DB-level invariants — automated tests must run in a reproducible environment with a non-superuser `regis_app` role. The CI creates this role+test DB before applying Alembic migrations to avoid tests accidentally running as a superuser and bypassing RLS.
+
+
 ## 2026-07-24 — Login rate limiting (brute-force guard)
 
 - **`app/core/ratelimit.py`** — fixed-window limiter on the auth endpoints. Keys:

@@ -297,8 +297,9 @@ def test_httponly_cookie_session(client):
 def test_login_is_rate_limited(client):
     """Brute force is throttled: after the per-window budget, even correct
     credentials are refused with 429 + Retry-After."""
-    from app.core.config import get_settings
     import uuid as _uuid
+
+    from app.core.config import get_settings
     email = f"rl-{_uuid.uuid4().hex[:8]}@acme.example"
     r = client.post("/auth/signup", json={  # signup itself isn't rate-limited
         "email": email, "password": "goodpassword1",

@@ -48,4 +48,5 @@ def match_org(affects_filter: dict | None, profiles: list[dict]) -> dict:
         m = match_update(affects_filter, p)
         if best is None or _RANK[m["decision"]] > _RANK[best["decision"]]:
             best = m
-    return best
+    # mypy: ensure we never return None; fallback to NEEDS_REVIEW
+    return best or {"decision": Decision.NEEDS_REVIEW.value, "missing_fields": ["profile"], "matched": []}

@@ -274,7 +274,7 @@ FOLLOWUP_TEXT = {
 def field_yield(library: dict) -> dict:
     """How many obligations each profile field gates -> drives gap ranking."""
     from collections import Counter
-    raw = Counter()
+    raw: Counter = Counter()
     for o in library["obligation_templates"]:
         for k in o["applicability_rule"]:
             base = k.replace("_min_cr", "").replace("_min", "")
@@ -282,7 +282,7 @@ def field_yield(library: dict) -> dict:
     alias = {"asset_size": "asset_size_cr", "turnover": "turnover_cr",
              "has_employees": "employee_count", "has_branches": "branch_count",
              "pt_states": "operating_states", "lwf_states": "operating_states"}
-    out = Counter()
+    out: Counter = Counter()
     for k, c in raw.items():
         out[alias.get(k, k)] += c
     return dict(out)

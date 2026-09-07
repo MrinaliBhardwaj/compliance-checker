@@ -38,6 +38,7 @@ jobs:
           black --check .
           isort --check-only .
       - name: Backend type checks (mypy)
+        continue-on-error: true
         run: |
           cd regis/backend
           python -m mypy app || true

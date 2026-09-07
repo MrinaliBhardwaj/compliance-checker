@@ -113,10 +113,10 @@ class ConditionResult:
 
 @dataclass
 class ObligationResult:
-    template_id: str
-    title: str
-    category: str
-    decision: str
+    template_id: str | None
+    title: str | None
+    category: str | None
+    decision: str | None
     confidence: float
     rationale: str
     conditions: list = field(default_factory=list)
@@ -137,8 +137,8 @@ def eval_condition(key: str, value: Any, profile: dict) -> ConditionResult:
 
     # 2. numeric min on *_min_cr  (asset_size_min_cr -> asset_size_cr)
     if key.endswith("_min_cr"):
-        pf = key.replace("_min", "")            # asset_size_min_cr -> asset_size_cr
-        actual = profile.get(pf)
+        pf_key = key.replace("_min", "")            # asset_size_min_cr -> asset_size_cr
+        actual = profile.get(pf_key)
         if actual is None:
             return ConditionResult(key, ">=", value, None, False, missing=True)
         passed = actual >= value
@@ -281,9 +281,9 @@ def evaluate_template(tpl: dict, profile: dict) -> list[ObligationResult]:
         out = []
         for st in states:
             r = ObligationResult(**{**asdict(base)})
-            r.template_id = f'{base.template_id}__{st}'
+            r.template_id = f'{(base.template_id or "")}__{st}'
             r.state = st
-            r.title = f'{base.title} [{st}]'
+            r.title = f'{(base.title or "")} [{st}]'
             r.conditions = base.conditions
             out.append(r)
         return out or [base]
@@ -302,12 +302,11 @@ def generate_compliance_universe(library: dict, profile: dict) -> dict:
     review = [r for r in results if r.decision == Decision.NEEDS_REVIEW.value]
     not_app = [r for r in results if r.decision == Decision.NOT_APPLICABLE.value]
 
-    laws_touched = {
-        tpl["law_id"]
-        for tpl in library["obligation_templates"]
-        for r in applicable
-        if r.template_id.split("__")[0] == tpl["template_id"]
-    }
+    laws_touched = set()
+    for tpl in library["obligation_templates"]:
+        for r in applicable:
+            if r.template_id and r.template_id.split("__")[0] == tpl["template_id"]:
+                laws_touched.add(tpl["law_id"])
     provisional = any(not r.template_verified for r in applicable + review)
 
     return {

@@ -106,10 +106,10 @@ def emit(session: Session, *, organization_id, user_id, type_: str, channel: str
 
 
 def _role_users(session: Session, organization_id, role: str) -> list[User]:
-    return session.execute(
+    return list(session.execute(
         select(User).join(Membership, Membership.user_id == User.id)
         .where(Membership.organization_id == organization_id, Membership.role == role)
-    ).scalars().all()
+    ).scalars().all())
 
 
 def _resolve_targets(session: Session, organization_id, target_role: str,

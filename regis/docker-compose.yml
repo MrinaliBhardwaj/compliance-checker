@@ -15,6 +15,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    # A small init service to create a non-superuser test role and test DB
+    # This runs once during container init and is idempotent.
+    command: ["/bin/sh","-c","\
+      set -e; \
+      until pg_isready -U regis; do sleep 1; done; \
+      psql -U regis -c \"CREATE ROLE regis_app WITH LOGIN PASSWORD 'regis_app_pw';\" || true; \
+      psql -U regis -c \"CREATE DATABASE regis_test OWNER regis_app;\" || true; \
+      docker-entrypoint.sh postgres"]
 
   redis:
     image: redis:7
@@ -60,6 +68,14 @@ services:
       REGIS_DATABASE_URL: postgresql+psycopg://regis:regis@postgres:5432/regis
       REGIS_REDIS_URL: redis://redis:6379/0
     command: ["arq", "app.jobs.worker.WorkerSettings"]
+
+  # Optional helper to run demo script inside the backend container
+  demo:
+    build: ./backend
+    depends_on:
+      - postgres
+      - redis
+    entrypoint: ["/bin/sh","-c","/app/scripts/demo.sh"]
 
 volumes:
   pgdata:

@@ -114,6 +114,15 @@ REGIS_TEST_PG_URL=postgresql+psycopg://regis:regis@localhost:5432/regis_test \
    require human confirmation; the Copilot has no write path and escalates action and
    legal-opinion requests. `audit_log` is append-only (DB trigger, migration `0002`).
 
+## Architecture & design choices
+
+- **Backend:** FastAPI with SQLAlchemy 2 and Alembic migrations; runtime on Python 3.11/3.12. The backend enforces tenant isolation at the DB layer using Postgres Row-Level Security (RLS).
+- **Database hardening:** RLS for tenant isolation, `FORCE ROW LEVEL SECURITY` on production, and append-only `audit_log` enforced by a DB trigger (see `backend/alembic/versions/0002_rls_and_append_only_audit.py`). These are the key defensive guarantees: application code cannot bypass tenant boundaries even under bugs.
+- **Authentication & session scope:** The app sets session GUCs `app.current_org` and `app.bootstrap` for tenant-aware queries; tests must run as a non-superuser role because Postgres superusers bypass RLS.
+- **Testing strategy:** Three test tiers exist: unit, golden (regression-locked engine outputs), and integration (Postgres-backed). Integration tests that verify RLS/append-only behavior run against a real Postgres instance and the CI creates a non-superuser `regis_app` role and `regis_test` DB before applying migrations.
+- **Formatting & quality:** Backend uses `ruff`, `black`, `isort` and `mypy` for linting, formatting and type checks; the CI workflow enforces these checks and runs frontend `next build` to ensure TypeScript correctness.
+
+
 ## Stack decisions (made during the build)
 
 - **Python/FastAPI backend** — keeps the verified engines bit-for-bit; regression tests pass day one.

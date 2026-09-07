@@ -5,6 +5,10 @@ short profile questionnaire and gets a complete, accurate compliance calendar â€
 obligations, due dates, owners, evidence repository, and a read-only Copilot â€”
 replacing weeks of spreadsheet setup.
 
+<!-- CI badges -->
+[![CI](https://github.com/FrosterHex/Compliance-Checking/actions/workflows/ci.yml/badge.svg)](https://github.com/FrosterHex/Compliance-Checking/actions/workflows/ci.yml)
+
+
 > **Design contract (honored throughout):** all AI is read-only/assistive and
 > human-confirmed; the deterministic engines are the source of truth; every
 > obligation ships `DRAFT_UNVERIFIED` until a content-team flag flips it; designed

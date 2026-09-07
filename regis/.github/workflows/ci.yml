@@ -38,10 +38,9 @@ jobs:
           black --check .
           isort --check-only .
       - name: Backend type checks (mypy)
-        continue-on-error: true
         run: |
           cd regis/backend
-          python -m mypy app || true
+          python -m mypy app
       - name: Wait for Postgres
         run: |
           for i in {1..30}; do pg_isready -h localhost -p 5432 -U regis && break || sleep 1; done

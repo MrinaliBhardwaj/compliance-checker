@@ -107,3 +107,155 @@ Append-only log of direction decisions, so future sessions inherit them.
   Railway/ALB do).
 - Tests clear the process-global counter between cases (autouse fixture in
   `tests/integration/conftest.py`); `test_login_is_rate_limited` covers the 429 path.
+
+## 2026-09-01 — Frontend UX + visual system rework ("Ledger")
+
+- **The design language is "Ledger": light-first, editorial, structured by hairline
+  rules rather than cards and shadows.** The old navy `#0b1020` + `#4f86f7` + 10px-radius
+  + drop-shadow theme was the generic dark-SaaS template look. Light is the default
+  because compliance officers work in bright offices and screenshot into board packs;
+  dark is a real second theme (neutral near-black, never navy). Tokens live in
+  `app/globals.css` under `:root` / `[data-theme="dark"]`, stamped pre-paint by
+  `THEME_BOOT_SCRIPT` in `lib/theme.tsx` so there is no flash.
+- **Colour is reserved for meaning.** Status and risk carry colour; chrome does not.
+  Primary buttons are ink-black, not accent-blue. The accent (`--accent`) is only for
+  focus, selection and links. Risk is a 3-bar ramp *plus* a word, so it survives
+  colour-blindness and printing.
+- **No `window.prompt` / `window.confirm` anywhere.** Reject reasons, N/A reasons,
+  evidence overrides and member removals all write permanent audit records, so each
+  gets a labelled, validated dialog (`ConfirmDialog` in `components/ui.tsx`, min. 8
+  chars on required reasons). Native dialogs cannot be validated or styled and were
+  unacceptable for audited input.
+- **Every overlay traps focus, closes on Escape and restores focus** (`useOverlay`).
+  The old drawer *told* users to press Esc without implementing it.
+- **Tracker filter/sort/selection state lives in the URL.** Views are shareable and
+  survive the back button. Saved views (All / My work / Overdue / In review / Next 7
+  days) replaced the wrapping chip wall — the views encode the questions people ask,
+  the chips encoded the data model.
+- **Bulk actions fan out over the existing per-instance lifecycle verbs**
+  (`bulkTransition` / `bulkAssign` in `lib/api.ts`, concurrency 4). No new backend
+  endpoints. Bulk runs are *pre-flighted* — ineligible rows are identified and excluded
+  before the user confirms — and report per-item outcomes, so a partial failure (e.g.
+  the evidence gate blocking an approval) is visible and re-runnable.
+- **`/evidence` is a new route filling an IA hole.** `GET /documents` existed with no
+  UI; the only path to a document was through the obligation it was linked to. It also
+  surfaces unclassified and expired documents, which nothing else did.
+- **Deadlines are stated relatively, not just absolutely** (`relativeDue` in
+  `lib/format.ts`). Absolute-only dates made the user do arithmetic 346 times to answer
+  "is this urgent?".
+- **The health score is defined in the product.** The tooltip states the backend's exact
+  formula — `100 × (1 − overdue ÷ total)` — plus today's inputs. A number a board can
+  challenge but nobody can define is a number nobody should trust. If the backend
+  formula changes, update the `Definition` tooltips in `app/dashboard/page.tsx` and
+  `app/reports/page.tsx`.
+- **Permission denial is a state, not a redirect.** Reports/Audit/Team/Onboarding render
+  `PermissionDenied` naming who *can* do it. Silently bouncing to the dashboard reads
+  as a bug.
+- **Errors never auto-dismiss** and keep the raw server message behind "Show detail";
+  success toasts still expire. Toasts are `aria-live`.
+- **Below 900px the sidebar becomes a horizontal scrolling nav strip.** Note the grid
+  track must be `minmax(0, 1fr)`, not `1fr` — `1fr` defaults to `min-width: auto` and
+  the strip would widen the whole page. The responsive block must also sit *after* the
+  base sidebar rules in `globals.css`, or equal-specificity base rules win.
+- **`components/ObligationDrawer.tsx` was replaced by `components/ObligationSheet.tsx`**
+  (tabs: Overview / Evidence / Activity, single "next action" footer). Don't reintroduce
+  the flat all-expanded drawer.
+- Verified against the live stack on this date: `tsc --noEmit` clean, `next build` clean
+  (14 routes), and the flows exercised in-browser against the seeded SQLite dev DB
+  (`backend/_live.db`) with a 346-obligation demo org.
+
+## 2026-09-01 — Second UX pass: hierarchy and the core workflow
+
+Audit focused on product hierarchy, not styling. The Ledger visual direction is
+unchanged; everything here is about decision-making, trust and error prevention.
+
+- **Triage priority is an explicit, explainable score** (`priorityOf` in
+  `lib/format.ts`), and it is the default sort on the tracker and the dashboard
+  queue. Sorting overdue work by date alone inverted real exposure: a 153-day-late
+  board minute outranked a 3-day-late RBI return. Score = risk weight (high 3 /
+  medium 2 / low 1) × time pressure. **It uses only fields the list endpoint
+  returns** — penalty text lives on the detail record and is deliberately not part
+  of the score, and the UI does not claim otherwise. The formula is published in a
+  `Definition` tooltip (`PRIORITY_EXPLAINER`), same honesty rule as the health score.
+- **Lateness uses a log curve, not a cap.** The first implementation capped
+  lateness at 60 days; on the real portfolio (109 overdue, most 120+ days old,
+  most high risk) *every* row scored exactly 15.0 and the column discriminated
+  nothing. `3 + log10(1 + late/7) × 1.5` compresses the tail without ever
+  flattening it — verified at 57 distinct scores across 346 rows. **If you retune
+  this, re-check it against a lapsed portfolio, not a healthy one.**
+- **On a badly lapsed portfolio most open items legitimately band as "critical".**
+  That is the honest reading. The *score* does the ordering; the band is context.
+  Don't "fix" this by inflating thresholds.
+- **The detail sheet navigates prev/next through the list you came from**
+  (`siblingIds` / `onNavigate`, plus ↑/↓ and J/K). Triaging 109 items was 109
+  open/close cycles. Terminal actions (approve / mark-N/A / reject) auto-advance.
+- **Bulk approve pre-checks the evidence gate, not just status.** The previous
+  dialog promised "5 obligations will be changed" and then all five failed,
+  because the server enforces a gate the list endpoint knows nothing about. It now
+  calls `/obligations/instances/{id}/completeness` per selected row
+  (`checkEvidenceGates`, concurrency 5, capped at `GATE_CHECK_LIMIT` = 60) and
+  splits the batch into *will file* / *needs a recorded override* / *couldn't
+  check*. Those are different decisions, so they get different paths. Rows that
+  couldn't be checked are excluded rather than attempted blindly.
+- **Evidence could not be linked from an existing document — a hard dead end.**
+  Uploads de-duplicate on content hash, so the second upload of a document
+  satisfying several obligations was rejected, and nothing in the UI reached
+  `linkDocument()` for an existing file. `ExistingDocumentPicker` in the sheet's
+  Evidence tab closes it, ranking documents whose type matches an outstanding
+  requirement first. Unclassified documents are offered but disabled — they can't
+  satisfy a requirement until they have a type.
+- **Approve and mark-N/A offer Undo** (they are reversible through `reopen`, which
+  is admin-only, so the affordance only appears for someone who can use it). The
+  undo writes its own reason into the audit trail rather than silently reverting.
+- **The active legal entity is in the top bar on every screen**, not the sidebar
+  footer. Filing under the wrong entity is the most expensive mistake available in
+  this product and was previously resolvable only by scrolling to the bottom of
+  the nav.
+- **The audit trail can isolate exceptions** — evidence overrides, blocked
+  actions, rejections, member removals. That is an inspection's first question and
+  tinting rows red doesn't help when they're on page 7. The API has no such
+  parameter, so it filters the fetched page client-side; the count is therefore
+  labelled "in events 51–100", never presented as a total.
+- **Error boundaries exist** (`app/error.tsx`, `app/global-error.tsx`,
+  `app/not-found.tsx`). A render error used to white-screen the app, which in a
+  compliance product reads as data loss — the copy explicitly says nothing was
+  changed. `ErrorState` now renders `PermissionDenied` for a 403 instead of a red
+  alarm with a pointless retry button.
+- **Table rows are activated by a real `<button>`** (`.row-open`), so assistive
+  tech announces something operable rather than a cell. J/K move, X selects,
+  Enter opens; selection changes are announced via `useAnnounce`.
+- **Below 700px tracker rows stack into two lines** instead of scrolling
+  sideways — due date and status, the two columns a decision needs, were off the
+  right edge. Risk is hidden there because priority already encodes it. Verified
+  the document cannot pan horizontally.
+
+## 2026-09-02 — Regis mirrored into Figma
+
+- **File:** `https://www.figma.com/design/8qMVRhvaHKN41AHP72kx86/` — pages `01 Foundations`,
+  `02 Components`, `03 Screens`. The code remains the source of truth; the Figma file
+  is a mirror of it, not a parallel design that can drift on its own.
+- **The design system was built from `app/globals.css`, not from a community UI kit.**
+  The file had no libraries attached and the codebase has no Code Connect files, so
+  there was nothing to reuse. Importing someone else's kit would have misrepresented
+  the product. 27 colour variables (collection **Ledger**, Light + Dark modes) and 14
+  text styles are transcribed verbatim from the CSS custom properties.
+- **Every colour is variable-bound, never hardcoded.** `Obligations — Tracker (Dark)`
+  is the same frame with the collection mode flipped to Dark — it proves the bindings
+  are real and mirrors what `data-theme="dark"` does in the app. If a token changes in
+  `globals.css`, update the matching Figma variable rather than recolouring frames.
+- **Components:** Badge (6 tones), Priority (4 bands), Button (5 styles × 2 sizes),
+  Chip, Input, Nav item, Risk meter, Avatar, Sidebar, TopBar. Screens are composed from
+  instances, so a component edit propagates. The sidebar's active item is set per screen
+  via the `State` variant on the nested `nav/*` instance.
+- **Fonts:** Inter and JetBrains Mono, matching `--font` and `--mono`. Verified by
+  reading back all 1,067 text nodes — no fallback families present.
+- **Plugin API traps worth remembering** (all three cost a rebuild here):
+  1. `resize()` **resets both axis sizing modes to FIXED**, so it must be called
+     *before* setting `primaryAxisSizingMode` / `counterAxisSizingMode`, not after.
+  2. On a **vertical** auto-layout, `primaryAxisSizingMode` is the *height* and
+     `counterAxisSizingMode` is the *width* — easy to swap and it silently clips.
+  3. Making a `COMPONENT_SET` auto-layout squeezes its variants to the narrowest
+     common width and truncates their labels. Leave sets non-auto-layout and position
+     variants manually.
+  4. `node.screenshot()` does not render absolutely-positioned overlays (a modal scrim
+     looked absent when it was correct). Use the `get_screenshot` tool to verify those.

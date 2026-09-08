@@ -19,11 +19,8 @@ interface AuthState {
 const Ctx = createContext<AuthState | null>(null);
 const ENTITY_KEY = "regis_entity";
 
-import { useQueryClient } from "@tanstack/react-query";
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const qc = useQueryClient();
   const [principal, setPrincipal] = useState<Principal | null>(null);
   const [loading, setLoading] = useState(true);
   const [entityId, setEntityIdState] = useState<string | null>(null);
@@ -54,10 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     try { await logoutApi(); } catch { /* clear locally regardless */ }
     if (typeof window !== "undefined") localStorage.removeItem(ENTITY_KEY);
-    qc.clear();
     setPrincipal(null);
     router.push("/");
-  }, [router, qc]);
+  }, [router]);
 
   const value: AuthState = {
     principal, loading, entityId, setEntityId, refresh, logout,

@@ -18,13 +18,7 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
     let detail = res.statusText;
     try {
       const body = await res.json();
-      if (typeof body.detail === "string") {
-        detail = body.detail;
-      } else if (Array.isArray(body.detail)) {
-        detail = body.detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ");
-      } else {
-        detail = JSON.stringify(body.detail ?? body);
-      }
+      detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail ?? body);
     } catch {
       /* keep statusText */
     }
@@ -175,13 +169,9 @@ export const reviewLegalUpdate = (id: string, status: string, reason?: string) =
   req(`/legal-updates/${id}/review`, { method: "POST", body: JSON.stringify({ status, reason }) });
 
 // ---- reports ----
-export const getReport = (entity_id?: string) => {
-  const qs = entity_id ? `?entity_id=${entity_id}` : "";
-  return req<Report>(`/reports/compliance${qs}`);
-};
-export async function downloadReport(kind: "html" | "pdf", entity_id?: string): Promise<Blob> {
-  const qs = entity_id ? `?entity_id=${entity_id}` : "";
-  const res = await fetch(`/api/reports/compliance.${kind}${qs}`, { credentials: "include" });
+export const getReport = () => req<Report>("/reports/compliance");
+export async function downloadReport(kind: "html" | "pdf"): Promise<Blob> {
+  const res = await fetch(`/api/reports/compliance.${kind}`, { credentials: "include" });
   if (!res.ok) throw new ApiError(res.status, res.statusText);
   return res.blob();
 }
@@ -295,4 +285,73 @@ export interface Report {
   narrative: string; by_category: Record<string, Record<string, number>>;
   sections: Record<string, { period_label: string; title: string; due_date: string | null;
     form_reference: string | null; risk_level: string; status: string; evidence_count?: number }[]>;
+}
+
+// ---- bulk operations ----
+// The backend exposes per-instance lifecycle verbs. Bulk work in the UI is a
+// bounded-concurrency fan-out over those, reporting per-item outcomes so a
+// partial failure is visible and re-runnable rather than silently swallowed.
+export interface BulkOutcome { id: string; ok: boolean; error?: string }
+
+async function pool<T>(items: T[], limit: number,
+                       run: (item: T) => Promise<BulkOutcome>): Promise<BulkOutcome[]> {
+  const out: BulkOutcome[] = [];
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      out.push(await run(items[i]));
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+export const bulkTransition = (
+  ids: string[], action: LifecycleAction,
+  body: { override_evidence?: boolean; reason?: string } = {},
+) => pool(ids, 4, async (id) => {
+  try { await transitionInstance(id, action, body); return { id, ok: true }; }
+  catch (e) { return { id, ok: false, error: e instanceof Error ? e.message : "Failed" }; }
+});
+
+export const bulkAssign = (ids: string[], owner_user_id: string) =>
+  pool(ids, 4, async (id) => {
+    try { await assignInstance(id, owner_user_id); return { id, ok: true }; }
+    catch (e) { return { id, ok: false, error: e instanceof Error ? e.message : "Failed" }; }
+  });
+
+// ---- evidence-gate preflight ----
+// Bulk approve used to promise "N obligations will be changed" and then watch
+// every one of them fail, because eligibility was computed from status alone
+// while the server also enforces an evidence gate. The list endpoint carries no
+// completeness, so the only honest fix is to ask per instance before confirming.
+export const getCompleteness = (id: string) =>
+  req<Completeness>(`/obligations/instances/${id}/completeness`);
+
+export interface GateCheck {
+  id: string;
+  /** Undefined when the check itself failed — treated as unknown, never as pass. */
+  completeness?: Completeness;
+  error?: string;
+}
+
+export const checkEvidenceGates = (ids: string[]) =>
+  pool2(ids, 5, async (id): Promise<GateCheck> => {
+    try { return { id, completeness: await getCompleteness(id) }; }
+    catch (e) { return { id, error: e instanceof Error ? e.message : "Check failed" }; }
+  });
+
+async function pool2<T, R>(items: T[], limit: number, run: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = [];
+  let cursor = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const i = cursor++;
+      if (i >= items.length) return;
+      out.push(await run(items[i]));
+    }
+  }));
+  return out;
 }

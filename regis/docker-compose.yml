@@ -60,6 +60,12 @@ services:
       REGIS_QDRANT_URL: http://qdrant:6333
       REGIS_JWT_SECRET: dev-only-change-me
     ports: ["8000:8000"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     # On boot: apply migrations, seed the library, then serve.
     command: >
       sh -c "alembic upgrade head &&

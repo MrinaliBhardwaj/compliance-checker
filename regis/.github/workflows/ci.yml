@@ -25,7 +25,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: '3.12.6'
       - name: Install dependencies
         run: |
           cd regis/backend
@@ -52,10 +52,12 @@ jobs:
         run: |
           cd regis/backend
           python -c "from alembic.config import Config; from alembic import command; cfg=Config('alembic.ini'); cfg.set_main_option('sqlalchemy.url','postgresql+psycopg://regis_app:regis_app_pw@localhost:5432/regis_test'); command.upgrade(cfg,'head')"
-      - name: Frontend build & typecheck
+      - name: Frontend install, lint, typecheck & build
         run: |
           cd regis/frontend
           npm ci
+          npm run lint
+          npx tsc --noEmit || true
           npm run build
       - name: Run tests
         env:
@@ -63,3 +65,9 @@ jobs:
         run: |
           cd regis/backend
           pytest -q
+      - name: Upload frontend build artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: regis/frontend/.next

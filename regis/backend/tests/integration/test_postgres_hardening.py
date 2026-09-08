@@ -23,8 +23,9 @@ pytestmark = pytest.mark.skipif(not PG_URL, reason="REGIS_TEST_PG_URL not set (n
 
 @pytest.fixture
 def pg_engine():
-    from alembic import command
     from alembic.config import Config
+
+    from alembic import command
 
     # NullPool: session GUCs (app.current_org / app.bootstrap) must not leak
     # between logical connections via pooling — "fresh connection" tests rely
@@ -158,7 +159,7 @@ def test_per_tenant_commit_persists_every_org(pg_engine):
     # the anti-pattern: writing org A's row while scoped to org B is refused
     with pg_engine.connect() as conn:
         _set_org(conn, org_b)
-        with pytest.raises(Exception):
+        with pytest.raises(DBAPIError):
             conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, created_at) "
                               "VALUES (:i,:o,'reminder','email',now())"), {"i": uuid.uuid4(), "o": org_a})
             conn.commit()
@@ -175,9 +176,9 @@ def test_audit_log_is_append_only(pg_engine):
                           "VALUES (:i,:o,'created','{}'::jsonb,now())"), {"i": aid, "o": org})
     with pg_engine.connect() as conn:
         _set_org(conn, org)
-        with pytest.raises(Exception, match="append-only"):
+        with pytest.raises(DBAPIError, match="append-only"):
             conn.execute(text("UPDATE audit_log SET action='tampered'"))
     with pg_engine.connect() as conn:
         _set_org(conn, org)
-        with pytest.raises(Exception, match="append-only"):
+        with pytest.raises(DBAPIError, match="append-only"):
             conn.execute(text("DELETE FROM audit_log"))

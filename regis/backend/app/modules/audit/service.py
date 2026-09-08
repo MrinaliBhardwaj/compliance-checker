@@ -10,11 +10,11 @@ get_db; we never trust the caller for the org id.
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import UTC, date, datetime, time
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from typing import Sequence
 
 from app.models.compliance import CompanyObligation, ObligationInstance
 from app.models.content import ObligationTemplate

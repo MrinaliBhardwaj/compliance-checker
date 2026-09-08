@@ -84,6 +84,40 @@ docker compose up --build       # api on :8000 (migrates + seeds on boot), worke
 # API docs: http://localhost:8000/docs
 ```
 
+### Developer helpers
+
+- Install `pre-commit` and enable hooks (runs `ruff`, `black`, `isort`, `mypy`):
+
+```bash
+cd backend
+pip install -e ".[dev]"
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+
+- Reproduce the full dev environment, migrations and tests via `scripts/dev.sh`:
+
+```bash
+cd ..
+./scripts/dev.sh
+```
+
+### Makefile
+
+Common developer shortcuts are available via the `Makefile` at the repo root inside `regis`:
+
+```bash
+make install-dev        # install backend dev deps
+make precommit-install  # install pre-commit and enable hooks
+make up                 # docker compose up --build -d
+make dev                # run scripts/dev.sh (migrations + tests)
+make lint               # run lint checks
+make format             # apply formatting fixes
+make test               # run backend tests
+make build-frontend     # build Next.js frontend
+```
+
 ### Run the backend directly
 ```bash
 cd backend

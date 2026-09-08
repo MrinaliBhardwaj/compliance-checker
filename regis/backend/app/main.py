@@ -6,10 +6,15 @@ All AI is read-only/assistive; the deterministic cores are the source of truth.
 """
 from __future__ import annotations
 
+import time
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
+from sqlalchemy import text
 
 from app.core.config import get_settings
+from app.core.db import engine
 from app.modules.audit.router import router as audit_router
 from app.modules.auth.router import router as auth_router
 from app.modules.copilot.router import router as copilot_router
@@ -54,6 +59,46 @@ if settings.cors_origins:
 @app.get("/health", tags=["system"])
 def health() -> dict:
     return {"status": "ok", "env": settings.env, "region": settings.aws_region}
+
+
+# Start time for simple uptime metric
+_START_TIME = time.time()
+
+
+@app.get("/ready", tags=["system"])
+def ready() -> dict:
+    """Light readiness probe: ensures the database is reachable."""
+    db_ok = False
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            db_ok = True
+    except Exception:
+        db_ok = False
+    return {"status": "ok" if db_ok else "error", "db": db_ok}
+
+
+@app.get("/metrics", tags=["system"])
+def metrics() -> PlainTextResponse:
+    """Minimal Prometheus-format metrics for local dev."""
+    uptime = int(time.time() - _START_TIME)
+    db_up = 0
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+            db_up = 1
+    except Exception:
+        db_up = 0
+
+    lines = [
+        "# HELP regis_uptime_seconds Uptime of the application in seconds",
+        "# TYPE regis_uptime_seconds gauge",
+        f"regis_uptime_seconds {uptime}",
+        "# HELP regis_db_up Whether the database is reachable (1 = up, 0 = down)",
+        "# TYPE regis_db_up gauge",
+        f"regis_db_up {db_up}",
+    ]
+    return PlainTextResponse("\n".join(lines), media_type="text/plain; charset=utf-8")
 
 
 app.include_router(auth_router)

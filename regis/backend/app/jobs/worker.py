@@ -24,9 +24,9 @@ from sqlalchemy.orm import Session
 
 from app.core.db import SessionLocal, set_tenant
 from app.core.logging import bind, configure_logging, get_logger
+from app.engines.statuses import OPEN_STATUSES
 from app.models.compliance import ObligationInstance
 from app.models.tenancy import Organization
-from app.engines.statuses import OPEN_STATUSES
 
 log = get_logger(__name__)
 

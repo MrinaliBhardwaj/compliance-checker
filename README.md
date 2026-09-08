@@ -46,21 +46,28 @@ deterministic-only offline mode by default.
 ## Run it
 
 ```bash
-# backend (SQLite quickstart — no infra needed)
+# everything: installs, seeds a SQLite database, starts API + UI
+cd regis
+./scripts/run_local.sh              # --fresh to rebuild the database
+
+#   UI    http://localhost:3000
+#   API   http://localhost:8000/docs
+```
+
+Prefer the steps by hand?
+
+```bash
 cd regis/backend
 pip install -e ".[dev]"
-pytest                                   # 133 passed, 4 skipped
+pytest                                          # 137 passed, 5 skipped
 
-REGIS_DATABASE_URL="sqlite+pysqlite:///dev.db" REGIS_JWT_SECRET=dev python -c \
-  "from app.core.db import engine, SessionLocal; from app.models import Base; \
-   from app.seed.library_loader import seed_database; \
-   Base.metadata.create_all(engine); s=SessionLocal(); seed_database(s); s.commit()"
-REGIS_DATABASE_URL="sqlite+pysqlite:///dev.db" REGIS_JWT_SECRET=dev \
-  uvicorn app.main:app --port 8000
+export REGIS_DATABASE_URL="sqlite+pysqlite:///dev.db"
+export REGIS_JWT_SECRET=dev
+python -m app.seed.cli --create-all             # creates the tables, then seeds
+uvicorn app.main:app --port 8000
 
-# frontend
-cd regis/frontend
-npm install && npm run dev               # http://localhost:3000 (proxies /api -> :8000)
+# in a second terminal
+cd regis/frontend && npm install && npm run dev  # proxies /api -> :8000
 ```
 
 Sign up, run onboarding, and the dashboard fills with your generated calendar.

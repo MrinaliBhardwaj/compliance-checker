@@ -1,0 +1,18 @@
+Gantt chart placeholder
+
+Create a Gantt chart showing tasks and dates (Project Plan). Suggested tools:
+- MS Project / Excel / Google Sheets / draw.io / mermaid.live (for mermaid Gantt)
+
+Sample mermaid Gantt snippet you can paste into mermaid.live:
+
+```mermaid
+gantt
+  title Project Plan
+  dateFormat  YYYY-MM-DD
+  section Implementation
+  Core Engine: 2026-07-01, 60d
+  Integration & Testing: after Core Engine, 30d
+  Documentation & Review Prep: after Integration & Testing, 20d
+```
+
+Export the chart as an image and add it to the `report_skeleton.md` under Project Plan.

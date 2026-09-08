@@ -18,7 +18,13 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
     let detail = res.statusText;
     try {
       const body = await res.json();
-      detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail ?? body);
+      if (typeof body.detail === "string") {
+        detail = body.detail;
+      } else if (Array.isArray(body.detail)) {
+        detail = body.detail.map((d: any) => d.msg || JSON.stringify(d)).join(", ");
+      } else {
+        detail = JSON.stringify(body.detail ?? body);
+      }
     } catch {
       /* keep statusText */
     }
@@ -169,9 +175,13 @@ export const reviewLegalUpdate = (id: string, status: string, reason?: string) =
   req(`/legal-updates/${id}/review`, { method: "POST", body: JSON.stringify({ status, reason }) });
 
 // ---- reports ----
-export const getReport = () => req<Report>("/reports/compliance");
-export async function downloadReport(kind: "html" | "pdf"): Promise<Blob> {
-  const res = await fetch(`/api/reports/compliance.${kind}`, { credentials: "include" });
+export const getReport = (entity_id?: string) => {
+  const qs = entity_id ? `?entity_id=${entity_id}` : "";
+  return req<Report>(`/reports/compliance${qs}`);
+};
+export async function downloadReport(kind: "html" | "pdf", entity_id?: string): Promise<Blob> {
+  const qs = entity_id ? `?entity_id=${entity_id}` : "";
+  const res = await fetch(`/api/reports/compliance.${kind}${qs}`, { credentials: "include" });
   if (!res.ok) throw new ApiError(res.status, res.statusText);
   return res.blob();
 }

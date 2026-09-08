@@ -141,6 +141,8 @@ def seed_database(session, path: Path | str = SEED_PATH) -> dict[str, int]:
             session.add(ObligationTemplate(template_id=tpl["template_id"], **payload))
         else:
             for k, v in payload.items():
+                if k == "verification_status":
+                    continue  # Never demote a content-team-verified template
                 setattr(existing, k, v)
         tpl_count += 1
 

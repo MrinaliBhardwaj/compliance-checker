@@ -31,9 +31,17 @@ def _admin(seeded):
 
 
 def _make_admin_membership(db, seeded):
-    db.add(Membership(user_id=seeded["user_id"], organization_id=seeded["org_id"],
-                      role="compliance_admin", status="active"))
-    db.flush()
+    # Idempotent: the seeded_org fixture may already create this membership.
+    existing = db.execute(
+        select(Membership).where(
+            Membership.user_id == seeded["user_id"],
+            Membership.organization_id == seeded["org_id"],
+        )
+    ).scalar_one_or_none()
+    if existing is None:
+        db.add(Membership(user_id=seeded["user_id"], organization_id=seeded["org_id"],
+                          role="compliance_admin", status="active"))
+        db.flush()
 
 
 def test_run_reminders_idempotent(db, seeded_org, profile_b):

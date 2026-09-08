@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     # AI
     anthropic_api_key: str | None = None
-    anthropic_model: str = "claude-sonnet-4-6"  # PRD: Sonnet for all V1 AI
+    anthropic_model: str = "claude-sonnet-4-20250514"  # PRD: Sonnet for all V1 AI
     qdrant_url: str = "http://localhost:6333"
 
     # Notifications

@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, created_at_col, uuid_pk
@@ -79,3 +79,7 @@ class Membership(Base):
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # compliance_admin|head|preparer
     status: Mapped[str] = mapped_column(String(20), default="invited")  # invited|active
     created_at: Mapped[datetime] = created_at_col()
+
+    __table_args__ = (
+        UniqueConstraint("organization_id", "user_id", name="uq_membership_org_user"),
+    )

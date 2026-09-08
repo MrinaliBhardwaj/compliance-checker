@@ -3,7 +3,7 @@
 // detail drawer (evidence + Maker-Checker). Preparers are scoped server-side.
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { getInstances, type Instance } from "@/lib/api";
 import Shell from "@/components/Shell";
 import ObligationDrawer from "@/components/ObligationDrawer";
@@ -27,6 +27,11 @@ function Tracker() {
   const [category, setCategory] = useState("all");
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(params.get("open"));
+
+  useEffect(() => {
+    setStatus(params.get("status") ?? "all");
+    setOpen(params.get("open"));
+  }, [params]);
 
   const all = useQuery({ queryKey: ["tracker"], queryFn: () => getInstances({}) });
 

@@ -1,7 +1,7 @@
 "use client";
 // Authenticated app shell: route guard + role-aware nav + entity selector +
 // notifications bell + user menu. Wrap every authenticated page in <Shell>.
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -22,6 +22,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const { principal, loading, entityId, setEntityId, logout, can } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const qc = useQueryClient();
 
   useEffect(() => {
     if (!loading && !principal) router.replace("/");
@@ -50,7 +51,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <span className="spacer" />
           {principal.entities.length > 1 && (
             <select className="input" style={{ width: "auto", padding: "5px 8px" }}
-              value={entityId ?? ""} onChange={(e) => setEntityId(e.target.value)}>
+              value={entityId ?? ""} onChange={(e) => {
+                setEntityId(e.target.value);
+                qc.invalidateQueries();
+              }}>
               {principal.entities.map((en) => (
                 <option key={en.id} value={en.id}>{en.legal_name}</option>
               ))}

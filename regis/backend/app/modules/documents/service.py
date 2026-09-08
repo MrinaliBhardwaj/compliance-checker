@@ -206,7 +206,7 @@ def link_document(session: Session, *, organization_id, document_id, instance_id
     ).scalar_one_or_none()
     if existing is None:
         session.add(DocumentLink(document_id=document_id, obligation_instance_id=instance_id,
-                                 confirmed_by=confirmed_by))
+                                 confirmed_by=confirmed_by, organization_id=organization_id))
         session.flush()
 
     comp = completeness_for_instance(session, inst)

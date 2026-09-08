@@ -42,6 +42,17 @@ class GenerateRequest(BaseModel):
 def calendar_generate(body: GenerateRequest, db: DbSession,
                       principal: Principal = Depends(_admin)) -> dict:
     """Commit the confirmed profile, then generate + persist the calendar."""
+    from sqlalchemy import select
+    from fastapi import HTTPException, status
+    from app.models.tenancy import Entity
+
+    entity = db.execute(
+        select(Entity).where(Entity.id == body.entity_id,
+                             Entity.organization_id == principal.organization_id)
+    ).scalar_one_or_none()
+    if not entity:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Entity not found in organization")
+
     prof = save_profile(db, organization_id=principal.organization_id,
                         entity_id=body.entity_id, raw_input=body.raw_input,
                         confirmed_by=principal.user_id)

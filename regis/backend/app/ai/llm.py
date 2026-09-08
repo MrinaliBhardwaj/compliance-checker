@@ -40,4 +40,10 @@ def complete_json(system: str, user: str, *, max_tokens: int = 1024) -> dict[str
     """Strict-JSON completion; parses the model's response into a dict."""
     raw = complete(system + "\n\nRespond with valid JSON only.", user, max_tokens=max_tokens)
     raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    return json.loads(raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", raw, re.DOTALL)
+        if match:
+            return json.loads(match.group(0))
+        raise

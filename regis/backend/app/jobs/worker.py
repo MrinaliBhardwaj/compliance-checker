@@ -33,18 +33,21 @@ async def nightly_sweep(ctx) -> dict:
     with SessionLocal() as session:
         org_ids = session.execute(select(Organization.id)).scalars().all()
         for org_id in org_ids:
-            set_tenant(session, str(org_id))
-            rows = session.execute(
-                select(ObligationInstance).where(
-                    ObligationInstance.organization_id == org_id,
-                    ObligationInstance.status.in_(_OPEN),
-                )
-            ).scalars().all()
-            for i in rows:
-                if i.due_date and i.due_date < today:
-                    i.status = "overdue"
-                    flipped += 1
-            session.commit()  # persist this org under its own tenant scope
+            try:
+                set_tenant(session, str(org_id))
+                rows = session.execute(
+                    select(ObligationInstance).where(
+                        ObligationInstance.organization_id == org_id,
+                        ObligationInstance.status.in_(_OPEN),
+                    )
+                ).scalars().all()
+                for i in rows:
+                    if i.due_date and i.due_date < today and i.status != "ready_for_review":
+                        i.status = "overdue"
+                        flipped += 1
+                session.commit()  # persist this org under its own tenant scope
+            except Exception:
+                session.rollback()
     return {"overdue_flipped": flipped}
 
 
@@ -56,16 +59,24 @@ async def enqueue_due_reminders(ctx) -> dict:
     with SessionLocal() as session:
         org_ids = session.execute(select(Organization.id)).scalars().all()
         for org_id in org_ids:
-            set_tenant(session, str(org_id))
-            total += run_reminders(session, org_id, today)["notifications"]
-            session.commit()  # per-org: reminder INSERTs must land under this org's RLS scope
+            try:
+                set_tenant(session, str(org_id))
+                total += run_reminders(session, org_id, today)["notifications"]
+                session.commit()  # per-org: reminder INSERTs must land under this org's RLS scope
+            except Exception:
+                session.rollback()
     return {"reminders_created": total}
 
+
+from arq import cron
 
 class WorkerSettings:
     """arq entrypoint: `arq app.jobs.worker.WorkerSettings`."""
     functions = [nightly_sweep, enqueue_due_reminders]
-    cron_jobs: list = []  # configured per-env; nightly_sweep typically at 00:30 IST
+    cron_jobs = [
+        cron(nightly_sweep, hour=0, minute=30),       # 00:30 IST daily
+        cron(enqueue_due_reminders, hour=6, minute=0), # 06:00 IST daily
+    ]
 
     @staticmethod
     def redis_settings():
@@ -73,3 +84,6 @@ class WorkerSettings:
 
         from app.core.config import get_settings
         return RedisSettings.from_dsn(get_settings().redis_url)
+    from app.core.config import get_settings
+    from arq.connections import RedisSettings
+    redis_settings = RedisSettings.from_dsn(get_settings().redis_url)

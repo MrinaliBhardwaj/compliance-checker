@@ -77,7 +77,11 @@ def signup(body: SignupRequest, response: Response) -> TokenResponse:
         user = User(email=body.email, full_name=body.full_name,
                     auth_provider="password", password_hash=hash_password(body.password))
         db.add(user)
-        db.flush()
+        try:
+            from sqlalchemy.exc import IntegrityError
+            db.flush()
+        except IntegrityError:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Email already registered")
         db.add(Membership(user_id=user.id, organization_id=org.id,
                           role="compliance_admin", status="active"))
         entity = Entity(organization_id=org.id, legal_name=body.entity_legal_name)

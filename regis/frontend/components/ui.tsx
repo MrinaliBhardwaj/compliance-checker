@@ -1,6 +1,6 @@
 "use client";
 // Shared UI primitives — production-grade building blocks used across pages.
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 export function Spinner() {
   return <span className="spinner" aria-label="loading" />;
@@ -68,6 +68,13 @@ export function Progress({ pct }: { pct: number }) {
 
 export function Drawer({ open, onClose, children }:
   { open: boolean; onClose: () => void; children: ReactNode }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
     <>
@@ -75,7 +82,7 @@ export function Drawer({ open, onClose, children }:
       <aside className="drawer" role="dialog" aria-modal="true">
         <div className="between" style={{ marginBottom: 12 }}>
           <span className="muted" style={{ fontSize: 12 }}>Press Esc or click outside to close</span>
-          <button className="btn sm ghost" onClick={onClose}>✕</button>
+          <button className="btn sm ghost" aria-label="Close" onClick={onClose}>✕</button>
         </div>
         {children}
       </aside>

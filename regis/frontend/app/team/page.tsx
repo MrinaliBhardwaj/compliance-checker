@@ -2,7 +2,8 @@
 // Team / user management: invite teammates, assign roles, manage pending invites,
 // and remove members with obligation reassignment. Admin writes; head views.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   changeMemberRole, inviteMember, listMembers, removeMember,
   type Member, type Role,
@@ -22,6 +23,14 @@ export default function TeamPage() {
 
 function Team() {
   const { role: myRole, principal } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (myRole && myRole !== "compliance_admin" && myRole !== "head") {
+      router.replace("/dashboard");
+    }
+  }, [myRole, router]);
+
   const isAdmin = myRole === "compliance_admin";
   const qc = useQueryClient();
   const toast = useToast();

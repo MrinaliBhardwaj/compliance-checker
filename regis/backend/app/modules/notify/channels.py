@@ -34,15 +34,18 @@ class EmailChannel(Channel):
     def send(self, *, to: str | None, subject: str, body: str, meta: dict | None = None) -> bool:
         if not to:
             return False
-        import boto3
-        s = get_settings()
-        client = boto3.client("ses", region_name=s.aws_region)
-        client.send_email(
-            Source=meta.get("from", "compliance@regis.app") if meta else "compliance@regis.app",
-            Destination={"ToAddresses": [to]},
-            Message={"Subject": {"Data": subject}, "Body": {"Text": {"Data": body}}},
-        )
-        return True
+        try:
+            import boto3
+            s = get_settings()
+            client = boto3.client("ses", region_name=s.aws_region)
+            client.send_email(
+                Source=meta.get("from", "compliance@regis.app") if meta else "compliance@regis.app",
+                Destination={"ToAddresses": [to]},
+                Message={"Subject": {"Data": subject}, "Body": {"Text": {"Data": body}}},
+            )
+            return True
+        except Exception:
+            return False
 
 
 class SlackChannel(Channel):
@@ -52,9 +55,12 @@ class SlackChannel(Channel):
         self.webhook_url = webhook_url
 
     def send(self, *, to: str | None, subject: str, body: str, meta: dict | None = None) -> bool:
-        import httpx
-        r = httpx.post(self.webhook_url, json={"text": f"*{subject}*\n{body}"}, timeout=10)
-        return r.status_code < 300
+        try:
+            import httpx
+            r = httpx.post(self.webhook_url, json={"text": f"*{subject}*\n{body}"}, timeout=10)
+            return r.status_code < 300
+        except Exception:
+            return False
 
 
 def get_channel(channel: str) -> Channel:

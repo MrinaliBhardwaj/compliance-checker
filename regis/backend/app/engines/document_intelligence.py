@@ -171,7 +171,8 @@ def validate(extracted: dict, instance: dict, template: dict, org: dict) -> list
               or extracted.get("tan_or_pan") or extracted.get("entity_identifier") or "")
     known = {v for v in [org.get("cin"), org.get("pan"), org.get("gstin"), org.get("tan")] if v}
     if ext_id:
-        ok = any(ext_id.replace(" ", "").upper() == k.replace(" ", "").upper() for k in known)
+        clean_ext = ext_id.replace(" ", "").upper()
+        ok = any(clean_ext == k.replace(" ", "").upper() or k.replace(" ", "").upper() in clean_ext for k in known)
         checks.append(Check("entity_match", "pass" if ok else "fail",
                             f"doc id '{ext_id}' {'matches' if ok else 'NOT in'} org master"))
 

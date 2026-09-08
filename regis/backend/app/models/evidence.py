@@ -34,6 +34,7 @@ class DocumentLink(Base):
     __tablename__ = "document_links"
 
     id: Mapped[uuid.UUID] = uuid_pk()
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id"), index=True)
     document_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("documents.id", ondelete="CASCADE"), index=True, nullable=False)
     obligation_instance_id: Mapped[uuid.UUID] = mapped_column(

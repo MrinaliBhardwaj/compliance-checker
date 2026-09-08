@@ -59,9 +59,11 @@ class _RedisBackend:
         self._r = client
 
     def incr(self, key: str, window: int) -> int:
-        count = int(self._r.incr(key))
-        if count == 1:  # first hit in this window -> start the TTL
-            self._r.expire(key, window)
+        pipe = self._r.pipeline()
+        pipe.incr(key)
+        pipe.expire(key, window, nx=True)
+        results = pipe.execute()
+        count = int(results[0])
         return count
 
     def reset(self, key: str) -> None:
@@ -69,6 +71,8 @@ class _RedisBackend:
 
     def clear(self) -> None:  # prod never calls this; tests use memory
         pass
+        for key in self._r.scan_iter("rl:*"):
+            self._r.delete(key)
 
 
 _backend = None

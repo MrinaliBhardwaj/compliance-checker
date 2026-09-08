@@ -28,8 +28,11 @@ function DashboardInner() {
       const blob = await downloadReport("pdf");
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = "compliance-status.pdf"; a.click();
-      URL.revokeObjectURL(url);
+      a.href = url; a.download = "compliance-status.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
       toast(e instanceof Error ? e.message : "Export failed", "err");
     }

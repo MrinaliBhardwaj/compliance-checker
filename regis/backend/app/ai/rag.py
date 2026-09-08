@@ -47,10 +47,14 @@ class _InMemory(RagStore):
         return scored[:k]
 
 
+_store: RagStore | None = None
+
 def get_store() -> RagStore:
     """Factory. Returns Qdrant store when configured; else the in-memory fallback."""
-    # Production: build a Qdrant-backed RagStore from settings.qdrant_url here.
-    return _InMemory()
+    global _store
+    if _store is None:
+        _store = _InMemory()
+    return _store
 
 
 def retrieval_quality(chunks: list[Chunk]) -> str:

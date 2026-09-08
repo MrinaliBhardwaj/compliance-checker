@@ -32,7 +32,9 @@ def _pdf(b: bytes) -> tuple[str, float]:
             return text, 0.95  # embedded text-PDF: high confidence, no OCR needed
     except Exception:
         pass
-    return _image(b)  # fall back to rasterize + OCR
+    # PDF bytes cannot be opened as an image directly;
+    # pdf2image or pypdfium2 would be needed for rasterization.
+    return "", 0.0
 
 
 def _image(b: bytes) -> tuple[str, float]:

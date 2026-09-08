@@ -4,7 +4,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import {
-  assignInstance, classifyDocument, entityAudit, getInstance, linkDocument, listAssignable,
+  ApiError, assignInstance, classifyDocument, entityAudit, getInstance, linkDocument, listAssignable,
   transitionInstance, uploadDocumentProgress,
   type AuditEvent, type InstanceDetail, type LifecycleAction, type LinkResult, type Member,
 } from "@/lib/api";
@@ -40,7 +40,7 @@ export default function ObligationDrawer({ instanceId, onClose }:
     <Drawer open={!!instanceId} onClose={onClose}>
       {detail.isLoading && <Loading />}
       {detail.isError && <ErrorState error={detail.error} onRetry={detail.refetch} />}
-      {detail.data && <Body d={detail.data} onChanged={refresh} />}
+      {detail.data && <Body key={detail.data.id} d={detail.data} onChanged={refresh} />}
     </Drawer>
   );
 }
@@ -318,7 +318,14 @@ function EvidencePanel({ d, entityId, canUpload, onChanged }:
         onChanged();
       }
     } catch (e) {
-      // 409 entity-mismatch surfaces here
+      if (e instanceof ApiError && e.status === 409) {
+        try {
+          const payload = JSON.parse(e.message);
+          setLinkResult({ blocked: true, reason: payload.reason, checks: payload.checks || [] });
+          toast(`Link blocked: ${payload.reason}`, "err");
+          return;
+        } catch { /* fall through to generic error */ }
+      }
       toast(e instanceof Error ? e.message : "Link failed", "err");
     }
   };
@@ -350,7 +357,7 @@ function EvidencePanel({ d, entityId, canUpload, onChanged }:
             {pct === null ? "Drag a file here or click to upload (PDF, image, XLSX/DOCX)"
               : <div className="stack"><span>Uploading… {pct}%</span><Progress pct={pct} /></div>}
             <input ref={fileRef} type="file" hidden
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) void doUpload(f); }} />
+              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void doUpload(f); }} />
           </div>
 
           {pendingDoc?.needsClassify && (

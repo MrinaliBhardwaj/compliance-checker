@@ -20,6 +20,7 @@ DB-backed holiday_calendar in production.
 from __future__ import annotations
 
 import contextlib
+import contextvars
 from calendar import monthrange
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -41,11 +42,11 @@ DEFAULT_HOLIDAYS = {
 
 # Active holiday set for the current generation call (swapped in by
 # generate_instances when ctx carries a holiday calendar; restored after).
-_ACTIVE_HOLIDAYS: set[date] = set(DEFAULT_HOLIDAYS)
+_ACTIVE_HOLIDAYS: contextvars.ContextVar[set[date]] = contextvars.ContextVar('_ACTIVE_HOLIDAYS', default=set(DEFAULT_HOLIDAYS))
 
 
 def is_working_day(d: date) -> bool:
-    return d.weekday() < 5 and d not in _ACTIVE_HOLIDAYS
+    return d.weekday() < 5 and d not in _ACTIVE_HOLIDAYS.get()
 
 
 def adjust(d: date, mode: str | None) -> tuple[date, bool]:
@@ -315,13 +316,11 @@ def _holidays(holidays: set[date] | None):
     Single-threaded job context; the set is saved and restored so the module
     default is never mutated permanently.
     """
-    global _ACTIVE_HOLIDAYS
-    prev = _ACTIVE_HOLIDAYS
-    _ACTIVE_HOLIDAYS = set(holidays) if holidays else set(DEFAULT_HOLIDAYS)
+    token = _ACTIVE_HOLIDAYS.set(set(holidays) if holidays else set(DEFAULT_HOLIDAYS))
     try:
         yield
     finally:
-        _ACTIVE_HOLIDAYS = prev
+        _ACTIVE_HOLIDAYS.reset(token)
 
 
 def generate_instances(company_obligations: list[dict], ctx: dict) -> dict:

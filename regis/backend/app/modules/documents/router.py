@@ -99,3 +99,20 @@ def list_documents(db: DbSession, principal: CurrentPrincipal) -> list[dict]:
         .order_by(Document.created_at.desc())
     ).scalars().all()
     return [_doc_out(d) for d in rows]
+
+
+from fastapi.responses import FileResponse
+from app.core.storage import get_storage, LocalStorage
+
+@router.get("/raw/{key:path}")
+def download_raw(key: str, principal: CurrentPrincipal):
+    # Tenant isolation: key must start with the caller's org ID
+    if not key.startswith(f"{principal.organization_id}/"):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied")
+    storage = get_storage()
+    if not isinstance(storage, LocalStorage):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Not local storage")
+    path = storage._path(key)
+    if not path.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND)
+    return FileResponse(path)

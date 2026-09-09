@@ -67,11 +67,17 @@ regis/
 
 ## Quick start
 
+### One-command local startup (recommended for development)
+```bash
+./scripts/run_local.sh          # installs, migrates, seeds, starts API (:8000) + UI (:3000)
+                                # API docs: http://localhost:8000/docs
+```
+
 ### Run the tests (no services needed)
 ```bash
 cd backend
 pip install -e ".[dev]"
-python -m pytest -q            # 69 passed, 2 skipped
+python -m pytest -q            # 137 passed, 8 skipped
 ```
 
 ### Run the full stack (Docker)
@@ -80,19 +86,20 @@ docker compose up --build       # api on :8000 (migrates + seeds on boot), worke
 # API docs: http://localhost:8000/docs
 ```
 
-### Run the backend directly
+### Run the backend directly (manual setup)
 ```bash
 cd backend
 cp .env.example .env            # set REGIS_* (Postgres, JWT secret, optional Anthropic key)
 alembic upgrade head
-python -m app.seed.cli          # load 29 laws + 106 templates (idempotent, all DRAFT_UNVERIFIED)
+python -m app.seed.cli --create-all  # on fresh DB, first create tables; then load 22 laws + 107 templates (idempotent, all DRAFT_UNVERIFIED)
 uvicorn app.main:app --reload
 ```
 
-### Frontend
+### Frontend (manual setup)
 ```bash
 cd frontend
-npm install && npm run dev      # http://localhost:3000  (proxies /api -> :8000)
+npm ci                          # use npm ci instead of npm install to avoid lock churn
+npm run dev                     # http://localhost:3000  (proxies /api -> :8000)
 ```
 
 ### Verify the Postgres-only guarantees (RLS + append-only audit)

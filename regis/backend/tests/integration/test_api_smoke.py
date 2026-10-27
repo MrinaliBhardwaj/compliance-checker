@@ -262,11 +262,16 @@ def test_report_export_over_http(client):
     assert pdf.content.startswith(b"%PDF-")
 
 
-def test_preparer_cannot_export(client):
-    from app.core.security import Principal, create_access_token
+def _preparer(client) -> dict:
+    """Headers for a real member whose role is preparer. A forged token for a user
+    with no membership is now a 401, so RBAC tests need a member who exists."""
+    headers, _ = _auth(client)
+    _set_membership(client.get("/auth/me", headers=headers).json()["user_id"], role="preparer")
+    return headers
 
-    tok = create_access_token(Principal(user_id="u1", organization_id="o1", role="preparer"))
-    r = client.get("/reports/compliance.pdf", headers={"Authorization": f"Bearer {tok}"})
+
+def test_preparer_cannot_export(client):
+    r = client.get("/reports/compliance.pdf", headers=_preparer(client))
     assert r.status_code == 403
 
 
@@ -335,12 +340,9 @@ def test_legal_updates_over_http(client):
 
 
 def test_preparer_cannot_review_legal_update(client):
-    from app.core.security import Principal, create_access_token
-
-    tok = create_access_token(Principal(user_id="u1", organization_id="o1", role="preparer"))
     r = client.post(
         "/legal-updates/00000000-0000-0000-0000-000000000000/review",
-        headers={"Authorization": f"Bearer {tok}"},
+        headers=_preparer(client),
         json={"status": "applicable"},
     )
     assert r.status_code == 403
@@ -350,18 +352,68 @@ def test_auth_required(client):
     assert client.get("/obligations/dashboard").status_code == 401
 
 
-def test_preparer_cannot_generate(client):
-    """RBAC: only compliance_admin can generate the calendar."""
-    # a fresh admin to mint a preparer would need invite flow; assert the gate via role check
-    from app.core.security import Principal, create_access_token
+def _set_membership(user_id: str, **values) -> None:
+    """Edit the caller's membership row directly, as an admin action elsewhere would."""
+    from sqlalchemy import update
 
-    tok = create_access_token(Principal(user_id="u1", organization_id="o1", role="preparer"))
+    from app.models.tenancy import Membership
+
+    eng = create_engine(f"sqlite+pysqlite:///{_TMP.name}", future=True)
+    with eng.begin() as c:
+        c.execute(
+            update(Membership).where(Membership.user_id == uuid.UUID(user_id)).values(**values)
+        )
+    eng.dispose()
+
+
+def test_preparer_cannot_generate(client):
+    """RBAC: only compliance_admin can generate the calendar. The role is read from
+    the membership on each request, so demoting an admin applies to their existing
+    token straight away (BUG-08)."""
+    headers, entity_id = _auth(client)
+    user_id = client.get("/auth/me", headers=headers).json()["user_id"]
+    _set_membership(user_id, role="preparer")
+    assert client.get("/auth/me", headers=headers).json()["role"] == "preparer"
     r = client.post(
         "/onboarding/calendar/generate",
-        headers={"Authorization": f"Bearer {tok}"},
-        json={"entity_id": "e1", "raw_input": {}},
+        headers=headers,
+        json={"entity_id": entity_id, "raw_input": {}},
     )
     assert r.status_code == 403
+
+
+def test_removed_member_token_stops_working(client):
+    """BUG-08: removal is revocation now, not 12 hours later when the JWT expires."""
+    headers, _ = _auth(client)
+    assert client.get("/obligations/instances", headers=headers).status_code == 200
+    user_id = client.get("/auth/me", headers=headers).json()["user_id"]
+    _set_membership(user_id, status="removed")
+    assert client.get("/obligations/instances", headers=headers).status_code == 401
+
+
+def test_token_for_unknown_user_or_org_is_rejected(client):
+    """A validly signed token whose user/org no longer exists (e.g. after a DB wipe)
+    must not authenticate a 'ghost' session."""
+    from app.core.security import Principal, create_access_token
+
+    tok = create_access_token(
+        Principal(
+            user_id=str(uuid.uuid4()), organization_id=str(uuid.uuid4()), role="compliance_admin"
+        )
+    )
+    r = client.get("/obligations/instances", headers={"Authorization": f"Bearer {tok}"})
+    assert r.status_code == 401
+
+
+def test_invite_token_is_not_a_session(client):
+    """BUG-22: an invite JWT (same secret, no sub/role) used as a session gave a 500."""
+    from app.core.security import create_invite_token
+
+    tok = create_invite_token(
+        membership_id=str(uuid.uuid4()), organization_id=str(uuid.uuid4()), email="x@acme.example"
+    )
+    r = client.get("/auth/me", headers={"Authorization": f"Bearer {tok}"})
+    assert r.status_code == 401
 
 
 def test_httponly_cookie_session(client):

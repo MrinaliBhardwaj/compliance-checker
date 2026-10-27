@@ -119,12 +119,46 @@ def get_current_principal(
         claims = jwt.decode(token, s.jwt_secret, algorithms=[s.jwt_algorithm])
     except JWTError as e:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token") from e
+    # Only session tokens: an invite JWT shares the secret but has a `purpose` and no sub.
+    if claims.get("purpose") or not claims.get("sub") or not claims.get("org"):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token")
+    # The token proves who you are; the membership decides what you may do now.
+    # Re-reading it per request makes removal and role changes take effect at once
+    # instead of when the 12h token expires, and rejects tokens for a user or org
+    # that no longer exists. One indexed lookup, cached by FastAPI per request.
+    role = _active_role(claims["sub"], claims["org"])
+    if role is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Membership not active")
     return Principal(
         user_id=claims["sub"],
         organization_id=claims["org"],
-        role=claims["role"],
+        role=role,
         email=claims.get("email"),
     )
+
+
+def _active_role(user_id: str, organization_id: str) -> str | None:
+    # Imported here: app.core.db and the models import this module's neighbours.
+    import uuid
+
+    from sqlalchemy import select
+
+    from app.core.db import SessionLocal, set_tenant
+    from app.models.tenancy import Membership
+
+    try:
+        uid, oid = uuid.UUID(user_id), uuid.UUID(organization_id)
+    except ValueError:
+        return None
+    with SessionLocal() as db:
+        set_tenant(db, organization_id)  # memberships are RLS-scoped to the org
+        return db.execute(
+            select(Membership.role).where(
+                Membership.user_id == uid,
+                Membership.organization_id == oid,
+                Membership.status == "active",
+            )
+        ).scalar_one_or_none()
 
 
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]

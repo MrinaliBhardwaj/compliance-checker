@@ -9,11 +9,12 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import date, timedelta
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi import status as http_status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
 from app.core.deps import DbSession
 from app.core.security import CurrentPrincipal
@@ -64,7 +65,11 @@ def list_instances(
     status: str | None = None,
     category: str | None = None,
     q: str | None = None,
+    limit: Annotated[int | None, Query(ge=1, le=1000)] = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ) -> list[dict]:
+    """Tracker rows, filtered and (optionally) paged in SQL rather than in Python."""
+    today = date.today()
     query = (
         select(ObligationInstance, CompanyObligation, ObligationTemplate)
         .join(CompanyObligation, ObligationInstance.company_obligation_id == CompanyObligation.id)
@@ -73,24 +78,37 @@ def list_instances(
             ObligationInstance.organization_id == principal.organization_id,
             CompanyObligation.is_active.is_(True),
         )
-        .order_by(ObligationInstance.due_date)
+        .order_by(ObligationInstance.due_date, ObligationInstance.id)
     )
-    triples = db.execute(query).all()
-    today = date.today()
-    out = []
-    for i, co, tpl in triples:
-        # preparers see only their assigned instances (PRD role matrix)
-        if principal.role == "preparer" and str(i.owner_user_id) != principal.user_id:
-            continue
-        row = _instance_row(i, co, tpl, today)
-        if status and row["status"] != status:
-            continue
-        if category and row["category"] != category:
-            continue
-        if q and q.lower() not in (row["title"] or "").lower():
-            continue
-        out.append(row)
-    return out
+    # preparers see only their assigned instances (PRD role matrix)
+    if principal.role == "preparer":
+        query = query.where(ObligationInstance.owner_user_id == principal.user_id)
+    if category:
+        query = query.where(ObligationTemplate.category == category)
+    if q:
+        query = query.where(ObligationTemplate.title.ilike(f"%{q}%"))
+    if status:
+        query = query.where(_status_clause(status, today))
+    if limit is not None:
+        query = query.limit(limit)
+    if offset:
+        query = query.offset(offset)
+    return [_instance_row(i, co, tpl, today) for i, co, tpl in db.execute(query).all()]
+
+
+def _status_clause(status: str, today: date):
+    """SQL for the *effective* status (lifecycle.effective_status): overdue is computed
+    from pending/in_progress + a past due date and never stored."""
+    maker_held = ObligationInstance.status.in_(("pending", "in_progress"))
+    past_due = ObligationInstance.due_date < today
+    if status == "overdue":
+        return and_(maker_held, past_due)
+    if status in ("pending", "in_progress"):
+        return and_(
+            ObligationInstance.status == status,
+            or_(ObligationInstance.due_date.is_(None), ObligationInstance.due_date >= today),
+        )
+    return ObligationInstance.status == status
 
 
 @router.get("/instances/{instance_id}")

@@ -182,3 +182,35 @@ def test_copilot_logs_both_sides_in_constant_queries(db, seeded_org, profile_b):
     assert [m.role for m in logged] == ["assistant", "user"]
     reply = next(m for m in logged if m.role == "assistant")
     assert reply.content and reply.intent and reply.grounding is not None
+
+
+def test_status_filter_matches_computed_status(db, seeded_org, profile_b, monkeypatch):
+    """P3: filtering moved into SQL must agree with the computed (effective) status,
+    including 'overdue', which is never stored."""
+    from datetime import date as _date
+
+    import app.modules.obligations.router as obr
+
+    generate_calendar(
+        db,
+        organization_id=seeded_org["org_id"],
+        entity_id=seeded_org["entity_id"],
+        profile=profile_b,
+        ctx=CTX,
+    )
+
+    class _Today(_date):
+        @classmethod
+        def today(cls):
+            return _date(2026, 10, 27)  # mid-FY: a mix of overdue and pending
+
+    monkeypatch.setattr(obr, "date", _Today)
+    admin = _admin(seeded_org)
+    everything = list_instances(db=db, principal=admin)
+    for s in ("overdue", "pending", "in_progress", "completed"):
+        expected = [r["id"] for r in everything if r["status"] == s]
+        got = [r["id"] for r in list_instances(db=db, principal=admin, status=s)]
+        assert got == expected, s
+    assert any(r["status"] == "overdue" for r in everything)
+    page = list_instances(db=db, principal=admin, limit=10, offset=5)
+    assert [r["id"] for r in page] == [r["id"] for r in everything][5:15]

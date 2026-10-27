@@ -3,6 +3,7 @@
 // exposes role-aware helpers, and powers route guarding + role-aware rendering.
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { type Capability, type Principal, type Role, can, logout as logoutApi, me } from "@/lib/api";
 
 interface AuthState {
@@ -21,6 +22,7 @@ const ENTITY_KEY = "regis_entity";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [principal, setPrincipal] = useState<Principal | null>(null);
   const [loading, setLoading] = useState(true);
   const [entityId, setEntityIdState] = useState<string | null>(null);
@@ -36,10 +38,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setEntityIdState(valid);
     } catch {
       setPrincipal(null);  // 401 -> not signed in
+      queryClient.clear();  // drop any previous user's cached data
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => { void refresh(); }, [refresh]);
 
@@ -52,8 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try { await logoutApi(); } catch { /* clear locally regardless */ }
     if (typeof window !== "undefined") localStorage.removeItem(ENTITY_KEY);
     setPrincipal(null);
+    // Cached queries belong to the user who just left; the next one to sign in
+    // in this tab must not see them, even while their own data refetches.
+    queryClient.clear();
     router.push("/");
-  }, [router]);
+  }, [router, queryClient]);
 
   const value: AuthState = {
     principal, loading, entityId, setEntityId, refresh, logout,

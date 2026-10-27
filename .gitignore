@@ -17,6 +17,7 @@ node_modules/
 .next/
 out/
 npm-debug.log*
+*.tsbuildinfo
 
 # OS / editors
 .DS_Store
@@ -42,9 +43,7 @@ npm-debug.log*
 DOC Req/
 /doc1.txt
 /doc2.txt
-regis/doc1.txt
-regis/package-lock.json
-regis/scripts/extract_docx.py
+scripts/extract_docx.py
 CURRENT_STATUS.md
 PROJECT_CONTEXT_HANDOFF.md
 PROJECT_CONTEXT_HANDOFF.old.md
@@ -54,8 +53,9 @@ PROJECT_CONTEXT_HANDOFF.old.md
 .claude/
 Compliance docs/
 presentation/
-regis/review2/
 BUILD_PLAN.md
 DECISIONS.md
-regis/infra/
-regis/shared/
+# the old nested app folder; only local leftovers remain in it
+regis/
+# CI workflow, kept locally
+.github/

@@ -1,6 +1,9 @@
-# Local dev stack. Mirrors the PRD architecture: Postgres + Redis + S3(MinIO) +
+# Local dev stack. Mirrors the PRD architecture: Postgres + Redis + S3 (MinIO) +
 # Qdrant + the FastAPI API and the Arq worker. Production runs the managed
-# equivalents (RDS, ElastiCache, S3, Qdrant) in AWS ap-south-1 — see infra/terraform.
+# equivalents (RDS, ElastiCache, S3, Qdrant) in AWS ap-south-1.
+# Pinned so containers and volumes keep their regis_* names now that this file
+# sits at the repo root (the project name used to come from the regis/ folder).
+name: regis
 services:
   postgres:
     image: postgres:16

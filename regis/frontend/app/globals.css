@@ -527,6 +527,10 @@ tr[data-urgency="review"]  td.rail::before { background: var(--info); }
 
 /* ---------------------------------------------------------------- modal --- */
 .modal-wrap { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 20px; }
+/* .modal-wrap is its own stacking context, so a scrim inside it keeps the 60 from
+   .scrim and paints over the dialog (z-index 1). Sit it underneath instead. The
+   side sheet's scrim isn't inside a wrap and keeps 60. */
+.modal-wrap > .scrim { z-index: 0; }
 .modal {
   position: relative; z-index: 1; width: min(480px, 100%); background: var(--surface);
   border: 1px solid var(--rule); border-radius: var(--r-lg); box-shadow: var(--lift-3);

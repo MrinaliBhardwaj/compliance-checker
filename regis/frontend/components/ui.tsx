@@ -413,7 +413,7 @@ export function Modal({ open, onClose, title, description, children, footer, wid
   return (
     <div className="modal-wrap">
       
-      <div className="scrim" onClick={onClose} aria-hidden="true" style={{ zIndex: -1 }} />
+      <div className="scrim" onClick={onClose} aria-hidden="true" />
       <div className="modal" ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined} tabIndex={-1}
         style={width ? { width: `min(${width}px, 100%)` } : undefined}>

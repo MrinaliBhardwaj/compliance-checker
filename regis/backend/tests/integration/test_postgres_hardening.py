@@ -23,9 +23,8 @@ pytestmark = pytest.mark.skipif(not PG_URL, reason="REGIS_TEST_PG_URL not set (n
 
 @pytest.fixture
 def pg_engine():
-    from alembic.config import Config
-
     from alembic import command
+    from alembic.config import Config
 
     # NullPool: session GUCs (app.current_org / app.bootstrap) must not leak
     # between logical connections via pooling — "fresh connection" tests rely

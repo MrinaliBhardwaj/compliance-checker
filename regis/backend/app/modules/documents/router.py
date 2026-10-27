@@ -6,12 +6,14 @@ elsewhere (Maker-Checker). All rows are org-scoped (RLS) and audited.
 from __future__ import annotations
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy import select
 
 from app.core.config import get_settings
 from app.core.deps import DbSession
 from app.core.security import CurrentPrincipal
+from app.core.storage import LocalStorage, get_storage
 from app.models.evidence import Document
 from app.modules.documents import service as svc
 
@@ -100,9 +102,6 @@ def list_documents(db: DbSession, principal: CurrentPrincipal) -> list[dict]:
     ).scalars().all()
     return [_doc_out(d) for d in rows]
 
-
-from fastapi.responses import FileResponse
-from app.core.storage import get_storage, LocalStorage
 
 @router.get("/raw/{key:path}")
 def download_raw(key: str, principal: CurrentPrincipal):

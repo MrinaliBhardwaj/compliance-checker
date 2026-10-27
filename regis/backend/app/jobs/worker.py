@@ -10,8 +10,11 @@ from __future__ import annotations
 
 from datetime import date
 
+from arq import cron
+from arq.connections import RedisSettings
 from sqlalchemy import select
 
+from app.core.config import get_settings
 from app.core.db import SessionLocal, set_tenant
 from app.models.compliance import ObligationInstance
 from app.models.tenancy import Organization
@@ -68,8 +71,6 @@ async def enqueue_due_reminders(ctx) -> dict:
     return {"reminders_created": total}
 
 
-from arq import cron
-
 class WorkerSettings:
     """arq entrypoint: `arq app.jobs.worker.WorkerSettings`."""
     functions = [nightly_sweep, enqueue_due_reminders]
@@ -77,13 +78,4 @@ class WorkerSettings:
         cron(nightly_sweep, hour=0, minute=30),       # 00:30 IST daily
         cron(enqueue_due_reminders, hour=6, minute=0), # 06:00 IST daily
     ]
-
-    @staticmethod
-    def redis_settings():
-        from arq.connections import RedisSettings
-
-        from app.core.config import get_settings
-        return RedisSettings.from_dsn(get_settings().redis_url)
-    from app.core.config import get_settings
-    from arq.connections import RedisSettings
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)

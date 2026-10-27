@@ -36,8 +36,9 @@ def assign_owner(session: Session, *, organization_id, instance_id, owner_user_i
     if principal.role not in ("compliance_admin",):
         raise RolePermissionError("only compliance_admin may assign owners")
 
-    from app.models.tenancy import Membership
     from sqlalchemy import select
+
+    from app.models.tenancy import Membership
 
     valid = session.execute(
         select(Membership).where(

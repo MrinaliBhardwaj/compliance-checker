@@ -6,8 +6,8 @@ Create Date: 2026-09-08
 """
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0006_document_link_org_id"
 down_revision = "0005_audit_log_null_org"

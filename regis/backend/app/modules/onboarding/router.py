@@ -42,8 +42,9 @@ class GenerateRequest(BaseModel):
 def calendar_generate(body: GenerateRequest, db: DbSession,
                       principal: Principal = Depends(_admin)) -> dict:
     """Commit the confirmed profile, then generate + persist the calendar."""
-    from sqlalchemy import select
     from fastapi import HTTPException, status
+    from sqlalchemy import select
+
     from app.models.tenancy import Entity
 
     entity = db.execute(

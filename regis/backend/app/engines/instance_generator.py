@@ -42,7 +42,7 @@ DEFAULT_HOLIDAYS = {
 
 # Active holiday set for the current generation call (swapped in by
 # generate_instances when ctx carries a holiday calendar; restored after).
-_ACTIVE_HOLIDAYS: contextvars.ContextVar[set[date]] = contextvars.ContextVar('_ACTIVE_HOLIDAYS', default=set(DEFAULT_HOLIDAYS))
+_ACTIVE_HOLIDAYS: contextvars.ContextVar[frozenset[date]] = contextvars.ContextVar('_ACTIVE_HOLIDAYS', default=frozenset(DEFAULT_HOLIDAYS))
 
 
 def is_working_day(d: date) -> bool:
@@ -316,7 +316,7 @@ def _holidays(holidays: set[date] | None):
     Single-threaded job context; the set is saved and restored so the module
     default is never mutated permanently.
     """
-    token = _ACTIVE_HOLIDAYS.set(set(holidays) if holidays else set(DEFAULT_HOLIDAYS))
+    token = _ACTIVE_HOLIDAYS.set(frozenset(holidays) if holidays else frozenset(DEFAULT_HOLIDAYS))
     try:
         yield
     finally:

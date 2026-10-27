@@ -54,15 +54,18 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_started}
+      minio: {condition: service_started}
     environment:
       REGIS_DATABASE_URL: postgresql+psycopg://regis:regis@postgres:5432/regis
       REGIS_REDIS_URL: redis://redis:6379/0
       REGIS_QDRANT_URL: http://qdrant:6333
       REGIS_JWT_SECRET: dev-only-change-me
-      # Evidence files (LocalStorage outside prod) live on a volume, so they survive
-      # a rebuild / `down` the way their DB rows do.
-      REGIS_LOCAL_STORAGE: /app/.regis_storage
-    volumes: ["evidence:/app/.regis_storage"]
+      # Evidence goes to MinIO (S3-compatible), the same code path as S3 in prod; the
+      # bucket is created on first upload and persists on the miniodata volume.
+      REGIS_S3_ENDPOINT_URL: http://minio:9000
+      REGIS_S3_ACCESS_KEY: regis
+      REGIS_S3_SECRET_KEY: regis-secret
+      REGIS_S3_BUCKET: regis-evidence
     ports: ["8000:8000"]
     healthcheck:
       # python:3.12-slim has no curl; urlopen raises (exit 1) on a non-2xx response.
@@ -104,4 +107,3 @@ volumes:
   pgdata:
   miniodata:
   qdrantdata:
-  evidence:

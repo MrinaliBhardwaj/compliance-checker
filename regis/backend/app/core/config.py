@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     # AWS / storage (ap-south-1)
     aws_region: str = "ap-south-1"
     s3_bucket: str = "regis-evidence-dev"
+    # An S3-compatible endpoint (MinIO in compose). Setting it selects S3 storage
+    # outside prod too; credentials fall back to the usual AWS chain when unset.
+    s3_endpoint_url: str | None = None
+    s3_access_key: str | None = None
+    s3_secret_key: str | None = None
 
     # AI
     anthropic_api_key: str | None = None

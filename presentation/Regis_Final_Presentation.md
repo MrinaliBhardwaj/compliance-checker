@@ -20,7 +20,7 @@
 - Arq worker + Redis (overdue count, reminders/escalations, FY roll-over)
 - Copilot: deterministic and structured-first over the org's own data; RAG over
   regulatory text (Qdrant) is a stubbed seam, planned next
-- Evidence on local storage (a Docker volume); S3/MinIO adapter planned for prod
+- Evidence in S3-compatible storage: MinIO locally, AWS S3 (KMS-encrypted) in prod
 
 ## Slide 5 — Key design choices
 - DB-enforced tenant isolation (RLS) — security at the data layer.

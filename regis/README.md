@@ -87,8 +87,9 @@ docker compose up --build       # api on :8000 (migrates + seeds on boot), worke
 # API docs: http://localhost:8000/docs   — then run the frontend (below) for the UI
 ```
 
-Evidence files are kept on the `evidence` volume. MinIO and Qdrant start but aren't
-used yet: storage is local outside `REGIS_ENV=prod`, and the Copilot is deterministic.
+Evidence is stored in MinIO (S3-compatible; the bucket is created on first upload), the
+same `S3Storage` path prod uses against AWS S3. Qdrant starts but isn't used yet: the
+Copilot is deterministic. Without `REGIS_S3_ENDPOINT_URL`, dev falls back to local files.
 
 ### Developer helpers
 

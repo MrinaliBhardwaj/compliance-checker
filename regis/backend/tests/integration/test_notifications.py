@@ -6,11 +6,14 @@ Integration — M8 notifications (SQLite, no external providers).
 - Maker-Checker events emit review-requested / rejected / assignment notifications.
 All channels fall back to Null (recorded, not externally sent) so no creds needed.
 """
+import asyncio
+from contextlib import nullcontext
 from datetime import date, timedelta
 
 from sqlalchemy import func, select
 
 from app.core.security import Principal
+from app.jobs import worker
 from app.models.compliance import ObligationInstance
 from app.models.system import Notification
 from app.models.tenancy import Membership, User
@@ -78,6 +81,39 @@ def test_overdue_escalation_to_admin(db, seeded_org, profile_b):
         select(Notification).where(Notification.type == "escalation")
     ).scalars().all()
     assert any((n.payload or {}).get("kind") == "overdue" for n in escalations)
+
+
+def test_overdue_escalation_survives_nightly_sweep(db, seeded_org, profile_b, monkeypatch):
+    """BUG-04: the 00:30 sweep must not hide past-due rows from the 06:00 escalation run."""
+    _make_admin_membership(db, seeded_org)
+    generate_calendar(db, organization_id=seeded_org["org_id"], entity_id=seeded_org["entity_id"],
+                      profile=profile_b, ctx=CTX)
+    inst = db.execute(
+        select(ObligationInstance).where(ObligationInstance.due_date.isnot(None))
+    ).scalars().first()
+    today = inst.due_date + timedelta(days=3)
+    db.commit()  # the calendar exists before the cron runs; the sweep commits/rolls back per org
+
+    class _Today(date):
+        @classmethod
+        def today(cls):
+            return today
+
+    # Run the real job against the test session. set_tenant keys off the configured
+    # (Postgres) URL, not this SQLite session, so stub it like the rest of the SQLite path.
+    monkeypatch.setattr(worker, "SessionLocal", lambda: nullcontext(db))
+    monkeypatch.setattr(worker, "set_tenant", lambda session, org: None)
+    monkeypatch.setattr(worker, "date", _Today)
+    asyncio.run(worker.nightly_sweep(None))
+
+    db.refresh(inst)
+    assert inst.status == "pending"  # overdue is computed on read, never stored
+    run_reminders(db, seeded_org["org_id"], today)
+    escalations = db.execute(
+        select(Notification).where(Notification.type == "escalation")
+    ).scalars().all()
+    assert any((n.payload or {}).get("kind") == "overdue"
+               and n.payload.get("target_role") == "compliance_admin" for n in escalations)
 
 
 def test_lifecycle_emits_review_notification(db, seeded_org, profile_b):

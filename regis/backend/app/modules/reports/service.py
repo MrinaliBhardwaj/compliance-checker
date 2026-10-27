@@ -18,15 +18,9 @@ from app.models.compliance import CompanyObligation, ObligationInstance
 from app.models.content import ObligationTemplate
 from app.models.evidence import DocumentLink
 from app.models.tenancy import Entity, Organization
+from app.modules.obligations.lifecycle import STORED_OPEN, effective_status
 
 LIBRARY_VERSION = "0.1-draft"
-_OPEN = ("pending", "in_progress", "ready_for_review")
-
-
-def _effective_status(status: str, due: date | None, today: date) -> str:
-    if status in _OPEN and due and due < today:
-        return "overdue"
-    return status
 
 
 def build_compliance_report(session: Session, *, organization_id, today: date,
@@ -60,7 +54,7 @@ def build_compliance_report(session: Session, *, organization_id, today: date,
         ev_counts = {iid: n for iid, n in rows}
 
     for inst, _co, tpl in triples:
-        eff = _effective_status(inst.status, inst.due_date, today)
+        eff = effective_status(inst.status, inst.due_date, today)
         by_status[eff] += 1
         by_category[tpl.category][eff] += 1
         if tpl.verification_status != "VERIFIED":
@@ -71,7 +65,7 @@ def build_compliance_report(session: Session, *, organization_id, today: date,
                 "status": eff, "risk_level": tpl.risk_level}
         if eff == "overdue":
             overdue.append(item)
-        elif eff in _OPEN and inst.due_date and today <= inst.due_date <= week:
+        elif eff in STORED_OPEN and inst.due_date and today <= inst.due_date <= week:
             due_week.append(item)
         if eff == "ready_for_review":
             awaiting.append(item)

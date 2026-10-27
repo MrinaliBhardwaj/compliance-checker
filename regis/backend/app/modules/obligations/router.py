@@ -21,18 +21,18 @@ from app.models.content import ObligationTemplate
 from app.models.evidence import Document, DocumentLink
 from app.modules.documents.service import completeness_for_instance
 from app.modules.obligations import service as svc
-from app.modules.obligations.lifecycle import LifecycleError, RolePermissionError
+from app.modules.obligations.lifecycle import (
+    STORED_OPEN,
+    LifecycleError,
+    RolePermissionError,
+    effective_status,
+)
 
 router = APIRouter(prefix="/obligations", tags=["obligations"])
 
-_OPEN = ("pending", "in_progress", "ready_for_review")
-
 
 def _effective_status(i: ObligationInstance, today: date) -> str:
-
-    if i.status in ("pending", "in_progress") and i.due_date and i.due_date < today:
-        return "overdue"
-    return i.status
+    return effective_status(i.status, i.due_date, today)
 
 
 def _instance_row(i: ObligationInstance, co: CompanyObligation,
@@ -130,7 +130,7 @@ def dashboard(db: DbSession, principal: CurrentPrincipal) -> dict:
     overdue = counts.get("overdue", 0)
     due_week = sum(1 for i in rows
                    if i.due_date and today <= i.due_date <= week
-                   and _effective_status(i, today) in _OPEN)
+                   and _effective_status(i, today) in STORED_OPEN)
     total = len(rows) or 1
     completed = counts.get("completed", 0)
     health = round(100 * (1 - overdue / total))

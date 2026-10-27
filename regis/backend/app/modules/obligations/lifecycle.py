@@ -17,9 +17,23 @@ Checker = compliance_admin / head approves (-> completed) or rejects
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 OPEN_STATES = ("pending", "in_progress", "ready_for_review", "overdue")
 TERMINAL_STATES = ("completed", "not_applicable")
+# What an open instance can actually have in the `status` column; `overdue` is
+# never stored. Query with this, then derive the display status with effective_status.
+STORED_OPEN = ("pending", "in_progress", "ready_for_review")
+
+
+def effective_status(status: str, due: date | None, today: date) -> str:
+    """The one place overdue is decided: past due and still with the maker.
+
+    `ready_for_review` stays as is — the work is done and waiting on the checker.
+    """
+    if status in ("pending", "in_progress") and due and due < today:
+        return "overdue"
+    return status
 
 
 class LifecycleError(Exception):

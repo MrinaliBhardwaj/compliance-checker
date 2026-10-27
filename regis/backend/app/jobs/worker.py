@@ -1,10 +1,9 @@
 """
-Arq worker (PRD background-jobs backbone). The nightly sweep is the calendar's
-heartbeat: extend the generation window, upsert new instances, flip overdue, and
-enqueue due reminders — all idempotent and audit-logged.
+Arq worker (PRD background-jobs backbone): a nightly overdue count and the daily
+reminder/escalation run, both per org under its RLS scope.
 
-This wires the deterministic engines into scheduled execution. Job bodies call the
-same services the API uses, so there is one code path for generation/overdue.
+Overdue is computed on read (`lifecycle.effective_status`), never stored, so the
+worker writes no status. Job bodies call the same services the API uses.
 """
 from __future__ import annotations
 
@@ -18,40 +17,34 @@ from app.core.config import get_settings
 from app.core.db import SessionLocal, set_tenant
 from app.models.compliance import ObligationInstance
 from app.models.tenancy import Organization
-
-_OPEN = ("pending", "in_progress", "ready_for_review")
+from app.modules.obligations.lifecycle import STORED_OPEN, effective_status
 
 
 async def nightly_sweep(ctx) -> dict:
-    """Flip overdue instances org-by-org (RLS-scoped) and count reminders due.
+    """Count overdue instances org-by-org (RLS-scoped). Read-only.
 
-    Commit is per-org and *inside* the org's tenant scope: under Postgres FORCE
-    RLS a write only lands while `app.current_org` matches its row, so deferring
-    all writes to one final commit (under the last org's scope) would silently
-    drop every other org's changes. Per-org commit also makes one bad org
-    non-fatal for the rest of the sweep.
+    It used to store `overdue`, which hid those rows from run_reminders (it selects
+    STORED_OPEN) and so silenced the escalation ladder. Each org is read in its own
+    transaction because the tenant GUC is transaction-local.
     """
     today = date.today()
-    flipped = 0
+    overdue = 0
     with SessionLocal() as session:
         org_ids = session.execute(select(Organization.id)).scalars().all()
         for org_id in org_ids:
             try:
                 set_tenant(session, str(org_id))
                 rows = session.execute(
-                    select(ObligationInstance).where(
+                    select(ObligationInstance.status, ObligationInstance.due_date).where(
                         ObligationInstance.organization_id == org_id,
-                        ObligationInstance.status.in_(_OPEN),
+                        ObligationInstance.status.in_(STORED_OPEN),
                     )
-                ).scalars().all()
-                for i in rows:
-                    if i.due_date and i.due_date < today and i.status != "ready_for_review":
-                        i.status = "overdue"
-                        flipped += 1
-                session.commit()  # persist this org under its own tenant scope
-            except Exception:
-                session.rollback()
-    return {"overdue_flipped": flipped}
+                ).all()
+                overdue += sum(1 for status, due in rows
+                               if effective_status(status, due, today) == "overdue")
+            finally:
+                session.rollback()  # end this org's transaction (and its tenant scope)
+    return {"overdue": overdue}
 
 
 async def enqueue_due_reminders(ctx) -> dict:

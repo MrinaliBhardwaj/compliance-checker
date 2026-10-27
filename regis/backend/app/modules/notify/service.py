@@ -24,8 +24,7 @@ from app.models.compliance import CompanyObligation, ObligationInstance
 from app.models.system import Notification
 from app.models.tenancy import Membership, User
 from app.modules.notify.channels import get_channel
-
-_OPEN = ("pending", "in_progress", "ready_for_review")
+from app.modules.obligations.lifecycle import STORED_OPEN as _OPEN
 
 DEFAULT_LEADS = (7, 3, 1)
 HIGH_RISK_LEADS = (15, 7, 3, 1)

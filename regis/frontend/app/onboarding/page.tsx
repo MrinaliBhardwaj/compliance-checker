@@ -13,7 +13,7 @@
 //    can see what answering one more question actually buys them.
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { generateCalendar, profilePreview, type ProfilePreview } from "@/lib/api";
+import { type AnchorDates, generateCalendar, profilePreview, type ProfilePreview } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { errMessage, useToast } from "@/lib/toast";
 import { humanize, pluralize } from "@/lib/format";
@@ -44,6 +44,9 @@ function Onboarding() {
   const [confirmed, setConfirmed] = useState<Set<string>>(new Set());
   const [ackIssues, setAckIssues] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Optional dates that anchor dependent filings (AOC-4/MGT-7 after the AGM, Form 16A
+  // after the TDS return, licence renewals). Unknown ones park as "awaiting a date".
+  const [anchors, setAnchors] = useState<AnchorDates>({});
 
   if (!can("generate_calendar")) {
     return (
@@ -87,7 +90,7 @@ function Onboarding() {
     if (!entityId) { toast.err("No entity selected", "Pick a legal entity in the sidebar first."); return; }
     setBusy(true);
     try {
-      const res = await generateCalendar(entityId, raw);
+      const res = await generateCalendar(entityId, raw, anchors);
       toast.ok(
         `Calendar generated — ${pluralize(res.instances, "dated obligation")}`,
         `${res.company_obligations} applicable obligations across your profile, tracked from today.` +
@@ -379,6 +382,30 @@ function Onboarding() {
             <div className="panel-foot">
               Generation is recorded in the audit trail against your account, with the
               obligation-library version used.
+            </div>
+          </div>
+
+          <div className="panel">
+            <div className="panel-head"><h3>Key dates <span className="faint">(optional)</span></h3></div>
+            <div className="panel-body stack-sm">
+              <p className="muted" style={{ margin: 0, fontSize: 12.5 }}>
+                Some filings are due a fixed number of days after one of these. Leave a date
+                blank if you don’t know it yet; those filings wait as “awaiting a date” rather
+                than being given a guessed deadline.
+              </p>
+              {([
+                ["agm_date", "Annual general meeting", "Drives AOC-4, MGT-7 and related ROC filings."],
+                ["tds_return_date", "Last TDS return filed", "Drives the Form 16A certificate deadline."],
+                ["license_expiry", "Licence / registration expiry", "Drives renewal reminders."],
+              ] as const).map(([key, label, hint]) => (
+                <Field key={key} label={label} hint={hint}>
+                  {(p) => (
+                    <input className="input" type="date" value={anchors[key] ?? ""}
+                      onChange={(e) => setAnchors((a) => ({ ...a, [key]: e.target.value || undefined }))}
+                      {...p} />
+                  )}
+                </Field>
+              ))}
             </div>
           </div>
 

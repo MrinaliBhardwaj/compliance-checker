@@ -88,8 +88,14 @@ export const can = (role: Role | undefined, cap: Capability) =>
 // ---- onboarding ----
 export const profilePreview = (raw_input: Record<string, unknown>) =>
   req<ProfilePreview>("/onboarding/profile/preview", { method: "POST", body: JSON.stringify({ raw_input }) });
-export const generateCalendar = (entity_id: string, raw_input: Record<string, unknown>) =>
-  req<GenerateResult>("/onboarding/calendar/generate", { method: "POST", body: JSON.stringify({ entity_id, raw_input }) });
+/** Company dates that anchor dependent filings; omit any that aren't known yet. */
+export interface AnchorDates { agm_date?: string; tds_return_date?: string; license_expiry?: string }
+export const generateCalendar = (
+  entity_id: string, raw_input: Record<string, unknown>, anchors: AnchorDates = {},
+) =>
+  req<GenerateResult>("/onboarding/calendar/generate", {
+    method: "POST", body: JSON.stringify({ entity_id, raw_input, ...anchors }),
+  });
 
 // ---- obligations / dashboard ----
 export const getDashboard = () => req<Dashboard>("/obligations/dashboard");

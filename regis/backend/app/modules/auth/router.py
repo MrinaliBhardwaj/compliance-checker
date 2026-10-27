@@ -9,7 +9,7 @@ the org. Everything else runs under the JWT's org scope. First signup defaults t
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request, Response, status
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.core import ratelimit
@@ -17,6 +17,7 @@ from app.core.config import get_settings
 from app.core.db import SessionLocal, set_bootstrap, set_tenant
 from app.core.security import (
     CurrentPrincipal,
+    NormalizedEmail,
     Principal,
     clear_auth_cookie,
     create_access_token,
@@ -47,7 +48,7 @@ def _enforce_rate_limit(request: Request, scopes: dict[str, str]) -> None:
 
 
 class SignupRequest(BaseModel):
-    email: EmailStr
+    email: NormalizedEmail
     password: str = Field(min_length=MIN_PASSWORD_LEN, max_length=200)
     full_name: str | None = None
     organization_name: str
@@ -178,7 +179,7 @@ def logout(response: Response) -> dict:
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: NormalizedEmail
     password: str
 
 

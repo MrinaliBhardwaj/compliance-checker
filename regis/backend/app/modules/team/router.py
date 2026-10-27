@@ -7,10 +7,10 @@ oversight). Owner assignment itself stays on the obligations router (admin only)
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 from app.core.deps import DbSession
-from app.core.security import Principal, require_role
+from app.core.security import NormalizedEmail, Principal, require_role
 from app.modules.team import service as svc
 
 router = APIRouter(prefix="/team", tags=["team"])
@@ -20,7 +20,7 @@ _viewer = require_role("compliance_admin", "head")
 
 
 class InviteBody(BaseModel):
-    email: EmailStr
+    email: NormalizedEmail
     role: str
     full_name: str | None = None
 

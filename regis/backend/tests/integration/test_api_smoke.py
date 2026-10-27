@@ -608,3 +608,53 @@ def test_evidence_storage_is_tenant_scoped(client):
     assert _upload(client, a_headers, a_entity, name="../../escape.txt").status_code == 200
     assert not (root / "escape.txt").exists()
     assert any((root / a_org).rglob("escape.txt"))
+
+
+def test_email_is_case_insensitive(client):
+    """BUG-23: signup stored the email as typed while invites lowercased it, so
+    'Alice@X.com' and 'alice@x.com' became two users and login was case-sensitive."""
+    from sqlalchemy import func, select
+
+    from app.models.tenancy import User
+
+    tag = uuid.uuid4().hex[:8]
+    mixed = f"Alice.{tag}@Acme.Example"
+    r = client.post(
+        "/auth/signup",
+        json={
+            "email": mixed,
+            "password": "goodpassword1",
+            "organization_name": "Case NBFC",
+            "entity_legal_name": "Case Ltd",
+        },
+    )
+    assert r.status_code == 200
+    client.cookies.clear()
+    # same person, different casing: a second signup is a duplicate, login works
+    dup = client.post(
+        "/auth/signup",
+        json={
+            "email": mixed.upper(),
+            "password": "goodpassword1",
+            "organization_name": "Case NBFC 2",
+            "entity_legal_name": "Case Ltd 2",
+        },
+    )
+    assert dup.status_code == 409
+    assert (
+        client.post(
+            "/auth/login", json={"email": mixed.lower(), "password": "goodpassword1"}
+        ).status_code
+        == 200
+    )
+    client.cookies.clear()
+    eng = create_engine(f"sqlite+pysqlite:///{_TMP.name}", future=True)
+    with eng.connect() as c:
+        n = c.execute(
+            select(func.count()).select_from(User).where(func.lower(User.email) == mixed.lower())
+        ).scalar_one()
+        stored = c.execute(
+            select(User.email).where(func.lower(User.email) == mixed.lower())
+        ).scalar_one()
+    eng.dispose()
+    assert n == 1 and stored == mixed.lower()

@@ -325,3 +325,71 @@ def test_existing_account_invite_requires_their_password(db, seeded_org):
         db, token=inv2["invite_token"], password="their-secret-1", full_name=None
     )
     assert acc["role"] == "head" and acc["access_token"]
+
+
+def test_self_approval_needs_a_reason_and_is_audited(db, seeded_org, profile_b, monkeypatch):
+    """BUG-09: maker != checker. One admin can still finish an item (single-admin orgs
+    exist), but only with a recorded reason, flagged as a self-approval in the trail."""
+    from app.models.system import AuditLog
+    from app.modules.obligations.lifecycle import ReasonRequired
+
+    # isolate the maker-checker rule from the evidence gate
+    monkeypatch.setattr(
+        obsvc, "completeness_for_instance", lambda s, i: {"eligible_for_completion": True}
+    )
+    org = seeded_org["org_id"]
+    admin = _admin(seeded_org)
+    generate_calendar(
+        db, organization_id=org, entity_id=seeded_org["entity_id"], profile=profile_b, ctx=CTX
+    )
+    first, second = db.execute(select(ObligationInstance).limit(2)).scalars().all()
+
+    for inst in (first, second):
+        obsvc.transition(
+            db, organization_id=org, instance_id=inst.id, action="submit", principal=admin
+        )
+        db.refresh(inst)
+        assert str(inst.submitted_by) == admin.user_id
+
+    with pytest.raises(ReasonRequired):
+        obsvc.transition(
+            db, organization_id=org, instance_id=first.id, action="approve", principal=admin
+        )
+    obsvc.transition(
+        db,
+        organization_id=org,
+        instance_id=first.id,
+        action="approve",
+        principal=admin,
+        reason="Sole compliance officer; board minuted it.",
+    )
+    db.refresh(first)
+    assert first.status == "completed"
+    trail = (
+        db.execute(
+            select(AuditLog).where(
+                AuditLog.entity_id == str(first.id), AuditLog.action == "instance_status_change"
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert any((a.meta or {}).get("self_approved") is True for a in trail)
+
+    # a different checker needs no extra reason; reject clears the maker
+    from app.models.tenancy import User
+
+    head_user = User(email="head-checker@acme.example", full_name="Head")
+    db.add(head_user)
+    db.flush()
+    head = Principal(user_id=str(head_user.id), organization_id=str(org), role="head")
+    obsvc.transition(
+        db,
+        organization_id=org,
+        instance_id=second.id,
+        action="reject",
+        principal=head,
+        reason="Wrong period on the challan.",
+    )
+    db.refresh(second)
+    assert second.submitted_by is None

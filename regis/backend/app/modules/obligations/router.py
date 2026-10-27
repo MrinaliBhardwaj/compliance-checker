@@ -47,6 +47,7 @@ def _instance_row(
         "status": _effective_status(i, today),
         "working_day_adjusted": i.working_day_adjusted,
         "owner_user_id": str(i.owner_user_id) if i.owner_user_id else None,
+        "submitted_by": str(i.submitted_by) if i.submitted_by else None,
         "title": tpl.title,
         "category": tpl.category,
         "risk_level": tpl.risk_level,

@@ -852,10 +852,10 @@ function describe(e: AuditEvent): { text: string; tone: "crit" | "good" | "warn"
 function ActionFooter({ d, onChanged, onAdvance }: {
   d: InstanceDetail; onChanged: () => void; onAdvance?: () => void;
 }) {
-  const { can, role } = useAuth();
+  const { can, role, principal } = useAuth();
   const toast = useToast();
   const [busy, setBusy] = useState<string | null>(null);
-  const [dialog, setDialog] = useState<null | "reject" | "mark_na" | "override" | "reopen">(null);
+  const [dialog, setDialog] = useState<null | "reject" | "mark_na" | "override" | "reopen" | "self">(null);
 
   // Approve and mark-N/A are reversible through reopen, so they are offered with
   // an Undo rather than a point of no return. Reopen itself is admin-only, so
@@ -898,8 +898,13 @@ function ActionFooter({ d, onChanged, onAdvance }: {
   const open = s !== "completed" && s !== "not_applicable";
   const gateBlocked = !d.completeness.eligible_for_completion;
 
+  // Maker != checker: approving your own submission needs a reason (the override
+  // dialog already asks for one, which the API accepts for both).
+  const ownSubmission = !!principal && d.submitted_by === principal.user_id;
+
   const approve = () => {
     if (gateBlocked) { setDialog("override"); return; }
+    if (ownSubmission) { setDialog("self"); return; }
     void act("approve", {}, "Approved and filed");
   };
 
@@ -1001,6 +1006,16 @@ function ActionFooter({ d, onChanged, onAdvance }: {
           </Note>
         }
         onConfirm={(reason) => act("approve", { override_evidence: true, reason }, "Approved with a recorded override")}
+      />
+
+      <ConfirmDialog
+        open={dialog === "self"} onClose={() => setDialog(null)} busy={busy === "approve"}
+        title="Approve your own submission"
+        description="You submitted this for review. Maker and checker should be different people; approving it yourself is recorded as a self-approval."
+        confirmLabel="Approve as maker and checker"
+        reasonLabel="Why are you approving your own submission?" reasonRequired
+        reasonHint="e.g. sole compliance officer — this is visible to auditors in the trail."
+        onConfirm={(reason) => act("approve", { reason }, "Approved (self-approval recorded)")}
       />
 
       <ConfirmDialog

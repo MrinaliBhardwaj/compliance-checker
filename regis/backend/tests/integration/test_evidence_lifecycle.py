@@ -149,6 +149,8 @@ def test_full_evidence_and_maker_checker(db, seeded_org, profile_b):
         instance_id=inst.id,
         action="approve",
         principal=admin,
+        # one admin is both maker and checker here, so the self-approval needs a reason
+        reason="Single-admin org; challan verified against the bank statement.",
     )
     db.refresh(inst)
     assert inst.status == "completed"

@@ -306,3 +306,13 @@ unchanged; everything here is about decision-making, trust and error prevention.
 - **Open:** maker ≠ checker (self-approval) is not enforced yet. It needs a decision for
   single-admin orgs: require a second member, or allow an audited self-approval with a
   mandatory reason.
+
+## 2026-10-27 — Maker ≠ checker: audited self-approval (BUG-09)
+
+- **Decision:** a self-approval is allowed, but never silently. `submit` records
+  `submitted_by`. If the same user approves, the API requires an 8+ character reason
+  and the audit row carries `self_approved: true`. A different checker needs no extra
+  reason. Reject and reopen clear `submitted_by`.
+- **Why not a hard block:** signup creates exactly one admin, so a hard rule would leave
+  a brand-new org unable to complete anything until it invites a second member.
+  Recording the exception keeps small orgs working and gives auditors the signal.

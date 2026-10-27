@@ -523,7 +523,7 @@ function Tracker() {
       <BulkApproveDialog
         open={bulk === "approve"} onClose={() => setBulk(null)}
         rows={eligibility.approve.eligible} skipped={eligibility.approve.skipped}
-        busy={bulkRun.isPending}
+        busy={bulkRun.isPending} myId={principal?.user_id}
         onApprove={(ids, override, reason) =>
           bulkRun.mutate({ ids, action: "approve", override, reason })}
       />
@@ -718,8 +718,9 @@ function Preflight({ eligible, skipped, kind }:
  * batch into what will file cleanly and what would need an audited override —
  * two genuinely different decisions, so they get two separate paths.
  */
-function BulkApproveDialog({ open, onClose, rows, skipped, busy, onApprove }: {
+function BulkApproveDialog({ open, onClose, rows, skipped, busy, onApprove, myId }: {
   open: boolean; onClose: () => void; rows: Instance[]; skipped: number; busy: boolean;
+  myId?: string;
   onApprove: (ids: string[], override: boolean, reason?: string) => void;
 }) {
   const [checks, setChecks] = useState<GateCheck[] | null>(null);
@@ -748,6 +749,8 @@ function BulkApproveDialog({ open, onClose, rows, skipped, busy, onApprove }: {
   const needsOverride = (checks ?? []).filter(
     (c) => c.completeness && !c.completeness.eligible_for_completion);
   const unknown = (checks ?? []).filter((c) => !c.completeness);
+  // Maker != checker: filing your own submissions needs a recorded reason (BUG-09).
+  const ownReady = ready.filter((c) => !!myId && byId.get(c.id)?.submitted_by === myId);
 
   const reasonError = reason.trim().length < 8
     ? "Give enough detail for an auditor to understand the decision (min. 8 characters)."
@@ -778,8 +781,18 @@ function BulkApproveDialog({ open, onClose, rows, skipped, busy, onApprove }: {
         ) : (
           <>
             <button className="btn" onClick={onClose} disabled={busy}>Cancel</button>
-            <button className="btn primary" disabled={busy || checking || ready.length === 0}
-              onClick={() => onApprove(ready.map((c) => c.id), false)}>
+            <button className="btn primary"
+              disabled={busy || checking || ready.length === 0
+                || (ownReady.length > 0 && touched && !!reasonError)}
+              onClick={() => {
+                if (ownReady.length > 0) {
+                  setTouched(true);
+                  if (reasonError) return;
+                  onApprove(ready.map((c) => c.id), false, reason.trim());
+                  return;
+                }
+                onApprove(ready.map((c) => c.id), false);
+              }}>
               {busy && <Spinner onDark />}
               {ready.length === 0 ? "Nothing ready to file" : `Approve ${ready.length} ready`}
             </button>
@@ -832,6 +845,25 @@ function BulkApproveDialog({ open, onClose, rows, skipped, busy, onApprove }: {
             {skipped > 0 && <> {skipped} selected {skipped === 1 ? "row was" : "rows were"} not
               awaiting review and are excluded.</>}
           </Note>
+
+          {ownReady.length > 0 && (
+            <>
+              <Note tone="warn">
+                <b>You submitted {pluralize(ownReady.length, "of these", "of these")}.</b> Maker and
+                checker should be different people; approving your own work is recorded as a
+                self-approval.
+              </Note>
+              <Field label="Why are you approving your own submissions?" required
+                hint="The same reason is recorded against every obligation in this batch."
+                error={touched ? reasonError : null}>
+                {(p) => (
+                  <textarea className="input" rows={2} value={reason}
+                    onChange={(e) => setReason(e.target.value)} onBlur={() => setTouched(true)}
+                    placeholder="e.g. Sole compliance officer; reviewed against the portal acknowledgement." {...p} />
+                )}
+              </Field>
+            </>
+          )}
 
           {needsOverride.length > 0 && (
             <Note tone="warn">

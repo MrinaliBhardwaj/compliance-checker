@@ -96,7 +96,6 @@ def transition(
         require_reason(reason, f"'{action}'")
     if action == "approve" and override_evidence:
         require_reason(reason, "overriding the evidence gate")
-
     # evidence gate on approval (Maker-Checker completion). Override is audited.
     if action == "approve":
         comp = completeness_for_instance(session, inst)
@@ -106,12 +105,22 @@ def transition(
                 f"(missing: {[m[0] for m in comp['missing']]})"
             )
 
+    # Maker != checker. Approving your own submission is allowed (a one-admin org must
+    # still be able to file) but never silently: it needs a reason and is flagged.
+    self_approved = action == "approve" and str(inst.submitted_by) == str(principal.user_id)
+    if self_approved:
+        require_reason(reason, "approving your own submission")
+
     inst.status = to_status
     now = datetime.now(UTC)
+    if action == "submit":
+        inst.submitted_by = principal.user_id
     if action == "approve":
         inst.completed_at = now
         inst.completed_by = principal.user_id
         inst.approved_by = principal.user_id
+    if action in ("reject", "reopen"):
+        inst.submitted_by = None  # the next submission names its own maker
     if action == "reopen":
         inst.completed_at = None
         inst.completed_by = None
@@ -129,6 +138,7 @@ def transition(
             "from": from_status,
             "to": to_status,
             "override_evidence": override_evidence,
+            "self_approved": self_approved,
             "reason": reason,
         },
     )

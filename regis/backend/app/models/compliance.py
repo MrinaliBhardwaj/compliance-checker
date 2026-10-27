@@ -86,6 +86,8 @@ class ObligationInstance(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     approved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    # the maker of the current submission; approving your own needs a recorded reason
+    submitted_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = created_at_col()
 
     company_obligation: Mapped[CompanyObligation] = relationship(back_populates="instances")

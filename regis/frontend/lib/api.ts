@@ -220,7 +220,7 @@ export type Status =
 
 export interface Instance {
   id: string; period_label: string; due_date: string | null; status: Status;
-  working_day_adjusted: boolean; owner_user_id: string | null;
+  working_day_adjusted: boolean; owner_user_id: string | null; submitted_by: string | null;
   title: string; category: string; risk_level: string;
   form_reference: string | null; template_id: string; state: string | null;
 }

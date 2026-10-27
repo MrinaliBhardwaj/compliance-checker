@@ -12,7 +12,9 @@ from app.models import Base  # registers all models on Base.metadata
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # Keep loggers that already exist: the default (True) silences e.g. app.jobs.worker
+    # for the rest of the process whenever migrations run in-process.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # A URL set programmatically (e.g. the Postgres test fixture) wins; otherwise
 # fall back to the app settings (normal CLI usage — alembic.ini leaves it empty).

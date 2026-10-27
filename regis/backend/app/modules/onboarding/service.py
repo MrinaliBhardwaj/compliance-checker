@@ -222,19 +222,21 @@ def generate_calendar(
             gen_instances[(inst.company_obligation_id, inst.period_label)] = inst
 
     # map generator's company_obligation_id (co_<appl_id>) back to the DB row
+    # One prefetch of what's already there, not a SELECT per generated instance.
+    existing_pairs = set(
+        session.execute(
+            select(ObligationInstance.company_obligation_id, ObligationInstance.period_label).where(
+                ObligationInstance.company_obligation_id.in_([c.id for c in co_rows.values()])
+            )
+        ).all()
+    )
     inst_count = 0
     for inst in gen_instances.values():
         appl_id = inst.company_obligation_id.removeprefix("co_")
         co = co_rows.get(appl_id)
         if co is None:
             continue
-        exists = session.execute(
-            select(ObligationInstance).where(
-                ObligationInstance.company_obligation_id == co.id,
-                ObligationInstance.period_label == inst.period_label,
-            )
-        ).scalar_one_or_none()
-        if exists is None:
+        if (co.id, inst.period_label) not in existing_pairs:
             session.add(
                 ObligationInstance(
                     company_obligation_id=co.id,

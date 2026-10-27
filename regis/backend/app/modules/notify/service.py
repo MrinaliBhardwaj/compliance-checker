@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from app.core import audit
 from app.core.config import get_settings
 from app.models.compliance import CompanyObligation, ObligationInstance
+from app.models.content import ObligationTemplate
 from app.models.system import Notification
 from app.models.tenancy import Membership, User
 from app.modules.notify.channels import get_channel
@@ -190,41 +191,28 @@ def _resolve_targets(
 
 def run_reminders(session: Session, organization_id, today: date) -> dict:
     """Materialize today's reminder/escalation intents into notifications (idempotent)."""
-    rows = (
-        session.execute(
-            select(ObligationInstance)
-            .join(
-                CompanyObligation, ObligationInstance.company_obligation_id == CompanyObligation.id
-            )
-            .where(
-                ObligationInstance.organization_id == organization_id,
-                ObligationInstance.status.in_(_OPEN),
-                CompanyObligation.is_active.is_(True),
-            )
+    # Risk comes from the template in the same query (was a lookup per company obligation
+    # plus a seed-file read at import); the DB is the source of truth if it's edited.
+    pairs = session.execute(
+        select(ObligationInstance, ObligationTemplate.risk_level)
+        .join(CompanyObligation, ObligationInstance.company_obligation_id == CompanyObligation.id)
+        .join(ObligationTemplate, CompanyObligation.template_id == ObligationTemplate.template_id)
+        .where(
+            ObligationInstance.organization_id == organization_id,
+            ObligationInstance.status.in_(_OPEN),
+            CompanyObligation.is_active.is_(True),
         )
-        .scalars()
-        .all()
-    )
-    risk_by_co: dict = {}
-
-    def _risk(inst: ObligationInstance) -> str:
-        co = risk_by_co.get(inst.company_obligation_id)
-        if co is None:
-            co = session.get(CompanyObligation, inst.company_obligation_id)
-            risk_by_co[inst.company_obligation_id] = co
-        # risk lives on the template; carried into rationale at generation time.
-        tpl = co.template_id if co else None
-        return "high" if tpl in _HIGH_RISK_TEMPLATES else "medium"
-
+    ).all()
+    rows = [i for i, _risk in pairs]
     inst_dicts = [
         {
             "id": str(i.id),
             "due_date": i.due_date.isoformat() if i.due_date else None,
             "status": i.status,
             "owner_user_id": i.owner_user_id,
-            "risk_level": _risk(i),
+            "risk_level": risk or "medium",
         }
-        for i in rows
+        for i, risk in pairs
     ]
     inst_by_id = {str(i.id): i for i in rows}
     intents = reminder_intents(inst_dicts, today)
@@ -352,14 +340,3 @@ def notify_rejected(session: Session, *, organization_id, instance: ObligationIn
 
 # High-risk template ids drive the denser reminder cadence. Sourced from the seed
 # (risk_level == "high"); cached at import for the pure schedule path.
-def _load_high_risk() -> set[str]:
-    from app.seed.library_loader import load_library
-
-    return {
-        t["template_id"]
-        for t in load_library()["obligation_templates"]
-        if t.get("risk_level") == "high"
-    }
-
-
-_HIGH_RISK_TEMPLATES = _load_high_risk()

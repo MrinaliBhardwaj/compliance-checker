@@ -175,3 +175,25 @@ def test_default_calendar_near_fy_end_includes_next_fy(db, seeded_org, profile_b
     assert res.instances == len(dues)
     assert min(dues) >= date(2027, 3, 1)
     assert max(dues) > date(2027, 3, 31)  # next FY generated too
+
+
+def test_rerun_does_not_query_per_instance(db, seeded_org, profile_b):
+    """P3: re-generation looked up each of the ~367 instances with its own SELECT."""
+    from sqlalchemy import event
+
+    kw = dict(
+        organization_id=seeded_org["org_id"],
+        entity_id=seeded_org["entity_id"],
+        profile=profile_b,
+        ctx=CTX,
+    )
+    generate_calendar(db, **kw)
+    statements = []
+    listener = lambda *a, **k: statements.append(1)  # noqa: E731
+    event.listen(db.bind, "before_cursor_execute", listener)
+    try:
+        res = generate_calendar(db, **kw)
+    finally:
+        event.remove(db.bind, "before_cursor_execute", listener)
+    assert res.instances == 0
+    assert len(statements) < 100  # was > 367

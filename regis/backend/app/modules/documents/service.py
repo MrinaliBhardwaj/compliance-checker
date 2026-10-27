@@ -110,8 +110,14 @@ def upload_document(
 ) -> dict:
     """Store + register a document. Exact byte-duplicates are blocked, not stored."""
     sha = file_hash(content)
+    # Only same-hash documents can match: a fresh upload has no extracted fields yet, so
+    # the engine's near-duplicate branch never fires here. sha256 is indexed.
     existing = (
-        session.execute(select(Document).where(Document.organization_id == organization_id))
+        session.execute(
+            select(Document).where(
+                Document.organization_id == organization_id, Document.sha256 == sha
+            )
+        )
         .scalars()
         .all()
     )

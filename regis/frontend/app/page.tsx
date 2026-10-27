@@ -36,9 +36,13 @@ export default function AuthPage() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // The only navigation after sign-in: refresh() sets the principal, which fires this.
+  // A separate push after refresh() raced it, so a new signup landed on the dashboard
+  // instead of onboarding.
+  const [justSignedUp, setJustSignedUp] = useState(false);
   useEffect(() => {
-    if (!loading && principal) router.replace("/dashboard");
-  }, [loading, principal, router]);
+    if (!loading && principal) router.replace(justSignedUp ? "/onboarding" : "/dashboard");
+  }, [loading, principal, router, justSignedUp]);
 
   const errors: Partial<Record<FieldName, string>> = {};
   if (!form.email.trim()) errors.email = "Enter your work email.";
@@ -72,8 +76,8 @@ export default function AuthPage() {
       // The session itself is an httpOnly cookie set by the server; we only
       // remember which entity to open.
       localStorage.setItem("regis_entity", res.entity_id);
+      setJustSignedUp(mode === "signup");
       await refresh();
-      router.push(mode === "signup" ? "/onboarding" : "/dashboard");
     } catch (e) {
       setErr(explain(e, mode));
     } finally {

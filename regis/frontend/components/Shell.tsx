@@ -38,6 +38,7 @@ const NAV: { group: string; items: NavEntry[] }[] = [
       { href: "/obligations", label: "Obligations", icon: <IconList size={14} />, countKey: "overdue" },
       { href: "/evidence", label: "Evidence", icon: <IconFile size={14} /> },
       { href: "/legal-updates", label: "Legal updates", icon: <IconGavel size={14} /> },
+      { href: "/onboarding", label: "Compliance profile", icon: <IconBuilding size={14} />, cap: "generate_calendar" },
     ],
   },
   {

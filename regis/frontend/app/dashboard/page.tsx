@@ -135,9 +135,24 @@ function Today() {
 
       {dash.isLoading && <div className="stack"><SkeletonMetrics /></div>}
 
+      {dash.data && dash.data.total_instances === 0 && (
+        <Note tone="warn">
+          <b>No compliance calendar yet.</b> Answer the profile questionnaire and Regis builds
+          every dated obligation this entity owes.
+          <div style={{ marginTop: 8 }}>
+            {can("generate_calendar")
+              ? <Link className="btn primary" href="/onboarding">Build the calendar</Link>
+              : <span className="micro faint">A compliance admin needs to generate it.</span>}
+          </div>
+        </Note>
+      )}
+
       {dash.data && (
         <div className="stack">
-          <Headline tiles={dash.data.tiles} total={dash.data.total_instances} />
+          {/* "Fully current" would be misleading before there is a calendar to be current on */}
+          {dash.data.total_instances > 0 && (
+            <Headline tiles={dash.data.tiles} total={dash.data.total_instances} />
+          )}
 
           <div className="metric-strip">
             <Metric tone="crit" label="Overdue" value={t!.overdue}
@@ -161,6 +176,7 @@ function Today() {
                 onRetry={queue.refetch} ownerName={ownerName}
                 onOpen={(id) => router.push(`/dashboard?open=${id}`)}
                 canGenerate={can("generate_calendar")}
+                hasCalendar={(dash.data?.total_instances ?? 0) > 0}
                 totalOpen={(queue.data ?? []).filter((i) => !CLOSED.has(i.status)).length}
               />
 
@@ -320,10 +336,10 @@ function HealthPanel({ score, byStatus, total, overdue }: {
 
 /* =========================================================== priority queue */
 
-function PriorityQueue({ rows, loading, error, onRetry, ownerName, onOpen, canGenerate, totalOpen }: {
+function PriorityQueue({ rows, loading, error, onRetry, ownerName, onOpen, canGenerate, hasCalendar, totalOpen }: {
   rows: Instance[]; loading: boolean; error: unknown; onRetry: () => void;
   ownerName: (id: string | null) => string | null; onOpen: (id: string) => void;
-  canGenerate: boolean; totalOpen: number;
+  canGenerate: boolean; hasCalendar: boolean; totalOpen: number;
 }) {
   return (
     <div className="panel">
@@ -343,7 +359,7 @@ function PriorityQueue({ rows, loading, error, onRetry, ownerName, onOpen, canGe
       {!!error && <div style={{ padding: 14 }}><ErrorState error={error} onRetry={onRetry} /></div>}
 
       {!loading && !error && rows.length === 0 && (
-        totalOpen === 0 && rows.length === 0 ? (
+        hasCalendar && totalOpen === 0 ? (
           <Empty icon={<IconCheckCircle size={16} />} title="Queue is clear"
             hint="Nothing is open right now. New obligations appear here as their periods begin."
             action={canGenerate

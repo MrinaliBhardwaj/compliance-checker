@@ -147,3 +147,38 @@ def test_deactivated_obligations_drop_out_everywhere(db, seeded_org, profile_a, 
     run_reminders(db, seeded_org["org_id"], gone.due_date - timedelta(days=7))
     sent = db.execute(select(Notification.payload)).scalars().all()
     assert all(p.get("instance_id") != str(gone.id) for p in sent)
+
+
+def test_copilot_logs_both_sides_in_constant_queries(db, seeded_org, profile_b):
+    """BUG-18: the assistant's answer is logged (not just the question), owner roles
+    come from the template, and loading context is one query, not one per row."""
+    from sqlalchemy import event, select
+
+    from app.models.system import CopilotMessage
+    from app.modules.copilot.router import Ask, _load_instance_rows, ask
+
+    generate_calendar(
+        db,
+        organization_id=seeded_org["org_id"],
+        entity_id=seeded_org["entity_id"],
+        profile=profile_b,
+        ctx=CTX,
+    )
+    db.expire_all()  # cold identity map, as in a real request
+    statements = []
+    listener = lambda *a, **k: statements.append(1)  # noqa: E731
+    event.listen(db.bind, "before_cursor_execute", listener)
+    try:
+        rows = _load_instance_rows(db, seeded_org["org_id"])
+    finally:
+        event.remove(db.bind, "before_cursor_execute", listener)
+    assert len(rows) == 367
+    assert len(statements) == 1  # was 1 + one lazy load per company obligation
+    assert {r["owner_role"] for r in rows} > {"preparer"}  # real template defaults
+
+    ask(Ask(query="What's overdue?"), db=db, principal=_admin(seeded_org))
+    db.flush()
+    logged = db.execute(select(CopilotMessage).order_by(CopilotMessage.role)).scalars().all()
+    assert [m.role for m in logged] == ["assistant", "user"]
+    reply = next(m for m in logged if m.role == "assistant")
+    assert reply.content and reply.intent and reply.grounding is not None

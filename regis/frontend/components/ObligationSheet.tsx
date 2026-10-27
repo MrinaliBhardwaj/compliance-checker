@@ -399,9 +399,10 @@ function EvidenceTab({ d, onChanged }: { d: InstanceDetail; onChanged: () => voi
   const [pickerOpen, setPickerOpen] = useState(false);
   const canUpload = can("upload_evidence");
 
-  const doLink = async (docId: string, override = false) => {
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const doLink = async (docId: string, override = false, reason?: string) => {
     try {
-      const res = await linkDocument(docId, d.id, override);
+      const res = await linkDocument(docId, d.id, override, reason);
       setLinkResult(res);
       if (res.blocked) {
         toast.err("Evidence not linked", explainBlock(res.reason));
@@ -608,9 +609,20 @@ function EvidenceTab({ d, onChanged }: { d: InstanceDetail; onChanged: () => voi
                       The entity named in this document doesn’t match the entity this obligation
                       belongs to. Overriding is allowed but is recorded in the audit trail.
                     </Note>
-                    <button className="btn danger" onClick={() => doLink(pendingDoc.id, true)}>
+                    <button className="btn danger" onClick={() => setOverrideOpen(true)}>
                       Link anyway and record an override
                     </button>
+                    <ConfirmDialog
+                      open={overrideOpen} onClose={() => setOverrideOpen(false)} tone="danger"
+                      title="Link this document despite the entity mismatch?"
+                      description="The override and your reason are written to the audit trail."
+                      confirmLabel="Link with override"
+                      reasonLabel="Why is this the right document?" reasonRequired
+                      onConfirm={async (reason) => {
+                        setOverrideOpen(false);
+                        await doLink(pendingDoc.id, true, reason);
+                      }}
+                    />
                   </>
                 )}
               </div>

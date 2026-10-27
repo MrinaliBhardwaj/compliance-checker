@@ -285,3 +285,80 @@ def test_preparer_scope_enforced(db, seeded_org, profile_b):
             action="start",
             principal=other,
         )
+
+
+# --- BUG-10: the API itself requires a reason for every audited decision -------
+_SHORT = "  7 chars "  # 7 characters once trimmed: under the 8-char minimum
+_GOOD = "Return filed on the portal; ack attached later."
+
+
+def _act(db, seeded, inst, action, **kw):
+    return obsvc.transition(
+        db,
+        organization_id=seeded["org_id"],
+        instance_id=inst.id,
+        action=action,
+        principal=_admin(seeded),
+        **kw,
+    )
+
+
+@pytest.mark.parametrize("bad", [None, "", _SHORT])
+def test_audited_transitions_require_a_reason(db, seeded_org, profile_b, bad):
+    from app.modules.obligations.lifecycle import ReasonRequired
+
+    inst = _tds_instance(db, seeded_org, profile_b)
+    _act(db, seeded_org, inst, "start")
+    _act(db, seeded_org, inst, "submit")
+    with pytest.raises(ReasonRequired):
+        _act(db, seeded_org, inst, "reject", reason=bad)
+    with pytest.raises(ReasonRequired):
+        _act(db, seeded_org, inst, "approve", override_evidence=True, reason=bad)
+    with pytest.raises(ReasonRequired):
+        _act(db, seeded_org, inst, "mark_na", reason=bad)
+    _act(db, seeded_org, inst, "approve", override_evidence=True, reason=_GOOD)
+    with pytest.raises(ReasonRequired):
+        _act(db, seeded_org, inst, "reopen", reason=bad)
+    _act(db, seeded_org, inst, "reopen", reason=_GOOD)
+    _act(db, seeded_org, inst, "mark_na", reason=_GOOD)
+    db.refresh(inst)
+    assert inst.status == "not_applicable"
+
+
+def test_link_override_requires_a_reason(db, seeded_org, profile_b):
+    from app.models.tenancy import Entity
+    from app.modules.obligations.lifecycle import ReasonRequired
+
+    admin = _admin(seeded_org)
+    db.get(Entity, seeded_org["entity_id"]).pan = "AAACT1234A"
+    db.flush()
+    inst = _tds_instance(db, seeded_org, profile_b)
+    up = docsvc.upload_document(
+        db,
+        organization_id=seeded_org["org_id"],
+        entity_id=seeded_org["entity_id"],
+        uploaded_by=admin.user_id,
+        file_name="wrong.pdf",
+        mime="application/pdf",
+        content=b"y",
+    )
+    docsvc.classify_manually(
+        db,
+        doc=up["document"],
+        doc_type="PAYMENT_CHALLAN",
+        extracted={"tan_or_pan": "ZZZZZ9999Z", "amount": 1, "period": inst.period_label},
+        actor_user_id=admin.user_id,
+    )
+    kw = dict(
+        organization_id=seeded_org["org_id"],
+        document_id=up["document"].id,
+        instance_id=inst.id,
+        confirmed_by=admin.user_id,
+        role="compliance_admin",
+        override=True,
+    )
+    with pytest.raises(ReasonRequired):
+        docsvc.link_document(db, **kw, override_reason=_SHORT)
+    res = docsvc.link_document(db, **kw, override_reason=_GOOD)
+    assert not res.get("blocked")
+    assert db.execute(select(func.count()).select_from(DocumentLink)).scalar_one() == 1

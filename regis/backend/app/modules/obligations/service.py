@@ -14,7 +14,12 @@ from app.core import audit
 from app.models.compliance import ObligationInstance
 from app.modules.documents.service import completeness_for_instance
 from app.modules.notify import service as notify
-from app.modules.obligations.lifecycle import RolePermissionError, plan_transition
+from app.modules.obligations.lifecycle import (
+    REASON_REQUIRED,
+    RolePermissionError,
+    plan_transition,
+    require_reason,
+)
 
 
 class InstanceNotFound(Exception): ...
@@ -87,6 +92,10 @@ def transition(
 
     from_status = inst.status
     to_status = plan_transition(action, from_status, principal.role)  # raises on violation
+    if action in REASON_REQUIRED:
+        require_reason(reason, f"'{action}'")
+    if action == "approve" and override_evidence:
+        require_reason(reason, "overriding the evidence gate")
 
     # evidence gate on approval (Maker-Checker completion). Override is audited.
     if action == "approve":

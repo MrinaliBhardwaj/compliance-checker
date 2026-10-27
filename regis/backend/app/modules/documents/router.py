@@ -17,6 +17,7 @@ from app.core.security import CurrentPrincipal
 from app.core.storage import LocalStorage, get_storage
 from app.models.evidence import Document
 from app.modules.documents import service as svc
+from app.modules.obligations.lifecycle import ReasonRequired
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -99,16 +100,19 @@ class LinkBody(BaseModel):
 
 @router.post("/{document_id}/link")
 def link(document_id: str, body: LinkBody, db: DbSession, principal: CurrentPrincipal) -> dict:
-    res = svc.link_document(
-        db,
-        organization_id=principal.organization_id,
-        document_id=document_id,
-        instance_id=body.instance_id,
-        confirmed_by=principal.user_id,
-        role=principal.role,
-        override=body.override,
-        override_reason=body.override_reason,
-    )
+    try:
+        res = svc.link_document(
+            db,
+            organization_id=principal.organization_id,
+            document_id=document_id,
+            instance_id=body.instance_id,
+            confirmed_by=principal.user_id,
+            role=principal.role,
+            override=body.override,
+            override_reason=body.override_reason,
+        )
+    except ReasonRequired as e:
+        raise HTTPException(status.HTTP_409_CONFLICT, str(e)) from e
     if res.get("error") == "forbidden":
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your assigned obligation")
     if res.get("error"):

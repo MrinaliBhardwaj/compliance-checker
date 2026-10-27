@@ -45,6 +45,25 @@ class RolePermissionError(Exception):
     """Caller's role may not perform this action (HTTP 403)."""
 
 
+MIN_REASON_LEN = 8
+# Decisions an auditor must be able to read the "why" of. Approving with
+# override_evidence and override-linking a document are checked where they happen.
+REASON_REQUIRED = frozenset({"reject", "mark_na", "reopen"})
+
+
+class ReasonRequired(LifecycleError):
+    """An audited decision came without a usable reason (HTTP 409, like other lifecycle errors)."""
+
+
+def require_reason(reason: str | None, what: str) -> None:
+    """Enforce the audit-reason rule server-side; the UI's check alone is bypassable."""
+    if len((reason or "").strip()) < MIN_REASON_LEN:
+        raise ReasonRequired(
+            f"{what} needs a reason of at least {MIN_REASON_LEN} characters; "
+            "it is written to the audit trail"
+        )
+
+
 @dataclass(frozen=True)
 class Action:
     name: str

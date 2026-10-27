@@ -153,8 +153,10 @@ export function uploadDocumentProgress(
 
 export const classifyDocument = (id: string, doc_type: string, extracted: Record<string, unknown>) =>
   req<DocumentRow>(`/documents/${id}/classify`, { method: "POST", body: JSON.stringify({ doc_type, extracted }) });
-export const linkDocument = (id: string, instance_id: string, override = false) =>
-  req<LinkResult>(`/documents/${id}/link`, { method: "POST", body: JSON.stringify({ instance_id, override }) });
+export const linkDocument = (id: string, instance_id: string, override = false, override_reason?: string) =>
+  req<LinkResult>(`/documents/${id}/link`, {
+    method: "POST", body: JSON.stringify({ instance_id, override, override_reason }),
+  });
 export const listDocuments = () => req<DocumentRow[]>("/documents");
 
 // ---- notifications ----

@@ -29,6 +29,7 @@ from app.models.compliance import CompanyObligation, ObligationInstance
 from app.models.content import ObligationTemplate
 from app.models.evidence import Document, DocumentLink
 from app.models.tenancy import Entity
+from app.modules.obligations.lifecycle import require_reason
 
 
 # ---------------------------------------------------------------------------
@@ -255,6 +256,8 @@ def link_document(
     # preparers may only attach evidence to their own assigned instances
     if role == "preparer" and str(inst.owner_user_id) != str(confirmed_by):
         return {"error": "forbidden"}
+    if override:
+        require_reason(override_reason, "linking over a failed validation")
 
     tpl = _template_for_instance(session, inst)
     co = session.get(CompanyObligation, inst.company_obligation_id)

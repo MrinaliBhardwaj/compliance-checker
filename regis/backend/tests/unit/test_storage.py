@@ -20,3 +20,13 @@ def test_path_traversal_blocked():
         s = LocalStorage(root=d)
         with pytest.raises(ValueError):
             s.put("../../escape.txt", b"x")
+
+
+def test_sibling_directory_with_same_prefix_is_blocked():
+    """BUG-12: '<root>_evil' starts with '<root>' as a string but is outside it."""
+    import os
+
+    with tempfile.TemporaryDirectory() as d:
+        s = LocalStorage(root=os.path.join(d, "store"))
+        with pytest.raises(ValueError):
+            s.put("../store_evil/x.txt", b"x")

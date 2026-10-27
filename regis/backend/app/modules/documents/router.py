@@ -6,6 +6,8 @@ elsewhere (Maker-Checker). All rows are org-scoped (RLS) and audited.
 
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -16,6 +18,7 @@ from app.core.deps import DbSession
 from app.core.security import CurrentPrincipal
 from app.core.storage import LocalStorage, get_storage
 from app.models.evidence import Document
+from app.models.tenancy import Entity
 from app.modules.documents import service as svc
 from app.modules.obligations.lifecycle import ReasonRequired
 
@@ -54,6 +57,19 @@ async def upload(
     file: UploadFile = File(...),
     entity_id: str = Form(...),
 ) -> dict:
+    # The entity goes into the storage key, so check it belongs to the caller's org
+    # *before* any bytes are written (RLS on the DB row would only fail afterwards).
+    try:
+        entity_uuid = uuid.UUID(entity_id)
+    except ValueError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Entity not found") from None
+    owned = db.execute(
+        select(Entity.id).where(
+            Entity.id == entity_uuid, Entity.organization_id == principal.organization_id
+        )
+    ).scalar_one_or_none()
+    if owned is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Entity not found")
     content = await _read_capped(file, get_settings().max_upload_bytes)
     result = svc.upload_document(
         db,
@@ -140,13 +156,17 @@ def list_documents(db: DbSession, principal: CurrentPrincipal) -> list[dict]:
 
 @router.get("/raw/{key:path}")
 def download_raw(key: str, principal: CurrentPrincipal):
-    # Tenant isolation: key must start with the caller's org ID
-    if not key.startswith(f"{principal.organization_id}/"):
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied")
     storage = get_storage()
     if not isinstance(storage, LocalStorage):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Not local storage")
-    path = storage._path(key)
-    if not path.exists():
+    # Tenant isolation on the *resolved* path: a raw prefix check on the key let
+    # "<my-org>/../<other-org>/..." through.
+    try:
+        path = storage._path(key)
+    except ValueError:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied") from None
+    if not path.is_relative_to(storage.root / str(principal.organization_id)):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Access denied")
+    if not path.is_file():
         raise HTTPException(status.HTTP_404_NOT_FOUND)
     return FileResponse(path)

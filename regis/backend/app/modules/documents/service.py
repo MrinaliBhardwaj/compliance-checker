@@ -12,6 +12,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import asdict
 from datetime import date
+from pathlib import PurePosixPath
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -131,7 +132,12 @@ def upload_document(
         return {"document": None, "duplicate": verdict}
 
     doc_id = uuid.uuid4()
-    key = f"{organization_id}/{entity_id or 'org'}/{doc_id}/{file_name}"
+    # Only the last path part of the client's file name, so "../../x" (or a Windows
+    # "..\x") can't climb out of this document's folder.
+    safe_name = PurePosixPath(file_name.replace("\\", "/")).name
+    if safe_name in ("", ".", ".."):
+        safe_name = "upload.bin"
+    key = f"{organization_id}/{entity_id or 'org'}/{doc_id}/{safe_name}"
     url = get_storage().put(key, content, mime)
     doc = Document(
         id=doc_id,

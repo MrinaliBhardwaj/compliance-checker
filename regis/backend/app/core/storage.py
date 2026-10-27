@@ -40,13 +40,15 @@ class LocalStorage(Storage):
 
     def _path(self, key: str) -> Path:
         p = (self.root / key).resolve()
-        if not str(p).startswith(str(self.root)):
+        # A path comparison, not a string prefix: "<root>_evil" starts with "<root>".
+        if not p.is_relative_to(self.root):
             raise ValueError("path traversal blocked")
-        p.parent.mkdir(parents=True, exist_ok=True)
         return p
 
     def put(self, key: str, content: bytes, content_type: str | None = None) -> str:
-        self._path(key).write_bytes(content)
+        p = self._path(key)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(content)
         return f"file://{key}"
 
     def get(self, key: str) -> bytes:

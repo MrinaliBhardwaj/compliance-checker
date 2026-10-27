@@ -568,3 +568,43 @@ def test_upload_rejects_oversize_file(client):
         assert r.status_code == 413
     finally:
         s.max_upload_mb = original
+
+
+def _upload(client, headers, entity_id, name="minutes.txt"):
+    return client.post(
+        "/documents/upload",
+        headers=headers,
+        data={"entity_id": entity_id},
+        files={"file": (name, b"board minutes " + uuid.uuid4().bytes, "text/plain")},
+    )
+
+
+def test_evidence_storage_is_tenant_scoped(client):
+    """BUG-12: no cross-tenant read via '..' in the key, no writes under another
+    tenant's entity, and the uploaded file name can't climb out of its folder."""
+    from app.core.storage import get_storage
+
+    a_headers, a_entity = _auth(client)
+    b_headers, b_entity = _auth(client)
+    a_org = client.get("/auth/me", headers=a_headers).json()["organization_id"]
+    b_org = client.get("/auth/me", headers=b_headers).json()["organization_id"]
+
+    # B's file, at B's prefix
+    assert _upload(client, b_headers, b_entity).status_code == 200
+    root = get_storage().root
+    b_file = next((root / b_org).rglob("minutes.txt"))
+    b_key = b_file.relative_to(root).as_posix()
+
+    # A asks for it through its own prefix + '..'
+    sneaky = f"{a_org}/%2E%2E/{b_key}"  # encoded so the HTTP client can't collapse it
+    r = client.get(f"/documents/raw/{sneaky}", headers=a_headers)
+    assert r.status_code in (400, 403, 404) and b"board minutes" not in r.content
+
+    # A can't upload under B's entity, or with a junk entity id
+    assert _upload(client, a_headers, b_entity).status_code == 404
+    assert _upload(client, a_headers, "not-a-uuid").status_code == 404
+
+    # a traversal file name is reduced to its last part, inside A's prefix
+    assert _upload(client, a_headers, a_entity, name="../../escape.txt").status_code == 200
+    assert not (root / "escape.txt").exists()
+    assert any((root / a_org).rglob("escape.txt"))

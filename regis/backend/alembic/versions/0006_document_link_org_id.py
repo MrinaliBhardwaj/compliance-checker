@@ -19,7 +19,7 @@ def upgrade() -> None:
     bind = op.get_bind()
     insp = sa.inspect(bind)
     columns = [c["name"] for c in insp.get_columns("document_links")]
-    
+
     if "organization_id" not in columns:
         # Add the column (both SQLite and Postgres)
         op.add_column("document_links", sa.Column("organization_id", sa.Uuid(), nullable=True))
@@ -43,7 +43,7 @@ def upgrade() -> None:
             DO $$
             BEGIN
                 IF NOT EXISTS (
-                    SELECT 1 FROM pg_policies 
+                    SELECT 1 FROM pg_policies
                     WHERE tablename = 'document_links' AND policyname = 'document_links_tenant_isolation'
                 ) THEN
                     CREATE POLICY document_links_tenant_isolation ON document_links
@@ -58,7 +58,12 @@ def downgrade() -> None:
     bind = op.get_bind()
     if bind.dialect.name == "postgresql":
         op.execute("DROP POLICY IF EXISTS document_links_tenant_isolation ON document_links;")
+        op.execute("ALTER TABLE document_links NO FORCE ROW LEVEL SECURITY;")
         op.execute("ALTER TABLE document_links DISABLE ROW LEVEL SECURITY;")
-        op.drop_constraint("fk_document_links_org", "document_links", type_="foreignkey")
-        op.drop_index("ix_document_links_organization_id", "document_links")
-    op.drop_column("document_links", "organization_id")
+        # The FK is `fk_document_links_org` when this revision added it, but
+        # `document_links_organization_id_fkey` on fresh DBs where 0001's create_all
+        # already built the column. Dropping the column takes its index and FK with
+        # it under either name.
+        op.execute("ALTER TABLE document_links DROP COLUMN IF EXISTS organization_id;")
+    else:
+        op.drop_column("document_links", "organization_id")

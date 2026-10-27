@@ -72,5 +72,3 @@ For production-shaped dev (Postgres + RLS), use `docker compose up --build` in
 ## Deeper docs
 
 - [`regis/README.md`](regis/README.md) — engine reference results and module detail
-- [`BUILD_PLAN.md`](BUILD_PLAN.md) — architecture rationale and phase plan
-- [`Compliance docs/`](Compliance%20docs) — engine specs and the obligation library source

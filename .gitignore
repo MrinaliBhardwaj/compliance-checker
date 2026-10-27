@@ -48,3 +48,14 @@ regis/scripts/extract_docx.py
 CURRENT_STATUS.md
 PROJECT_CONTEXT_HANDOFF.md
 PROJECT_CONTEXT_HANDOFF.old.md
+
+# Kept locally, not part of the published app: tool config, reference specs,
+# college/review material and planning notes
+.claude/
+Compliance docs/
+presentation/
+regis/review2/
+BUILD_PLAN.md
+DECISIONS.md
+regis/infra/
+regis/shared/

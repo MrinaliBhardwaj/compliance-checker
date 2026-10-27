@@ -12,12 +12,12 @@ replacing weeks of spreadsheet setup.
 > **Design contract (honored throughout):** all AI is read-only/assistive and
 > human-confirmed; the deterministic engines are the source of truth; every
 > obligation ships `DRAFT_UNVERIFIED` until a content-team flag flips it; designed
-> for AWS **ap-south-1**. See [`BUILD_PLAN.md`](../BUILD_PLAN.md) for the rationale.
+> for AWS **ap-south-1**.
 
 ## What's built (and proven)
 
 The verified reference engines are ported and adapted into `backend/app/engines/`
-(the code differs from `Compliance docs/`), and their behaviour is locked by golden
+(the code differs from the original reference implementations), and their behaviour is locked by golden
 regression tests reproducing every quoted figure:
 
 | Engine | Golden result (test-locked) |
@@ -67,8 +67,6 @@ regis/
 │  ├─ alembic/              migrations (baseline + RLS/append-only hardening)
 │  └─ tests/                golden (the contract) · unit · integration (incl. HTTP API smoke)
 ├─ frontend/                Next.js 14 App Router (the full Phase-1 UI)
-├─ infra/terraform/         AWS ap-south-1 topology (README; modules to author)
-├─ shared/openapi.json      generated API contract
 └─ docker-compose.yml       postgres · redis · minio · qdrant · api · worker (no frontend service)
 ```
 

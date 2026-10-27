@@ -30,7 +30,7 @@ from app.models.calendar import EventListener
 from app.models.compliance import CompanyObligation, ObligationInstance
 from app.models.content import ObligationTemplate
 from app.models.profile import CompanyProfile
-from app.modules.onboarding.calendar_chain import build_company_obligations
+from app.modules.onboarding.calendar_chain import build_company_obligations, fy_windows
 from app.seed.library_loader import load_library
 
 LIBRARY_VERSION = "0.1-draft"
@@ -44,6 +44,7 @@ class GenerationResult:
     parked: int
     generation_run_id: str
     diff: dict
+    not_tracked: int = 0  # dated instances due before tracking started (not created)
 
 
 def _library_dict(session: Session) -> dict:
@@ -126,9 +127,16 @@ def generate_calendar(
     ctx: dict | None = None,
     library: dict | None = None,
     actor_user_id=None,
+    today: date | None = None,
+    anchors: dict | None = None,
+    license_expiry: date | None = None,
 ) -> GenerationResult:
     """
     Run applicability + instance generation and persist the result idempotently.
+
+    Without `ctx`, the window is the FY(s) around `today` (see fy_windows) and
+    nothing due before `today` is created; `anchors` / `license_expiry` are the
+    company's real dates when known.
 
     Idempotent on:
       - company_obligations: (entity_id, applicability_id) unique
@@ -184,17 +192,38 @@ def generate_calendar(
         existing_cobs[appl_id].is_active = False
 
     # --- instance generation per the due rules ---
-    ctx = ctx or {
-        "window_start": date(2026, 4, 1),
-        "window_end": date(2027, 3, 31),
-        "anchors": {"agm_date": date(2026, 9, 25), "tds_return_date": date(2026, 7, 31)},
-        "license_expiry": date(2026, 11, 30),
-    }
-    gen = generate_instances(cobs_input, ctx)
+    # An explicit ctx (golden tests, explicit API window) is used as given. Otherwise
+    # cover the FY(s) around `today`, skip what fell due before tracking started
+    # (history, not overdue work), and invent no anchor dates: obligations that
+    # depend on an unknown AGM / TDS-return / licence date park until it's known.
+    track_from = None
+    if ctx is None:
+        today = today or date.today()
+        track_from = today
+        ctxs = [
+            {
+                "window_start": s,
+                "window_end": e,
+                "anchors": anchors or {},
+                "license_expiry": license_expiry,
+            }
+            for s, e in fy_windows(today)
+        ]
+    else:
+        ctxs = [ctx]
+    gen_instances, parked, not_tracked = {}, set(), 0
+    for c in ctxs:
+        gen = generate_instances(cobs_input, c)
+        parked.update(gen["parked"])
+        for inst in gen["instances"]:
+            if track_from and date.fromisoformat(inst.due_date) < track_from:
+                not_tracked += 1
+                continue
+            gen_instances[(inst.company_obligation_id, inst.period_label)] = inst
 
     # map generator's company_obligation_id (co_<appl_id>) back to the DB row
     inst_count = 0
-    for inst in gen["instances"]:
+    for inst in gen_instances.values():
         appl_id = inst.company_obligation_id.removeprefix("co_")
         co = co_rows.get(appl_id)
         if co is None:
@@ -266,7 +295,8 @@ def generate_calendar(
         company_obligations=len(co_rows),
         instances=inst_count,
         event_listeners=listener_count,
-        parked=len(gen["parked"]),
+        parked=len(parked),
+        not_tracked=not_tracked,
         generation_run_id=run_id,
         diff=diff,
     )

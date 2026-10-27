@@ -90,7 +90,8 @@ function Onboarding() {
       const res = await generateCalendar(entityId, raw);
       toast.ok(
         `Calendar generated — ${pluralize(res.instances, "dated obligation")}`,
-        `${res.company_obligations} applicable obligations across your profile.`,
+        `${res.company_obligations} applicable obligations across your profile, tracked from today.` +
+          (res.parked ? ` ${pluralize(res.parked, "filing")} awaiting a date (AGM, TDS return or licence expiry).` : ""),
       );
       router.push("/obligations");
     } catch (e) {

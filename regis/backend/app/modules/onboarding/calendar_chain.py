@@ -41,12 +41,21 @@ def build_company_obligations(universe: dict, library: dict) -> list[dict]:
     return cobs
 
 
-def default_window(start: date | None = None, months: int = 12) -> dict:
-    """A 12-month rolling horizon, FY-aligned by default for the golden run."""
-    start = start or date(2026, 4, 1)
-    date(start.year + 1, start.month, 1) if months == 12 else start
-    # default golden window is the full FY2026-27
-    return {"window_start": start, "window_end": date(2027, 3, 31)}
+NEXT_FY_LEAD_DAYS = 60
+
+
+def fy_windows(today: date) -> list[tuple[date, date]]:
+    """Indian FY (Apr-Mar) windows to generate for a calendar created `today`.
+
+    The current FY, plus the next one in the FY's last 60 days so a late-year
+    calendar isn't nearly empty. Separate windows rather than one long one: the
+    generator walks at most 15 months of periods from window_start.
+    """
+    y = today.year if today.month >= 4 else today.year - 1
+    windows = [(date(y, 4, 1), date(y + 1, 3, 31))]
+    if (windows[0][1] - today).days < NEXT_FY_LEAD_DAYS:
+        windows.append((date(y + 1, 4, 1), date(y + 2, 3, 31)))
+    return windows
 
 
 def run_chain(library: dict, profile: dict, ctx: dict | None = None) -> dict:

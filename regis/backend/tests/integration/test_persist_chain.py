@@ -138,3 +138,40 @@ def test_save_profile_persists_provenance(db, seeded_org):
         select(func.count()).select_from(AuditLog).where(AuditLog.action == "profile_extracted")
     ).scalar_one()
     assert n == 1
+
+
+def test_default_calendar_starts_at_onboarding(db, seeded_org, profile_b):
+    """BUG-06: with no explicit window, a company onboarding mid-year must not be
+    handed seven months of 'overdue' history or invented anchor dates."""
+    today = date(2026, 10, 27)
+    res = generate_calendar(
+        db,
+        organization_id=seeded_org["org_id"],
+        entity_id=seeded_org["entity_id"],
+        profile=profile_b,
+        today=today,
+    )
+    dues = db.execute(select(ObligationInstance.due_date)).scalars().all()
+    assert res.instances == len(dues) > 0
+    assert min(dues) >= today  # nothing before onboarding is tracked
+    assert max(dues) <= date(2027, 3, 31)  # current FY only, 5 months from FY end
+    assert res.not_tracked > 0  # ...and the skipped history is reported, not hidden
+    # AGM / TDS-return / licence dates are unknown, so their dependents park rather
+    # than being dated from invented anchors (FILING-/TDSCERT-/RENEWAL-<date> labels)
+    labels = db.execute(select(ObligationInstance.period_label)).scalars().all()
+    assert not any(lb.startswith(("FILING-", "TDSCERT-", "RENEWAL-")) for lb in labels)
+    assert res.parked > 0
+
+
+def test_default_calendar_near_fy_end_includes_next_fy(db, seeded_org, profile_b):
+    res = generate_calendar(
+        db,
+        organization_id=seeded_org["org_id"],
+        entity_id=seeded_org["entity_id"],
+        profile=profile_b,
+        today=date(2027, 3, 1),
+    )
+    dues = db.execute(select(ObligationInstance.due_date)).scalars().all()
+    assert res.instances == len(dues)
+    assert min(dues) >= date(2027, 3, 1)
+    assert max(dues) > date(2027, 3, 31)  # next FY generated too

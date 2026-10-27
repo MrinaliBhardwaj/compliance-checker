@@ -8,6 +8,7 @@ worker writes no status. Job bodies call the same services the API uses.
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 
 from arq import cron
@@ -17,8 +18,12 @@ from sqlalchemy import select
 from app.core.config import get_settings
 from app.core.db import SessionLocal, set_tenant
 from app.models.compliance import ObligationInstance
+from app.models.profile import CompanyProfile
 from app.models.tenancy import Organization
 from app.modules.obligations.lifecycle import STORED_OPEN, effective_status
+from app.modules.onboarding.calendar_chain import fy_windows
+
+logger = logging.getLogger(__name__)
 
 
 async def nightly_sweep(ctx) -> dict:
@@ -67,12 +72,51 @@ async def enqueue_due_reminders(ctx) -> dict:
     return {"reminders_created": total}
 
 
+async def extend_calendars(ctx) -> dict:
+    """Monthly: once inside the FY's last 60 days, add the next FY's instances for
+    every company profile. generate_calendar is idempotent and leaves existing
+    instances alone, so a repeat run only fills gaps."""
+    from app.modules.onboarding.service import generate_calendar
+
+    today = date.today()
+    if len(fy_windows(today)) == 1:
+        return {"extended": 0}
+    extended = 0
+    with SessionLocal() as session:
+        org_ids = session.execute(select(Organization.id)).scalars().all()
+        for org_id in org_ids:
+            try:
+                set_tenant(session, str(org_id))
+                profiles = (
+                    session.execute(
+                        select(CompanyProfile).where(CompanyProfile.organization_id == org_id)
+                    )
+                    .scalars()
+                    .all()
+                )
+                for p in profiles:
+                    generate_calendar(
+                        session,
+                        organization_id=org_id,
+                        entity_id=p.entity_id,
+                        profile=p.profile,
+                        today=today,
+                    )
+                    extended += 1
+                session.commit()  # per-org: INSERTs must land under this org's RLS scope
+            except Exception:
+                logger.exception("extend_calendars failed for org %s", org_id)
+                session.rollback()
+    return {"extended": extended}
+
+
 class WorkerSettings:
     """arq entrypoint: `arq app.jobs.worker.WorkerSettings`."""
 
-    functions = [nightly_sweep, enqueue_due_reminders]
+    functions = [nightly_sweep, enqueue_due_reminders, extend_calendars]
     cron_jobs = [
         cron(nightly_sweep, hour=0, minute=30),  # 00:30 IST daily
         cron(enqueue_due_reminders, hour=6, minute=0),  # 06:00 IST daily
+        cron(extend_calendars, day=1, hour=1, minute=0),  # 01:00 on the 1st, monthly
     ]
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)

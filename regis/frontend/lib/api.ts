@@ -253,6 +253,7 @@ export interface ProfilePreview {
 }
 export interface GenerateResult {
   company_obligations: number; instances: number; event_listeners: number;
+  parked: number; not_tracked: number;
   diff: { added: string[]; removed: string[]; unchanged: string[] }; generation_run_id: string;
 }
 export interface Dashboard {

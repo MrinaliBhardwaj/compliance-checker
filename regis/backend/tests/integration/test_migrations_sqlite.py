@@ -32,3 +32,24 @@ def test_upgrade_and_downgrade_on_sqlite():
         command.downgrade(cfg, "base")
         assert set(inspect(eng).get_table_names()) <= {"alembic_version"}
         eng.dispose()
+
+
+def test_migrated_schema_matches_the_models():
+    """BUG-29: 0001 is frozen DDL, so the chain itself must produce the models' schema.
+    Any model change without a migration shows up here as a difference."""
+    from alembic.autogenerate import compare_metadata
+    from alembic.migration import MigrationContext
+
+    from app.models import Base
+
+    with tempfile.TemporaryDirectory() as d:
+        url = f"sqlite+pysqlite:///{os.path.join(d, 'chain.db')}"
+        cfg = Config(os.path.join(_BACKEND, "alembic.ini"))
+        cfg.set_main_option("script_location", os.path.join(_BACKEND, "alembic"))
+        cfg.set_main_option("sqlalchemy.url", url)
+        command.upgrade(cfg, "head")
+        eng = create_engine(url)
+        with eng.connect() as c:
+            ctx = MigrationContext.configure(c, opts={"compare_type": True})
+            assert compare_metadata(ctx, Base.metadata) == []
+        eng.dispose()

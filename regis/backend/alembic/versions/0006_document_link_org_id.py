@@ -44,6 +44,16 @@ def upgrade() -> None:
                 ["organization_id"],
                 ["id"],
             )
+        else:
+            # SQLite: same end state via a table rebuild (no in-place NOT NULL / FK).
+            with op.batch_alter_table("document_links") as batch:
+                batch.alter_column("organization_id", existing_type=sa.Uuid(), nullable=False)
+                batch.create_foreign_key(
+                    "fk_document_links_org", "organizations", ["organization_id"], ["id"]
+                )
+            op.create_index(
+                "ix_document_links_organization_id", "document_links", ["organization_id"]
+            )
 
     if bind.dialect.name == "postgresql":
         op.execute("ALTER TABLE document_links ENABLE ROW LEVEL SECURITY;")

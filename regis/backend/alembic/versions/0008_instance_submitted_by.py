@@ -27,8 +27,8 @@ def _has_column() -> bool:
 def upgrade() -> None:
     if _has_column():
         return
-    op.add_column("obligation_instances", sa.Column("submitted_by", sa.Uuid(), nullable=True))
     if op.get_bind().dialect.name == "postgresql":
+        op.add_column("obligation_instances", sa.Column("submitted_by", sa.Uuid(), nullable=True))
         op.create_foreign_key(
             "fk_obligation_instances_submitted_by",
             "obligation_instances",
@@ -36,6 +36,13 @@ def upgrade() -> None:
             ["submitted_by"],
             ["id"],
         )
+    else:
+        # SQLite can't add a FK in place; batch mode rebuilds the table.
+        with op.batch_alter_table("obligation_instances") as batch:
+            batch.add_column(sa.Column("submitted_by", sa.Uuid(), nullable=True))
+            batch.create_foreign_key(
+                "fk_obligation_instances_submitted_by", "users", ["submitted_by"], ["id"]
+            )
 
 
 def downgrade() -> None:

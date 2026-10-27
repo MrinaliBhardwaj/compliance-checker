@@ -43,4 +43,6 @@ def downgrade() -> None:
         # Drops the FK too, whichever name it has (create_all's or this revision's).
         op.execute("ALTER TABLE obligation_instances DROP COLUMN IF EXISTS submitted_by")
     elif _has_column():
-        op.drop_column("obligation_instances", "submitted_by")
+        # SQLite can't drop a column that carries a FK in place; batch mode rebuilds the table.
+        with op.batch_alter_table("obligation_instances") as batch:
+            batch.drop_column("submitted_by")

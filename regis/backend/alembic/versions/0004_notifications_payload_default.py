@@ -19,8 +19,13 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # Postgres-only DDL (jsonb cast, ALTER COLUMN); SQLite has neither.
+    if op.get_bind().dialect.name != "postgresql":
+        return
     op.execute("ALTER TABLE notifications ALTER COLUMN payload SET DEFAULT '{}'::jsonb;")
 
 
 def downgrade() -> None:
+    if op.get_bind().dialect.name != "postgresql":
+        return
     op.execute("ALTER TABLE notifications ALTER COLUMN payload DROP DEFAULT;")

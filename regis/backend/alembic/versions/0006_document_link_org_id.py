@@ -75,4 +75,10 @@ def downgrade() -> None:
         # it under either name.
         op.execute("ALTER TABLE document_links DROP COLUMN IF EXISTS organization_id;")
     else:
-        op.drop_column("document_links", "organization_id")
+        # SQLite: the column has an index and FK, so drop it via a table rebuild (index
+        # first, or the rebuild re-creates it on the missing column).
+        indexes = {i["name"] for i in sa.inspect(bind).get_indexes("document_links")}
+        with op.batch_alter_table("document_links") as batch:
+            if "ix_document_links_organization_id" in indexes:
+                batch.drop_index("ix_document_links_organization_id")
+            batch.drop_column("organization_id")

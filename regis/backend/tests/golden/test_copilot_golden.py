@@ -8,6 +8,7 @@ Locked behaviours:
   - the three escalations produce no substantive answer
   - grounding verifier rejects invented ids
 """
+
 from datetime import date, timedelta
 
 import pytest
@@ -30,19 +31,35 @@ def org_rows(library, profile_b):
         owner = "user_prep1" if ins.owner_role == "preparer" else "user_admin"
         d = date.fromisoformat(ins.due_date)
         status = "completed" if d < TODAY - timedelta(days=10) else "pending"
-        rows.append({
-            "id": f"i{n:03d}", "template_id": ins.template_id, "due_date": ins.due_date,
-            "status": status, "owner_user_id": owner, "owner_role": ins.owner_role,
-            "period_label": ins.period_label,
-        })
+        rows.append(
+            {
+                "id": f"i{n:03d}",
+                "template_id": ins.template_id,
+                "due_date": ins.due_date,
+                "status": status,
+                "owner_user_id": owner,
+                "owner_role": ins.owner_role,
+                "period_label": ins.period_label,
+            }
+        )
     return rows
 
 
 def test_due_this_week_admin_vs_preparer(org_rows):
-    admin = answer("What's due this week?", role="compliance_admin",
-                   user_id="user_admin", instances=org_rows, today=TODAY)
-    prep = answer("What's due this week?", role="preparer",
-                  user_id="user_prep1", instances=org_rows, today=TODAY)
+    admin = answer(
+        "What's due this week?",
+        role="compliance_admin",
+        user_id="user_admin",
+        instances=org_rows,
+        today=TODAY,
+    )
+    prep = answer(
+        "What's due this week?",
+        role="preparer",
+        user_id="user_prep1",
+        instances=org_rows,
+        today=TODAY,
+    )
     assert admin.answer_facts["count"] == 18
     assert prep.answer_facts["count"] == 13
     assert prep.scope_note and "preparer" in prep.scope_note.lower()
@@ -50,47 +67,82 @@ def test_due_this_week_admin_vs_preparer(org_rows):
 
 
 def test_overdue_admin(org_rows):
-    t = answer("What's overdue?", role="compliance_admin",
-               user_id="user_admin", instances=org_rows, today=TODAY)
+    t = answer(
+        "What's overdue?",
+        role="compliance_admin",
+        user_id="user_admin",
+        instances=org_rows,
+        today=TODAY,
+    )
     assert t.answer_facts["count"] == 10
     assert t.intent == Intent.DUE_WINDOW.value
 
 
 def test_status_dnbs02(org_rows):
-    t = answer("What's the status of dnbs02?", role="compliance_admin",
-               user_id="user_admin", instances=org_rows, today=TODAY)
+    t = answer(
+        "What's the status of dnbs02?",
+        role="compliance_admin",
+        user_id="user_admin",
+        instances=org_rows,
+        today=TODAY,
+    )
     assert t.answer_facts["count"] == 4
 
 
 def test_action_request_escalates(org_rows):
-    t = answer("File my GST return for me", role="compliance_admin",
-               user_id="user_admin", instances=org_rows, today=TODAY)
+    t = answer(
+        "File my GST return for me",
+        role="compliance_admin",
+        user_id="user_admin",
+        instances=org_rows,
+        today=TODAY,
+    )
     assert t.escalated and t.escalation_reason == "read_only"
     assert "message" in t.answer_facts and "count" not in t.answer_facts
 
 
 def test_legal_opinion_escalates(org_rows):
-    t = answer("Are we definitely compliant with RBI?", role="compliance_admin",
-               user_id="user_admin", instances=org_rows, today=TODAY)
+    t = answer(
+        "Are we definitely compliant with RBI?",
+        role="compliance_admin",
+        user_id="user_admin",
+        instances=org_rows,
+        today=TODAY,
+    )
     assert t.escalated and t.escalation_reason == "consult_professional"
 
 
 def test_out_of_scope_declines(org_rows):
-    t = answer("Help me with our litigation case", role="compliance_admin",
-               user_id="user_admin", instances=org_rows, today=TODAY)
+    t = answer(
+        "Help me with our litigation case",
+        role="compliance_admin",
+        user_id="user_admin",
+        instances=org_rows,
+        today=TODAY,
+    )
     assert t.escalated and t.escalation_reason == "out_of_scope"
 
 
 def test_obligation_info_provisional(org_rows):
-    t = answer("What does dnbs02 require?", role="compliance_admin",
-               user_id="user_admin", instances=org_rows, today=TODAY)
+    t = answer(
+        "What does dnbs02 require?",
+        role="compliance_admin",
+        user_id="user_admin",
+        instances=org_rows,
+        today=TODAY,
+    )
     assert t.confidence == 0.70
     assert t.provisional is True
 
 
 def test_legal_qa_provisional(org_rows):
-    t = answer("What does the RBI master direction say under SBR?", role="head",
-               user_id="user_head", instances=org_rows, today=TODAY)
+    t = answer(
+        "What does the RBI master direction say under SBR?",
+        role="head",
+        user_id="user_head",
+        instances=org_rows,
+        today=TODAY,
+    )
     assert t.intent == Intent.LEGAL_QA.value
     assert t.confidence == 0.70
     assert t.provisional is True

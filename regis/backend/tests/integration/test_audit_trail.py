@@ -5,6 +5,7 @@ The append-only writes already happen inside the module services; here we verify
 the reader projects them faithfully: actor-name resolution, obligation target
 labels, action filtering, the entity timeline, and pagination/has_more.
 """
+
 import os
 
 os.environ.setdefault("REGIS_DATABASE_URL", "sqlite+pysqlite:///:memory:")
@@ -20,32 +21,53 @@ from app.modules.obligations import service as obsvc  # noqa: E402
 from app.modules.onboarding.service import generate_calendar  # noqa: E402
 
 CTX = {
-    "window_start": date(2026, 4, 1), "window_end": date(2027, 3, 31),
+    "window_start": date(2026, 4, 1),
+    "window_end": date(2027, 3, 31),
     "anchors": {"agm_date": date(2026, 9, 25), "tds_return_date": date(2026, 7, 31)},
     "license_expiry": date(2026, 11, 30),
 }
 
 
 def _admin(seeded):
-    return Principal(user_id=str(seeded["user_id"]), organization_id=str(seeded["org_id"]),
-                     role="compliance_admin")
+    return Principal(
+        user_id=str(seeded["user_id"]),
+        organization_id=str(seeded["org_id"]),
+        role="compliance_admin",
+    )
 
 
 def _seed_activity(db, seeded, profile_b):
     """Generate a calendar and drive one obligation through start → submit → approve."""
     org = seeded["org_id"]
     admin = _admin(seeded)
-    generate_calendar(db, organization_id=org, entity_id=seeded["entity_id"],
-                      profile=profile_b, ctx=CTX)
-    inst = db.execute(select(ObligationInstance)
-                      .where(ObligationInstance.organization_id == org)).scalars().first()
-    obsvc.assign_owner(db, organization_id=org, instance_id=inst.id,
-                       owner_user_id=seeded["user_id"], principal=admin)
+    generate_calendar(
+        db, organization_id=org, entity_id=seeded["entity_id"], profile=profile_b, ctx=CTX
+    )
+    inst = (
+        db.execute(select(ObligationInstance).where(ObligationInstance.organization_id == org))
+        .scalars()
+        .first()
+    )
+    obsvc.assign_owner(
+        db,
+        organization_id=org,
+        instance_id=inst.id,
+        owner_user_id=seeded["user_id"],
+        principal=admin,
+    )
     for action in ("start", "submit"):
-        obsvc.transition(db, organization_id=org, instance_id=inst.id,
-                         action=action, principal=admin)
-    obsvc.transition(db, organization_id=org, instance_id=inst.id, action="approve",
-                     principal=admin, override_evidence=True, reason="filed via portal")
+        obsvc.transition(
+            db, organization_id=org, instance_id=inst.id, action=action, principal=admin
+        )
+    obsvc.transition(
+        db,
+        organization_id=org,
+        instance_id=inst.id,
+        action="approve",
+        principal=admin,
+        override_evidence=True,
+        reason="filed via portal",
+    )
     db.flush()
     return org, inst
 
@@ -77,7 +99,8 @@ def test_action_filter_and_entity_timeline(db, seeded_org, profile_b):
     assert {e["action"] for e in only_assigned["events"]} == {"instance_assigned"}
 
     timeline = audit.events_for_entity(
-        db, org, entity_type="obligation_instance", entity_id=str(inst.id))
+        db, org, entity_type="obligation_instance", entity_id=str(inst.id)
+    )
     # chronological (oldest first) and covers the whole lifecycle for this item
     times = [e["created_at"] for e in timeline]
     assert times == sorted(times)

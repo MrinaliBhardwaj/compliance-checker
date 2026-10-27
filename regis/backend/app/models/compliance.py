@@ -5,6 +5,7 @@ The key data-model insight: a template applied once as a company_obligation spaw
 many dated obligation_instances (the recurring occurrences the tracker/dashboard/
 reminders run on). Removal is deactivation (is_active=False), never deletion.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -26,8 +27,12 @@ from app.models.base import Base, created_at_col, uuid_pk
 
 # obligation_instances.status values (mirrors the instance-generator state machine)
 INSTANCE_STATUSES = (
-    "pending", "in_progress", "ready_for_review",
-    "completed", "overdue", "not_applicable",
+    "pending",
+    "in_progress",
+    "ready_for_review",
+    "completed",
+    "overdue",
+    "not_applicable",
 )
 
 
@@ -36,11 +41,14 @@ class CompanyObligation(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     organization_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("organizations.id", ondelete="CASCADE"), index=True, nullable=False)
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     entity_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("entities.id", ondelete="CASCADE"), index=True, nullable=False)
+        ForeignKey("entities.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     template_id: Mapped[str] = mapped_column(
-        ForeignKey("obligation_templates.template_id"), nullable=False)
+        ForeignKey("obligation_templates.template_id"), nullable=False
+    )
     # The (possibly state-expanded) applicability result id, e.g. "lab_pt_deposit__MH".
     applicability_id: Mapped[str] = mapped_column(String(120), nullable=False)
     state: Mapped[str | None] = mapped_column(String(4))  # set for state-expanded rows
@@ -63,10 +71,12 @@ class ObligationInstance(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     company_obligation_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("company_obligations.id", ondelete="CASCADE"), index=True, nullable=False)
+        ForeignKey("company_obligations.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     # denormalized for RLS + fast dashboard queries (PRD)
     organization_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("organizations.id", ondelete="CASCADE"), index=True, nullable=False)
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     period_label: Mapped[str] = mapped_column(String(40), nullable=False)  # "2026-07","2026Q1",...
     due_date: Mapped[date | None] = mapped_column(Date)  # null while awaiting an anchor
     status: Mapped[str] = mapped_column(String(20), default="pending")

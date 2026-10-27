@@ -1,4 +1,5 @@
 """Unit tests — one per predicate type + the three-state decision logic."""
+
 from app.engines.applicability import (
     Decision,
     eval_condition,
@@ -8,8 +9,14 @@ from app.engines.applicability import (
 
 
 def _tpl(rule, **kw):
-    base = dict(template_id="t1", title="T", category="rbi", law_id="l1",
-                applicability_rule=rule, verification_status="DRAFT_UNVERIFIED")
+    base = dict(
+        template_id="t1",
+        title="T",
+        category="rbi",
+        law_id="l1",
+        applicability_rule=rule,
+        verification_status="DRAFT_UNVERIFIED",
+    )
     base.update(kw)
     return base
 

@@ -10,6 +10,7 @@ app.core.db.set_bootstrap, used only on the login path, filtered by user
 identity). This adds that read-only bypass to the memberships policy — WITH CHECK
 is unchanged, so bootstrap can never forge or move a membership. No-op off Postgres.
 """
+
 from __future__ import annotations
 
 from alembic import op

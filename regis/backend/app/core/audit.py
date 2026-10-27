@@ -1,4 +1,5 @@
 """Append-only audit helper. Every state-changing action routes through here."""
+
 from __future__ import annotations
 
 import uuid

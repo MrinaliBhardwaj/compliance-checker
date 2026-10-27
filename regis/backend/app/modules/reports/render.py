@@ -6,6 +6,7 @@ Report renderers.
   pure-Python PDF writer so the endpoint always returns a valid PDF. Both are
   swappable; nothing here is an external hard dependency.
 """
+
 from __future__ import annotations
 
 import html
@@ -16,22 +17,33 @@ import html
 # ---------------------------------------------------------------------------
 def render_html(report: dict) -> str:
     e = html.escape
-    banner = ("<div class='prov'>PROVISIONAL — generated from a DRAFT_UNVERIFIED "
-              "obligation library pending content-team verification.</div>"
-              if report["provisional"] else "")
+    banner = (
+        "<div class='prov'>PROVISIONAL — generated from a DRAFT_UNVERIFIED "
+        "obligation library pending content-team verification.</div>"
+        if report["provisional"]
+        else ""
+    )
 
     def table(items, cols):
         head = "".join(f"<th>{c}</th>" for c, _ in cols)
         body = ""
         for it in items:
-            body += "<tr>" + "".join(f"<td>{e(str(it.get(k) or ''))}</td>" for _, k in cols) + "</tr>"
+            body += (
+                "<tr>" + "".join(f"<td>{e(str(it.get(k) or ''))}</td>" for _, k in cols) + "</tr>"
+            )
         return f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
 
-    cols = [("Period", "period_label"), ("Obligation", "title"),
-            ("Form", "form_reference"), ("Due", "due_date"), ("Risk", "risk_level")]
+    cols = [
+        ("Period", "period_label"),
+        ("Obligation", "title"),
+        ("Form", "form_reference"),
+        ("Due", "due_date"),
+        ("Risk", "risk_level"),
+    ]
     s = report["sections"]
     cat_rows = "".join(
-        f"<tr><td>{e(k)}</td><td>{e(str(v))}</td></tr>" for k, v in report["by_category"].items())
+        f"<tr><td>{e(k)}</td><td>{e(str(v))}</td></tr>" for k, v in report["by_category"].items()
+    )
 
     return f"""<!doctype html><html><head><meta charset='utf-8'>
 <title>Compliance Status — {e(report['organization'])}</title>
@@ -95,12 +107,17 @@ def _report_lines(report: dict) -> list[str]:
         f"   Completed: {report['tiles']['completed']}",
         "",
     ]
-    for title, key in (("OVERDUE", "overdue"), ("DUE THIS WEEK", "due_this_week"),
-                       ("AWAITING REVIEW", "awaiting_review")):
+    for title, key in (
+        ("OVERDUE", "overdue"),
+        ("DUE THIS WEEK", "due_this_week"),
+        ("AWAITING REVIEW", "awaiting_review"),
+    ):
         lines.append(f"{title} ({len(s[key])})")
         for it in s[key][:40]:
-            lines.append(f"  {it.get('due_date') or '—'}  {it['period_label']}  "
-                         f"{(it['title'] or '')[:60]}")
+            lines.append(
+                f"  {it.get('due_date') or '—'}  {it['period_label']}  "
+                f"{(it['title'] or '')[:60]}"
+            )
         lines.append("")
     lines.append(f"Generated {report['generated_at']}")
     return lines
@@ -130,12 +147,18 @@ def _render_pdf_reportlab(report: dict) -> bytes:
 
 def _render_pdf_minimal(lines: list[str]) -> bytes:
     """Dependency-free PDF writer: paginates text lines into a valid multi-page PDF."""
+
     def esc(t: str) -> str:
-        return (t.replace("\\", r"\\").replace("(", r"\(").replace(")", r"\)")
-                .encode("latin-1", "replace").decode("latin-1"))
+        return (
+            t.replace("\\", r"\\")
+            .replace("(", r"\(")
+            .replace(")", r"\)")
+            .encode("latin-1", "replace")
+            .decode("latin-1")
+        )
 
     per_page = 50
-    pages = [lines[i:i + per_page] for i in range(0, max(len(lines), 1), per_page)] or [[""]]
+    pages = [lines[i : i + per_page] for i in range(0, max(len(lines), 1), per_page)] or [[""]]
 
     objects: list[bytes] = []
 
@@ -143,8 +166,8 @@ def _render_pdf_minimal(lines: list[str]) -> bytes:
         objects.append(obj)
         return len(objects)  # 1-based object number
 
-    catalog_num = add(b"")          # 1 placeholder (catalog)
-    pages_num = add(b"")            # 2 placeholder (pages)
+    catalog_num = add(b"")  # 1 placeholder (catalog)
+    pages_num = add(b"")  # 2 placeholder (pages)
     font_num = add(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
 
     page_nums: list[int] = []
@@ -157,14 +180,19 @@ def _render_pdf_minimal(lines: list[str]) -> bytes:
         stream = "\n".join(body).encode("latin-1")
         cnum = add(b"<< /Length %d >>\nstream\n%s\nendstream" % (len(stream), stream))
         content_nums.append(cnum)
-        pnum = add((f"<< /Type /Page /Parent {pages_num} 0 R /MediaBox [0 0 595 842] "
-                    f"/Resources << /Font << /F1 {font_num} 0 R >> >> "
-                    f"/Contents {cnum} 0 R >>").encode("latin-1"))
+        pnum = add(
+            (
+                f"<< /Type /Page /Parent {pages_num} 0 R /MediaBox [0 0 595 842] "
+                f"/Resources << /Font << /F1 {font_num} 0 R >> >> "
+                f"/Contents {cnum} 0 R >>"
+            ).encode("latin-1")
+        )
         page_nums.append(pnum)
 
     kids = " ".join(f"{n} 0 R" for n in page_nums)
-    objects[pages_num - 1] = (
-        f"<< /Type /Pages /Kids [{kids}] /Count {len(page_nums)} >>").encode("latin-1")
+    objects[pages_num - 1] = (f"<< /Type /Pages /Kids [{kids}] /Count {len(page_nums)} >>").encode(
+        "latin-1"
+    )
     objects[catalog_num - 1] = f"<< /Type /Catalog /Pages {pages_num} 0 R >>".encode("latin-1")
 
     out = bytearray(b"%PDF-1.4\n")
@@ -177,6 +205,9 @@ def _render_pdf_minimal(lines: list[str]) -> bytes:
     out += b"0000000000 65535 f \n"
     for idx in range(1, len(objects) + 1):
         out += b"%010d 00000 n \n" % offsets[idx]
-    out += (b"trailer\n<< /Size %d /Root %d 0 R >>\nstartxref\n%d\n%%%%EOF"
-            % (len(objects) + 1, catalog_num, xref_pos))
+    out += b"trailer\n<< /Size %d /Root %d 0 R >>\nstartxref\n%d\n%%%%EOF" % (
+        len(objects) + 1,
+        catalog_num,
+        xref_pos,
+    )
     return bytes(out)

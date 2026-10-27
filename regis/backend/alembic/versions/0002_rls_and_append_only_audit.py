@@ -10,6 +10,7 @@ No-op on non-Postgres dialects (SQLite test path). On Postgres:
   - block UPDATE/DELETE on audit_log via a trigger so the audit trail is
     truly append-only (the audit trail IS the compliance evidence).
 """
+
 from __future__ import annotations
 
 from alembic import op
@@ -21,9 +22,17 @@ depends_on = None
 
 # Tables scoped directly by organization_id.
 TENANT_TABLES = [
-    "entities", "memberships", "company_obligations", "obligation_instances",
-    "company_profiles", "documents", "legal_update_status", "audit_log",
-    "notifications", "copilot_messages", "event_listeners",
+    "entities",
+    "memberships",
+    "company_obligations",
+    "obligation_instances",
+    "company_profiles",
+    "documents",
+    "legal_update_status",
+    "audit_log",
+    "notifications",
+    "copilot_messages",
+    "event_listeners",
 ]
 
 

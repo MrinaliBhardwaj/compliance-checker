@@ -5,6 +5,7 @@ adapter for dev/tests so the upload pipeline never depends on a cloud account.
 Tenant isolation is baked into the key layout: every object lives under
 `<organization_id>/...`, so a signed URL or listing can never cross tenants.
 """
+
 from __future__ import annotations
 
 import os
@@ -20,8 +21,7 @@ class Storage(ABC):
         """Store bytes at key; return a stable URL/URI for documents.file_url."""
 
     @abstractmethod
-    def get(self, key: str) -> bytes:
-        ...
+    def get(self, key: str) -> bytes: ...
 
     @abstractmethod
     def signed_url(self, key: str, expires_s: int = 900) -> str:
@@ -32,7 +32,9 @@ class LocalStorage(Storage):
     """Filesystem-backed (dev/tests). Root configurable; defaults under the CWD."""
 
     def __init__(self, root: str | None = None) -> None:
-        final_root = str(root) if root is not None else os.getenv("REGIS_LOCAL_STORAGE", ".regis_storage")
+        final_root = (
+            str(root) if root is not None else os.getenv("REGIS_LOCAL_STORAGE", ".regis_storage")
+        )
         self.root = Path(final_root).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
 
@@ -60,13 +62,16 @@ class S3Storage(Storage):
 
     def __init__(self) -> None:
         import boto3
+
         self._s = get_settings()
         self._client = boto3.client("s3", region_name=self._s.aws_region)
         self._bucket = self._s.s3_bucket
 
     def put(self, key: str, content: bytes, content_type: str | None = None) -> str:
         self._client.put_object(
-            Bucket=self._bucket, Key=key, Body=content,
+            Bucket=self._bucket,
+            Key=key,
+            Body=content,
             ContentType=content_type or "application/octet-stream",
             ServerSideEncryption="aws:kms",
         )
@@ -77,7 +82,8 @@ class S3Storage(Storage):
 
     def signed_url(self, key: str, expires_s: int = 900) -> str:
         return self._client.generate_presigned_url(
-            "get_object", Params={"Bucket": self._bucket, "Key": key}, ExpiresIn=expires_s)
+            "get_object", Params={"Bucket": self._bucket, "Key": key}, ExpiresIn=expires_s
+        )
 
 
 _storage: Storage | None = None

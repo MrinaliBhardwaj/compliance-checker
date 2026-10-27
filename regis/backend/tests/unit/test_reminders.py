@@ -1,12 +1,18 @@
 """Unit tests — pure reminder schedule (the deterministic notification core)."""
+
 from datetime import date
 
 from app.modules.notify.service import reminder_intents
 
 
 def _inst(due, status="pending", risk="medium", owner="u1"):
-    return {"id": "i1", "due_date": due, "status": status, "risk_level": risk,
-            "owner_user_id": owner}
+    return {
+        "id": "i1",
+        "due_date": due,
+        "status": status,
+        "risk_level": risk,
+        "owner_user_id": owner,
+    }
 
 
 def test_pre_due_default_cadence():
@@ -47,7 +53,9 @@ def test_overdue_escalation_ladder():
 def test_completed_and_na_get_no_reminders():
     due = date(2026, 5, 10)
     assert reminder_intents([_inst(due.isoformat(), status="completed")], date(2026, 5, 9)) == []
-    assert reminder_intents([_inst(due.isoformat(), status="not_applicable")], date(2026, 5, 9)) == []
+    assert (
+        reminder_intents([_inst(due.isoformat(), status="not_applicable")], date(2026, 5, 9)) == []
+    )
 
 
 def test_no_due_date_skipped():

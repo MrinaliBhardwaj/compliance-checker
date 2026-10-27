@@ -3,6 +3,7 @@ Audit trail API: the evidence trail auditors/RBI inspection ask for (PRD §3).
 Read-only over the append-only log. Restricted to admin + head — the audit feed
 is a CFO/compliance-owner artifact, not a preparer surface (PRD role matrix).
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -39,13 +40,24 @@ def list_audit(
     offset: int = Query(0, ge=0),
 ) -> dict:
     return svc.list_events(
-        db, principal.organization_id, action=action, actor_user_id=actor_user_id,
-        entity_type=entity_type, since=since, until=until, q=q, limit=limit, offset=offset)
+        db,
+        principal.organization_id,
+        action=action,
+        actor_user_id=actor_user_id,
+        entity_type=entity_type,
+        since=since,
+        until=until,
+        q=q,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/entity/{entity_type}/{entity_id}")
-def entity_timeline(entity_type: str, entity_id: str, db: DbSession,
-                    principal: Principal = Depends(_viewer)) -> list[dict]:
+def entity_timeline(
+    entity_type: str, entity_id: str, db: DbSession, principal: Principal = Depends(_viewer)
+) -> list[dict]:
     """Chronological history for a single entity (e.g. an obligation instance)."""
     return svc.events_for_entity(
-        db, principal.organization_id, entity_type=entity_type, entity_id=entity_id)
+        db, principal.organization_id, entity_type=entity_type, entity_id=entity_id
+    )

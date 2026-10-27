@@ -2,6 +2,7 @@
 Unit tests — legal-update matcher. Proves it reuses the obligation engine's
 three-state semantics (the same DSL, one evaluator).
 """
+
 from app.engines.applicability import Decision
 from app.modules.legal_updates.matcher import match_org, match_update
 

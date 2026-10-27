@@ -16,6 +16,7 @@ gap, derivation explanations) sits ABOVE this and is in app.ai (stubbed).
 Unresolved fields are intentionally left None — the applicability engine already
 routes those to NEEDS_REVIEW, so the two components compose without guessing.
 """
+
 from __future__ import annotations
 
 import re
@@ -29,14 +30,18 @@ from .applicability import HARD_FIELDS
 # Provenance + confidence
 # ---------------------------------------------------------------------------
 class Source(StrEnum):
-    ASKED = "ASKED"               # answered directly in the questionnaire
-    EXTRACTED = "EXTRACTED"       # parsed from an uploaded document
-    DERIVED = "DERIVED"           # inferred from other fields (confirm)
+    ASKED = "ASKED"  # answered directly in the questionnaire
+    EXTRACTED = "EXTRACTED"  # parsed from an uploaded document
+    DERIVED = "DERIVED"  # inferred from other fields (confirm)
     DEFAULT_UNKNOWN = "DEFAULT_UNKNOWN"  # not provided -> review downstream
 
 
-CONF = {Source.ASKED: 0.97, Source.EXTRACTED: 0.90,
-        Source.DERIVED: 0.85, Source.DEFAULT_UNKNOWN: 0.0}
+CONF = {
+    Source.ASKED: 0.97,
+    Source.EXTRACTED: 0.90,
+    Source.DERIVED: 0.85,
+    Source.DEFAULT_UNKNOWN: 0.0,
+}
 
 
 @dataclass
@@ -51,10 +56,21 @@ class Field:
 # Normalizers
 # ---------------------------------------------------------------------------
 STATE_MAP = {
-    "maharashtra": "MH", "karnataka": "KA", "tamil nadu": "TN", "tamilnadu": "TN",
-    "delhi": "DL", "west bengal": "WB", "gujarat": "GJ", "andhra pradesh": "AP",
-    "telangana": "TS", "madhya pradesh": "MP", "haryana": "HR", "rajasthan": "RJ",
-    "uttar pradesh": "UP", "kerala": "KL", "punjab": "PB",
+    "maharashtra": "MH",
+    "karnataka": "KA",
+    "tamil nadu": "TN",
+    "tamilnadu": "TN",
+    "delhi": "DL",
+    "west bengal": "WB",
+    "gujarat": "GJ",
+    "andhra pradesh": "AP",
+    "telangana": "TS",
+    "madhya pradesh": "MP",
+    "haryana": "HR",
+    "rajasthan": "RJ",
+    "uttar pradesh": "UP",
+    "kerala": "KL",
+    "punjab": "PB",
 }
 STATE_CODES = set(STATE_MAP.values())
 
@@ -117,9 +133,15 @@ def normalize_bool(raw) -> Field:
 
 
 NBFC_BUSINESS = {
-    "investment and credit": "icc", "investment & credit": "icc", "icc": "icc",
-    "infrastructure": "ifc", "ifc": "ifc", "microfinance": "mfi", "mfi": "mfi",
-    "factor": "factor", "housing finance": "hfc",
+    "investment and credit": "icc",
+    "investment & credit": "icc",
+    "icc": "icc",
+    "infrastructure": "ifc",
+    "ifc": "ifc",
+    "microfinance": "mfi",
+    "mfi": "mfi",
+    "factor": "factor",
+    "housing finance": "hfc",
 }
 
 
@@ -174,33 +196,44 @@ def derive_rbi_layer(asset_cr, deposit, rbi_designated_upper=False) -> Field:
         return Field(None, Source.DEFAULT_UNKNOWN, 0.0, "asset size unknown")
     if asset_cr >= 1000:
         return Field("middle", Source.DERIVED, 0.85, "asset >= Rs.1000cr -> Middle Layer")
-    return Field("base", Source.DERIVED, 0.80,
-                 "asset < Rs.1000cr -> Base Layer (RBI may place higher; confirm)")
+    return Field(
+        "base",
+        Source.DERIVED,
+        0.80,
+        "asset < Rs.1000cr -> Base Layer (RBI may place higher; confirm)",
+    )
 
 
 def derive_esi(employee_count) -> Field:
     if employee_count is None:
         return Field(None, Source.DEFAULT_UNKNOWN, 0.0)
-    return Field(employee_count >= 10, Source.DERIVED, 0.80,
-                 "ESI threshold ~10 employees (state-varying; confirm)")
+    return Field(
+        employee_count >= 10,
+        Source.DERIVED,
+        0.80,
+        "ESI threshold ~10 employees (state-varying; confirm)",
+    )
 
 
 def derive_gst_scheme(turnover_cr) -> Field:
     if turnover_cr is None:
         return Field(None, Source.DEFAULT_UNKNOWN, 0.0)
     scheme = "qrmp" if turnover_cr <= 5 else "regular"
-    return Field(scheme, Source.DERIVED, 0.70,
-                 "QRMP is an election (<= Rs.5cr eligible); confirm choice")
+    return Field(
+        scheme, Source.DERIVED, 0.70, "QRMP is an election (<= Rs.5cr eligible); confirm choice"
+    )
 
 
 def derive_csr(turnover_cr) -> Field:
     if turnover_cr is None:
-        return Field(None, Source.DEFAULT_UNKNOWN, 0.0,
-                     "needs net worth / net profit to confirm s.135")
+        return Field(
+            None, Source.DEFAULT_UNKNOWN, 0.0, "needs net worth / net profit to confirm s.135"
+        )
     if turnover_cr >= 1000:
         return Field(True, Source.DERIVED, 0.80, "turnover >= Rs.1000cr (s.135)")
-    return Field(None, Source.DEFAULT_UNKNOWN, 0.0,
-                 "below turnover trigger; check net worth/profit")
+    return Field(
+        None, Source.DEFAULT_UNKNOWN, 0.0, "below turnover trigger; check net worth/profit"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +242,7 @@ def derive_csr(turnover_cr) -> Field:
 @dataclass
 class Issue:
     field: str
-    severity: str   # contradiction | warning
+    severity: str  # contradiction | warning
     detail: str
 
 
@@ -219,23 +252,46 @@ def consistency_checks(p: dict, asserted: dict) -> list[Issue]:
     # user-asserted layer vs derived expectation
     a_layer = asserted.get("rbi_layer")
     if a_layer == "base" and asset is not None and asset >= 1000:
-        issues.append(Issue("rbi_layer", "contradiction",
-            f"answered Base but asset Rs.{asset}cr implies Middle Layer (>=1000)"))
+        issues.append(
+            Issue(
+                "rbi_layer",
+                "contradiction",
+                f"answered Base but asset Rs.{asset}cr implies Middle Layer (>=1000)",
+            )
+        )
     if p["deposit_taking"].value is True and a_layer == "base":
-        issues.append(Issue("rbi_layer", "contradiction",
-            "deposit-taking NBFCs are Middle Layer under SBR, not Base"))
+        issues.append(
+            Issue(
+                "rbi_layer",
+                "contradiction",
+                "deposit-taking NBFCs are Middle Layer under SBR, not Base",
+            )
+        )
     # states vs branches
     if p["branch_count"].value and not p["operating_states"].value:
-        issues.append(Issue("operating_states", "warning",
-            f"{p['branch_count'].value} branches but no operating states provided"))
+        issues.append(
+            Issue(
+                "operating_states",
+                "warning",
+                f"{p['branch_count'].value} branches but no operating states provided",
+            )
+        )
     # listed debt vs is_listed coherence
     if p["has_listed_debt"].value and p["is_listed"].value is None:
-        issues.append(Issue("is_listed", "warning",
-            "has listed debt securities; confirm equity-listing status"))
+        issues.append(
+            Issue(
+                "is_listed", "warning", "has listed debt securities; confirm equity-listing status"
+            )
+        )
     # near-boundary asset size
     if asset is not None and 900 <= asset <= 1100:
-        issues.append(Issue("asset_size_cr", "warning",
-            f"asset Rs.{asset}cr is near the Rs.1000cr layer boundary; confirm exact figure"))
+        issues.append(
+            Issue(
+                "asset_size_cr",
+                "warning",
+                f"asset Rs.{asset}cr is near the Rs.1000cr layer boundary; confirm exact figure",
+            )
+        )
     return issues
 
 
@@ -243,12 +299,25 @@ def consistency_checks(p: dict, asserted: dict) -> list[Issue]:
 # Extraction orchestrator
 # ---------------------------------------------------------------------------
 # soft operational flags not in the core questionnaire -> left None (review downstream)
-SOFT_FLAGS = ["has_foreign_investment", "has_nonresident_payments",
-              "has_international_transactions", "has_reportable_accounts",
-              "has_msme_dues", "has_sbo", "has_capital_changes", "has_ecb", "has_odi",
-              "has_eligible_bonus_employees", "does_digital_lending",
-              "has_dlg_arrangements", "has_floating_rate_retail", "is_secured_lender",
-              "is_large_corporate", "has_borrowings", "is_isd"]
+SOFT_FLAGS = [
+    "has_foreign_investment",
+    "has_nonresident_payments",
+    "has_international_transactions",
+    "has_reportable_accounts",
+    "has_msme_dues",
+    "has_sbo",
+    "has_capital_changes",
+    "has_ecb",
+    "has_odi",
+    "has_eligible_bonus_employees",
+    "does_digital_lending",
+    "has_dlg_arrangements",
+    "has_floating_rate_retail",
+    "is_secured_lender",
+    "is_large_corporate",
+    "has_borrowings",
+    "is_isd",
+]
 
 # Targeted one-line follow-ups for gap fields (LLM may rephrase conversationally).
 FOLLOWUP_TEXT = {
@@ -274,14 +343,20 @@ FOLLOWUP_TEXT = {
 def field_yield(library: dict) -> dict:
     """How many obligations each profile field gates -> drives gap ranking."""
     from collections import Counter
+
     raw: Counter = Counter()
     for o in library["obligation_templates"]:
         for k in o["applicability_rule"]:
             base = k.replace("_min_cr", "").replace("_min", "")
             raw[base] += 1
-    alias = {"asset_size": "asset_size_cr", "turnover": "turnover_cr",
-             "has_employees": "employee_count", "has_branches": "branch_count",
-             "pt_states": "operating_states", "lwf_states": "operating_states"}
+    alias = {
+        "asset_size": "asset_size_cr",
+        "turnover": "turnover_cr",
+        "has_employees": "employee_count",
+        "has_branches": "branch_count",
+        "pt_states": "operating_states",
+        "lwf_states": "operating_states",
+    }
     out: Counter = Counter()
     for k, c in raw.items():
         out[alias.get(k, k)] += c
@@ -297,9 +372,15 @@ def gap_questions(F: dict, library: dict) -> list[dict]:
         if fval.value is not None:
             continue
         if fname not in FOLLOWUP_TEXT:
-            continue   # no targeted question -> silently flows to NEEDS_REVIEW
-        gaps.append({"field": fname, "question": FOLLOWUP_TEXT[fname],
-                     "yield": yields.get(fname, 0), "hard": fname in HARD_FIELDS})
+            continue  # no targeted question -> silently flows to NEEDS_REVIEW
+        gaps.append(
+            {
+                "field": fname,
+                "question": FOLLOWUP_TEXT[fname],
+                "yield": yields.get(fname, 0),
+                "hard": fname in HARD_FIELDS,
+            }
+        )
     gaps.sort(key=lambda x: (x["hard"], x["yield"]), reverse=True)
     return gaps
 
@@ -325,24 +406,34 @@ def extract_profile(raw: dict, library: dict | None = None) -> dict:
     F["is_listed"] = normalize_bool(raw.get("is_listed"))
     F["has_listed_debt"] = normalize_bool(raw.get("has_listed_debt"))
     F["operating_states"] = normalize_states(raw.get("operating_states"))
-    F["branch_count"] = (Field(int(raw["branch_count"]), Source.ASKED, CONF[Source.ASKED])
-                         if raw.get("branch_count") is not None
-                         else Field(None, Source.DEFAULT_UNKNOWN, 0.0))
-    F["employee_count"] = (Field(int(raw["employee_count"]), Source.ASKED, CONF[Source.ASKED])
-                           if raw.get("employee_count") is not None
-                           else Field(None, Source.DEFAULT_UNKNOWN, 0.0))
+    F["branch_count"] = (
+        Field(int(raw["branch_count"]), Source.ASKED, CONF[Source.ASKED])
+        if raw.get("branch_count") is not None
+        else Field(None, Source.DEFAULT_UNKNOWN, 0.0)
+    )
+    F["employee_count"] = (
+        Field(int(raw["employee_count"]), Source.ASKED, CONF[Source.ASKED])
+        if raw.get("employee_count") is not None
+        else Field(None, Source.DEFAULT_UNKNOWN, 0.0)
+    )
     F["gst_registered"] = normalize_bool(raw.get("gst_registered"))
-    business = normalize_business(raw.get("nbfc_type"))   # descriptive, not engine-consumed
+    business = normalize_business(raw.get("nbfc_type"))  # descriptive, not engine-consumed
 
     # derived fields (suggested, confirm)
-    F["nbfc_category"] = derive_regulatory_category(F["asset_size_cr"].value,
-                                                    F["deposit_taking"].value)
-    F["rbi_layer"] = derive_rbi_layer(F["asset_size_cr"].value, F["deposit_taking"].value,
-                                      str(raw.get("rbi_layer", "")).lower() == "upper")
+    F["nbfc_category"] = derive_regulatory_category(
+        F["asset_size_cr"].value, F["deposit_taking"].value
+    )
+    F["rbi_layer"] = derive_rbi_layer(
+        F["asset_size_cr"].value,
+        F["deposit_taking"].value,
+        str(raw.get("rbi_layer", "")).lower() == "upper",
+    )
     F["esi_applicable"] = derive_esi(F["employee_count"].value)
-    F["gst_scheme"] = (derive_gst_scheme(F["turnover_cr"].value)
-                       if F["gst_registered"].value else
-                       Field(None, Source.DEFAULT_UNKNOWN, 0.0, "not GST-registered"))
+    F["gst_scheme"] = (
+        derive_gst_scheme(F["turnover_cr"].value)
+        if F["gst_registered"].value
+        else Field(None, Source.DEFAULT_UNKNOWN, 0.0, "not GST-registered")
+    )
     F["csr_applicable"] = derive_csr(F["turnover_cr"].value)
 
     # soft flags: take if explicitly provided, else leave unknown for review
@@ -358,20 +449,22 @@ def extract_profile(raw: dict, library: dict | None = None) -> dict:
 
     # assemble engine profile (value-only) + provenance + review list
     profile = {k: v.value for k, v in F.items()}
-    review_fields = [k for k, v in F.items()
-                     if v.source == Source.DEFAULT_UNKNOWN or v.confidence < 0.85]
+    review_fields = [
+        k for k, v in F.items() if v.source == Source.DEFAULT_UNKNOWN or v.confidence < 0.85
+    ]
     derived_to_confirm = [k for k, v in F.items() if v.source == Source.DERIVED]
     known = sum(1 for v in F.values() if v.value is not None)
 
     return {
         "profile": profile,
         "business_classification": business.value,
-        "provenance": {k: {"source": v.source.value, "confidence": round(v.confidence, 2),
-                           "note": v.note} for k, v in F.items()},
+        "provenance": {
+            k: {"source": v.source.value, "confidence": round(v.confidence, 2), "note": v.note}
+            for k, v in F.items()
+        },
         "issues": [asdict(i) for i in issues],
         "review_fields": review_fields,
         "derived_to_confirm": derived_to_confirm,
         "gap_questions": gap_questions(F, library) if library else [],
-        "completeness": {"known": known, "total": len(F),
-                         "pct": round(100 * known / len(F))},
+        "completeness": {"known": known, "total": len(F), "pct": round(100 * known / len(F))},
     }

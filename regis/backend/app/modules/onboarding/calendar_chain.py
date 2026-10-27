@@ -8,6 +8,7 @@ These are pure functions over dicts so they are unit-testable with no DB and are
 reused verbatim by the DB-backed onboarding service. The service's only extra job
 is to persist what these return and write audit rows.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -27,14 +28,16 @@ def build_company_obligations(universe: dict, library: dict) -> list[dict]:
     for r in universe["applicable"]:
         base_id = r["template_id"].split("__")[0]
         t = tpl_by_id[base_id]
-        cobs.append({
-            "company_obligation_id": f'co_{r["template_id"]}',
-            "template_id": r["template_id"],
-            "due_rule": t["due_rule"],
-            "owner_role": t["default_owner_role"],
-            "risk_level": t["risk_level"],
-            "state": r.get("state"),
-        })
+        cobs.append(
+            {
+                "company_obligation_id": f'co_{r["template_id"]}',
+                "template_id": r["template_id"],
+                "due_rule": t["due_rule"],
+                "owner_role": t["default_owner_role"],
+                "risk_level": t["risk_level"],
+                "state": r.get("state"),
+            }
+        )
     return cobs
 
 

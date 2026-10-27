@@ -7,6 +7,7 @@ Kept deliberately thin: the deterministic engines own correctness; the LLM only
 where grounding matters. `available()` lets callers fall back to deterministic
 behaviour when no API key is set.
 """
+
 from __future__ import annotations
 
 import json
@@ -22,6 +23,7 @@ def available() -> bool:
 
 def _client():
     from anthropic import Anthropic
+
     return Anthropic(api_key=get_settings().anthropic_api_key)
 
 
@@ -31,8 +33,10 @@ def complete(system: str, user: str, *, max_tokens: int = 1024, temperature: flo
         raise RuntimeError("No Anthropic API key configured (REGIS_ANTHROPIC_API_KEY).")
     msg = _client().messages.create(
         model=get_settings().anthropic_model,
-        max_tokens=max_tokens, temperature=temperature,
-        system=system, messages=[{"role": "user", "content": user}],
+        max_tokens=max_tokens,
+        temperature=temperature,
+        system=system,
+        messages=[{"role": "user", "content": user}],
     )
     return "".join(block.text for block in msg.content if block.type == "text")
 

@@ -3,6 +3,7 @@ Team API. Invite / role / remove are compliance_admin only (PRD §10: invite &
 manage team). Listing members is admin + head (head needs team visibility for
 oversight). Owner assignment itself stays on the obligations router (admin only).
 """
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -27,9 +28,14 @@ class InviteBody(BaseModel):
 @router.post("/invite")
 def invite(body: InviteBody, db: DbSession, principal: Principal = Depends(_admin)) -> dict:
     try:
-        return svc.invite_member(db, organization_id=principal.organization_id,
-                                 email=str(body.email), role=body.role,
-                                 full_name=body.full_name, invited_by=principal.user_id)
+        return svc.invite_member(
+            db,
+            organization_id=principal.organization_id,
+            email=str(body.email),
+            role=body.role,
+            full_name=body.full_name,
+            invited_by=principal.user_id,
+        )
     except svc.TeamError as e:
         raise HTTPException(status.HTTP_409_CONFLICT, str(e)) from e
 
@@ -50,12 +56,17 @@ class RoleBody(BaseModel):
 
 
 @router.patch("/members/{membership_id}/role")
-def change_role(membership_id: str, body: RoleBody, db: DbSession,
-                principal: Principal = Depends(_admin)) -> dict:
+def change_role(
+    membership_id: str, body: RoleBody, db: DbSession, principal: Principal = Depends(_admin)
+) -> dict:
     try:
-        return svc.update_role(db, organization_id=principal.organization_id,
-                               membership_id=membership_id, role=body.role,
-                               actor=principal.user_id)
+        return svc.update_role(
+            db,
+            organization_id=principal.organization_id,
+            membership_id=membership_id,
+            role=body.role,
+            actor=principal.user_id,
+        )
     except svc.NotFound:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found") from None
     except svc.TeamError as e:
@@ -63,16 +74,21 @@ def change_role(membership_id: str, body: RoleBody, db: DbSession,
 
 
 class RemoveBody(BaseModel):
-    reassign_to: str | None = None   # membership id or user id of the new owner
+    reassign_to: str | None = None  # membership id or user id of the new owner
 
 
 @router.post("/members/{membership_id}/remove")
-def remove(membership_id: str, body: RemoveBody, db: DbSession,
-           principal: Principal = Depends(_admin)) -> dict:
+def remove(
+    membership_id: str, body: RemoveBody, db: DbSession, principal: Principal = Depends(_admin)
+) -> dict:
     try:
-        return svc.remove_member(db, organization_id=principal.organization_id,
-                                 membership_id=membership_id, reassign_to=body.reassign_to,
-                                 actor=principal.user_id)
+        return svc.remove_member(
+            db,
+            organization_id=principal.organization_id,
+            membership_id=membership_id,
+            reassign_to=body.reassign_to,
+            actor=principal.user_id,
+        )
     except svc.NotFound:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Member not found") from None
     except svc.TeamError as e:

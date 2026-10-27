@@ -4,6 +4,7 @@ Revision ID: 0006_document_link_org_id
 Revises: 0005_audit_log_null_org
 Create Date: 2026-09-08
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -33,8 +34,16 @@ def upgrade() -> None:
         if bind.dialect.name == "postgresql":
             # Make non-nullable and add constraints
             op.alter_column("document_links", "organization_id", nullable=False)
-            op.create_index("ix_document_links_organization_id", "document_links", ["organization_id"])
-            op.create_foreign_key("fk_document_links_org", "document_links", "organizations", ["organization_id"], ["id"])
+            op.create_index(
+                "ix_document_links_organization_id", "document_links", ["organization_id"]
+            )
+            op.create_foreign_key(
+                "fk_document_links_org",
+                "document_links",
+                "organizations",
+                ["organization_id"],
+                ["id"],
+            )
 
     if bind.dialect.name == "postgresql":
         op.execute("ALTER TABLE document_links ENABLE ROW LEVEL SECURITY;")

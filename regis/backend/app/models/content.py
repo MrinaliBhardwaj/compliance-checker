@@ -6,6 +6,7 @@ content gate, encoded as a column the engines read at runtime — not a doc note
 A template is promoted to VERIFIED only by a content-team action (its own audited
 mutation), never by application code or the seed loader.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -23,7 +24,7 @@ class LawLibrary(Base):
     id: Mapped[str] = mapped_column(String(80), primary_key=True)  # natural key, e.g. law_rbi_sbr
     name: Mapped[str] = mapped_column(Text, nullable=False)
     regulator: Mapped[str] = mapped_column(String(40))  # RBI|MCA|Income Tax|EPFO|State|SEBI...
-    category: Mapped[str] = mapped_column(String(20))    # rbi|corporate|tax|labour|fema
+    category: Mapped[str] = mapped_column(String(20))  # rbi|corporate|tax|labour|fema
     reference_url: Mapped[str | None] = mapped_column(Text)
     last_reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

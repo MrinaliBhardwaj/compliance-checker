@@ -3,6 +3,7 @@ Delivery channels (email + Slack). Real providers when configured; a Null channe
 otherwise so the notification pipeline always records the intent (the Notification
 row) even when no provider is wired — delivery is best-effort, the audit trail is not.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -36,6 +37,7 @@ class EmailChannel(Channel):
             return False
         try:
             import boto3
+
             s = get_settings()
             client = boto3.client("ses", region_name=s.aws_region)
             client.send_email(
@@ -57,6 +59,7 @@ class SlackChannel(Channel):
     def send(self, *, to: str | None, subject: str, body: str, meta: dict | None = None) -> bool:
         try:
             import httpx
+
             r = httpx.post(self.webhook_url, json={"text": f"*{subject}*\n{body}"}, timeout=10)
             return r.status_code < 300
         except Exception:

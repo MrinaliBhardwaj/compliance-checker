@@ -10,6 +10,7 @@ Three-state, same safety property as the obligation engine:
   - a condition fails on a known value    -> NOT_APPLICABLE (filtered out)
 Empty filter -> affects everyone.
 """
+
 from __future__ import annotations
 
 from app.engines.applicability import Decision, eval_condition
@@ -33,20 +34,30 @@ def match_update(affects_filter: dict | None, profile: dict) -> dict:
 
 
 # Precedence when an org has multiple entity profiles: surface the strongest signal.
-_RANK = {Decision.APPLICABLE.value: 2, Decision.NEEDS_REVIEW.value: 1,
-         Decision.NOT_APPLICABLE.value: 0}
+_RANK = {
+    Decision.APPLICABLE.value: 2,
+    Decision.NEEDS_REVIEW.value: 1,
+    Decision.NOT_APPLICABLE.value: 0,
+}
 
 
 def match_org(affects_filter: dict | None, profiles: list[dict]) -> dict:
     """An update affects the org if it affects ANY entity profile (strongest wins)."""
     if not profiles:
         # no profile yet -> can't decide -> surface for manual review, never drop
-        return {"decision": Decision.NEEDS_REVIEW.value, "missing_fields": ["profile"],
-                "matched": []}
+        return {
+            "decision": Decision.NEEDS_REVIEW.value,
+            "missing_fields": ["profile"],
+            "matched": [],
+        }
     best = None
     for p in profiles:
         m = match_update(affects_filter, p)
         if best is None or _RANK[m["decision"]] > _RANK[best["decision"]]:
             best = m
     # mypy: ensure we never return None; fallback to NEEDS_REVIEW
-    return best or {"decision": Decision.NEEDS_REVIEW.value, "missing_fields": ["profile"], "matched": []}
+    return best or {
+        "decision": Decision.NEEDS_REVIEW.value,
+        "missing_fields": ["profile"],
+        "matched": [],
+    }

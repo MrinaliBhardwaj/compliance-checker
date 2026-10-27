@@ -1,4 +1,5 @@
 """Unit tests — LLM wrapper JSON parsing (no network; `complete` is stubbed)."""
+
 import json
 
 import pytest

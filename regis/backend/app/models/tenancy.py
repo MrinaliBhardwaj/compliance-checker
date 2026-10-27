@@ -1,4 +1,5 @@
 """Tenancy & identity (PRD §6.1): organizations, entities, locations, users, memberships."""
+
 from __future__ import annotations
 
 import uuid
@@ -28,7 +29,8 @@ class Entity(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     organization_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("organizations.id", ondelete="CASCADE"), index=True, nullable=False)
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     legal_name: Mapped[str] = mapped_column(Text, nullable=False)
     # Field-level encryption for sensitive identifiers (PRD security baseline).
     cin: Mapped[str | None] = mapped_column(EncryptedStr(255))
@@ -49,7 +51,8 @@ class Location(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     entity_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("entities.id", ondelete="CASCADE"), index=True, nullable=False)
+        ForeignKey("entities.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     type: Mapped[str] = mapped_column(String(20))  # registered_office | branch
     state: Mapped[str | None] = mapped_column(String(4))  # ISO-style code, e.g. MH
     city: Mapped[str | None] = mapped_column(Text)
@@ -63,7 +66,9 @@ class User(Base):
     id: Mapped[uuid.UUID] = uuid_pk()
     email: Mapped[str] = mapped_column(String(320), unique=True, nullable=False)
     full_name: Mapped[str | None] = mapped_column(Text)
-    auth_provider: Mapped[str] = mapped_column(String(20), default="password")  # password|google|microsoft
+    auth_provider: Mapped[str] = mapped_column(
+        String(20), default="password"
+    )  # password|google|microsoft
     password_hash: Mapped[str | None] = mapped_column(Text)  # null for SSO users
     created_at: Mapped[datetime] = created_at_col()
 
@@ -73,9 +78,11 @@ class Membership(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+        ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     organization_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("organizations.id", ondelete="CASCADE"), index=True, nullable=False)
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     role: Mapped[str] = mapped_column(String(20), nullable=False)  # compliance_admin|head|preparer
     status: Mapped[str] = mapped_column(String(20), default="invited")  # invited|active
     created_at: Mapped[datetime] = created_at_col()

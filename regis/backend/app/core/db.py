@@ -6,6 +6,7 @@ organization_id). Postgres RLS policies (installed by migration) restrict every
 tenant table to rows matching that GUC. The GUC is set per-transaction so a
 connection returned to the pool never leaks another tenant's scope.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterator

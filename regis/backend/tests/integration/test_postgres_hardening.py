@@ -7,6 +7,7 @@ guarantees SQLite cannot model). Run locally with:
     REGIS_TEST_PG_URL=postgresql+psycopg://regis:regis@localhost:5432/regis_test \
         python -m pytest tests/integration/test_postgres_hardening.py
 """
+
 from __future__ import annotations
 
 import os
@@ -46,13 +47,21 @@ def test_rls_blocks_cross_tenant(pg_engine):
     with pg_engine.begin() as conn:
         # seed two orgs' rows bypassing RLS as table owner is tricky; use FORCE so even
         # owner is subject to policy — insert under each org scope.
-        conn.execute(text("INSERT INTO organizations (id, name, plan_tier, created_at) "
-                          "VALUES (:a,'A','starter',now()),(:b,'B','starter',now())"),
-                     {"a": org_a, "b": org_b})
+        conn.execute(
+            text(
+                "INSERT INTO organizations (id, name, plan_tier, created_at) "
+                "VALUES (:a,'A','starter',now()),(:b,'B','starter',now())"
+            ),
+            {"a": org_a, "b": org_b},
+        )
         _set_org(conn, org_a)
-        conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, payload, created_at) "
-                          "VALUES (:i,:o,'reminder','email','{}'::jsonb,now())"),
-                     {"i": uuid.uuid4(), "o": org_a})
+        conn.execute(
+            text(
+                "INSERT INTO notifications (id, organization_id, type, channel, payload, created_at) "
+                "VALUES (:i,:o,'reminder','email','{}'::jsonb,now())"
+            ),
+            {"i": uuid.uuid4(), "o": org_a},
+        )
     with pg_engine.connect() as conn:
         _set_org(conn, org_a)
         seen_a = conn.execute(text("SELECT count(*) FROM notifications")).scalar_one()
@@ -64,8 +73,13 @@ def test_rls_blocks_cross_tenant(pg_engine):
 
 def _new_org(conn) -> uuid.UUID:
     org = uuid.uuid4()
-    conn.execute(text("INSERT INTO organizations (id, name, plan_tier, created_at) "
-                      "VALUES (:o,'A','starter',now())"), {"o": org})
+    conn.execute(
+        text(
+            "INSERT INTO organizations (id, name, plan_tier, created_at) "
+            "VALUES (:o,'A','starter',now())"
+        ),
+        {"o": org},
+    )
     return org
 
 
@@ -75,26 +89,47 @@ def test_signup_pattern_requires_org_scope(pg_engine):
     with pg_engine.begin() as conn:
         org = _new_org(conn)
         user = uuid.uuid4()
-        conn.execute(text("INSERT INTO users (id, email, auth_provider, created_at) "
-                          "VALUES (:u,'a@x.example','password',now())"), {"u": user})
+        conn.execute(
+            text(
+                "INSERT INTO users (id, email, auth_provider, created_at) "
+                "VALUES (:u,'a@x.example','password',now())"
+            ),
+            {"u": user},
+        )
         # no app.current_org set -> membership insert violates the policy
         with pytest.raises(DBAPIError):
-            conn.execute(text(
-                "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
-                "VALUES (:i,:u,:o,'compliance_admin','active',now())"),
-                {"i": uuid.uuid4(), "u": user, "o": org})
+            conn.execute(
+                text(
+                    "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
+                    "VALUES (:i,:u,:o,'compliance_admin','active',now())"
+                ),
+                {"i": uuid.uuid4(), "u": user, "o": org},
+            )
     with pg_engine.begin() as conn:
         org = _new_org(conn)
         user = uuid.uuid4()
-        conn.execute(text("INSERT INTO users (id, email, auth_provider, created_at) "
-                          "VALUES (:u,'b@x.example','password',now())"), {"u": user})
+        conn.execute(
+            text(
+                "INSERT INTO users (id, email, auth_provider, created_at) "
+                "VALUES (:u,'b@x.example','password',now())"
+            ),
+            {"u": user},
+        )
         _set_org(conn, org)  # signup scopes to the new org before inserting
-        conn.execute(text(
-            "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
-            "VALUES (:i,:u,:o,'compliance_admin','active',now())"),
-            {"i": uuid.uuid4(), "u": user, "o": org})
-        conn.execute(text("INSERT INTO entities (id, organization_id, legal_name, created_at) "
-                          "VALUES (:e,:o,'Acme Ltd',now())"), {"e": uuid.uuid4(), "o": org})
+        conn.execute(
+            text(
+                "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
+                "VALUES (:i,:u,:o,'compliance_admin','active',now())"
+            ),
+            {"i": uuid.uuid4(), "u": user, "o": org},
+        )
+        conn.execute(
+            text(
+                "INSERT INTO entities (id, organization_id, legal_name, created_at) "
+                "VALUES (:e,:o,'Acme Ltd',now())"
+            ),
+            {"e": uuid.uuid4(), "o": org},
+        )
 
 
 def test_login_bootstrap_reads_membership_cross_tenant(pg_engine):
@@ -104,30 +139,43 @@ def test_login_bootstrap_reads_membership_cross_tenant(pg_engine):
     with pg_engine.begin() as conn:
         org = _new_org(conn)
         user = uuid.uuid4()
-        conn.execute(text("INSERT INTO users (id, email, auth_provider, created_at) "
-                          "VALUES (:u,'c@x.example','password',now())"), {"u": user})
+        conn.execute(
+            text(
+                "INSERT INTO users (id, email, auth_provider, created_at) "
+                "VALUES (:u,'c@x.example','password',now())"
+            ),
+            {"u": user},
+        )
         _set_org(conn, org)
-        conn.execute(text(
-            "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
-            "VALUES (:i,:u,:o,'preparer','active',now())"),
-            {"i": uuid.uuid4(), "u": user, "o": org})
+        conn.execute(
+            text(
+                "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
+                "VALUES (:i,:u,:o,'preparer','active',now())"
+            ),
+            {"i": uuid.uuid4(), "u": user, "o": org},
+        )
 
     with pg_engine.connect() as conn:
         # no scope at all -> RLS hides the row (the original H1 failure at login)
-        blind = conn.execute(text("SELECT count(*) FROM memberships WHERE user_id=:u"),
-                             {"u": user}).scalar_one()
+        blind = conn.execute(
+            text("SELECT count(*) FROM memberships WHERE user_id=:u"), {"u": user}
+        ).scalar_one()
         assert blind == 0
         # bootstrap scope -> login can resolve the membership
         conn.execute(text("SELECT set_config('app.bootstrap','on',false)"))
-        seen = conn.execute(text("SELECT count(*) FROM memberships WHERE user_id=:u"),
-                            {"u": user}).scalar_one()
+        seen = conn.execute(
+            text("SELECT count(*) FROM memberships WHERE user_id=:u"), {"u": user}
+        ).scalar_one()
         assert seen == 1
         # bootstrap is read-only: WITH CHECK still blocks a cross-tenant insert
         with pytest.raises(DBAPIError):
-            conn.execute(text(
-                "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
-                "VALUES (:i,:u,:o,'compliance_admin','active',now())"),
-                {"i": uuid.uuid4(), "u": user, "o": uuid.uuid4()})
+            conn.execute(
+                text(
+                    "INSERT INTO memberships (id, user_id, organization_id, role, status, created_at) "
+                    "VALUES (:i,:u,:o,'compliance_admin','active',now())"
+                ),
+                {"i": uuid.uuid4(), "u": user, "o": uuid.uuid4()},
+            )
 
 
 def test_per_tenant_commit_persists_every_org(pg_engine):
@@ -141,12 +189,22 @@ def test_per_tenant_commit_persists_every_org(pg_engine):
     with pg_engine.connect() as conn:
         # per-org: write each org's row under its own scope, commit between
         _set_org(conn, org_a)
-        conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, created_at) "
-                          "VALUES (:i,:o,'reminder','email',now())"), {"i": uuid.uuid4(), "o": org_a})
+        conn.execute(
+            text(
+                "INSERT INTO notifications (id, organization_id, type, channel, created_at) "
+                "VALUES (:i,:o,'reminder','email',now())"
+            ),
+            {"i": uuid.uuid4(), "o": org_a},
+        )
         conn.commit()
         _set_org(conn, org_b)
-        conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, created_at) "
-                          "VALUES (:i,:o,'reminder','email',now())"), {"i": uuid.uuid4(), "o": org_b})
+        conn.execute(
+            text(
+                "INSERT INTO notifications (id, organization_id, type, channel, created_at) "
+                "VALUES (:i,:o,'reminder','email',now())"
+            ),
+            {"i": uuid.uuid4(), "o": org_b},
+        )
         conn.commit()
 
     with pg_engine.connect() as conn:
@@ -159,20 +217,35 @@ def test_per_tenant_commit_persists_every_org(pg_engine):
     with pg_engine.connect() as conn:
         _set_org(conn, org_b)
         with pytest.raises(DBAPIError):
-            conn.execute(text("INSERT INTO notifications (id, organization_id, type, channel, created_at) "
-                              "VALUES (:i,:o,'reminder','email',now())"), {"i": uuid.uuid4(), "o": org_a})
+            conn.execute(
+                text(
+                    "INSERT INTO notifications (id, organization_id, type, channel, created_at) "
+                    "VALUES (:i,:o,'reminder','email',now())"
+                ),
+                {"i": uuid.uuid4(), "o": org_a},
+            )
             conn.commit()
 
 
 def test_audit_log_is_append_only(pg_engine):
     org = uuid.uuid4()
     with pg_engine.begin() as conn:
-        conn.execute(text("INSERT INTO organizations (id, name, plan_tier, created_at) "
-                          "VALUES (:o,'A','starter',now())"), {"o": org})
+        conn.execute(
+            text(
+                "INSERT INTO organizations (id, name, plan_tier, created_at) "
+                "VALUES (:o,'A','starter',now())"
+            ),
+            {"o": org},
+        )
         _set_org(conn, org)
         aid = uuid.uuid4()
-        conn.execute(text("INSERT INTO audit_log (id, organization_id, action, metadata, created_at) "
-                          "VALUES (:i,:o,'created','{}'::jsonb,now())"), {"i": aid, "o": org})
+        conn.execute(
+            text(
+                "INSERT INTO audit_log (id, organization_id, action, metadata, created_at) "
+                "VALUES (:i,:o,'created','{}'::jsonb,now())"
+            ),
+            {"i": aid, "o": org},
+        )
     with pg_engine.connect() as conn:
         _set_org(conn, org)
         with pytest.raises(DBAPIError, match="append-only"):

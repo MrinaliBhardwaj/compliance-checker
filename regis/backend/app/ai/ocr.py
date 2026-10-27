@@ -4,6 +4,7 @@ native extraction. Returns (text, mean_confidence). Cloud-OCR can be slotted in
 behind this same signature. Dependencies are optional; absence yields empty text
 with confidence 0.0 so the OCR-quality gate routes the doc to manual review.
 """
+
 from __future__ import annotations
 
 
@@ -26,6 +27,7 @@ def _pdf(b: bytes) -> tuple[str, float]:
         import io
 
         from pypdf import PdfReader  # type: ignore
+
         reader = PdfReader(io.BytesIO(b))
         text = "\n".join((p.extract_text() or "") for p in reader.pages)
         if text.strip():
@@ -43,9 +45,12 @@ def _image(b: bytes) -> tuple[str, float]:
 
         import pytesseract  # type: ignore
         from PIL import Image  # type: ignore
+
         img = Image.open(io.BytesIO(b))
         data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT)
-        confs = [int(c) for c in data.get("conf", []) if str(c).lstrip("-").isdigit() and int(c) >= 0]
+        confs = [
+            int(c) for c in data.get("conf", []) if str(c).lstrip("-").isdigit() and int(c) >= 0
+        ]
         text = " ".join(w for w in data.get("text", []) if w.strip())
         mean = (sum(confs) / len(confs) / 100.0) if confs else 0.0
         return text, mean
@@ -58,6 +63,7 @@ def _docx(b: bytes) -> tuple[str, float]:
         import io
 
         import docx  # type: ignore
+
         d = docx.Document(io.BytesIO(b))
         return "\n".join(p.text for p in d.paragraphs), 0.95
     except Exception:

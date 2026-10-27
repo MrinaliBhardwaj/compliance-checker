@@ -7,6 +7,7 @@ Integration — enriched tracker API the frontend depends on (no fake data).
   rationale + verification_status.
 - legal updates list carries affected_obligations counts.
 """
+
 import os
 
 # Bind app.core.db (imported transitively via the router) to SQLite before import,
@@ -22,20 +23,29 @@ from app.modules.obligations.router import instance_detail, list_instances
 from app.modules.onboarding.service import generate_calendar
 
 CTX = {
-    "window_start": date(2026, 4, 1), "window_end": date(2027, 3, 31),
+    "window_start": date(2026, 4, 1),
+    "window_end": date(2027, 3, 31),
     "anchors": {"agm_date": date(2026, 9, 25), "tds_return_date": date(2026, 7, 31)},
     "license_expiry": date(2026, 11, 30),
 }
 
 
 def _admin(seeded):
-    return Principal(user_id=str(seeded["user_id"]), organization_id=str(seeded["org_id"]),
-                     role="compliance_admin")
+    return Principal(
+        user_id=str(seeded["user_id"]),
+        organization_id=str(seeded["org_id"]),
+        role="compliance_admin",
+    )
 
 
 def test_instances_enriched_and_filterable(db, seeded_org, profile_b):
-    generate_calendar(db, organization_id=seeded_org["org_id"], entity_id=seeded_org["entity_id"],
-                      profile=profile_b, ctx=CTX)
+    generate_calendar(
+        db,
+        organization_id=seeded_org["org_id"],
+        entity_id=seeded_org["entity_id"],
+        profile=profile_b,
+        ctx=CTX,
+    )
     rows = list_instances(db=db, principal=_admin(seeded_org))
     assert rows
     sample = rows[0]
@@ -51,8 +61,13 @@ def test_instances_enriched_and_filterable(db, seeded_org, profile_b):
 
 
 def test_instance_detail_has_completeness_and_docs(db, seeded_org, profile_b):
-    generate_calendar(db, organization_id=seeded_org["org_id"], entity_id=seeded_org["entity_id"],
-                      profile=profile_b, ctx=CTX)
+    generate_calendar(
+        db,
+        organization_id=seeded_org["org_id"],
+        entity_id=seeded_org["entity_id"],
+        profile=profile_b,
+        ctx=CTX,
+    )
     rows = list_instances(db=db, principal=_admin(seeded_org))
     detail = instance_detail(instance_id=rows[0]["id"], db=db, principal=_admin(seeded_org))
     assert "completeness" in detail and "linked_documents" in detail
@@ -61,13 +76,27 @@ def test_instance_detail_has_completeness_and_docs(db, seeded_org, profile_b):
 
 
 def test_legal_update_affected_count(db, seeded_org, profile_b):
-    generate_calendar(db, organization_id=seeded_org["org_id"], entity_id=seeded_org["entity_id"],
-                      profile=profile_b, ctx=CTX)
-    db.add(CompanyProfile(organization_id=seeded_org["org_id"], entity_id=seeded_org["entity_id"],
-                          profile=profile_b))
+    generate_calendar(
+        db,
+        organization_id=seeded_org["org_id"],
+        entity_id=seeded_org["entity_id"],
+        profile=profile_b,
+        ctx=CTX,
+    )
+    db.add(
+        CompanyProfile(
+            organization_id=seeded_org["org_id"],
+            entity_id=seeded_org["entity_id"],
+            profile=profile_b,
+        )
+    )
     db.flush()
-    lusvc.publish_update(db, title="RBI returns change", law_id="law_rbi_returns",
-                         affects_filter={"rbi_registered": True},
-                         organization_id=seeded_org["org_id"])
+    lusvc.publish_update(
+        db,
+        title="RBI returns change",
+        law_id="law_rbi_returns",
+        affects_filter={"rbi_registered": True},
+        organization_id=seeded_org["org_id"],
+    )
     feed = lusvc.list_for_org(db, organization_id=seeded_org["org_id"])
     assert feed[0]["affected_obligations"] >= 1  # org holds obligations under law_rbi_returns

@@ -3,6 +3,7 @@ Maker-Checker transitions over obligation_instances. Validates the move against
 the lifecycle rules + role matrix, applies the evidence gate on approval, persists
 completion metadata, and writes an immutable audit row for every change.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -16,8 +17,7 @@ from app.modules.notify import service as notify
 from app.modules.obligations.lifecycle import RolePermissionError, plan_transition
 
 
-class InstanceNotFound(Exception):
-    ...
+class InstanceNotFound(Exception): ...
 
 
 class EvidenceGateError(Exception):
@@ -31,8 +31,9 @@ def _get_instance(session: Session, organization_id, instance_id) -> ObligationI
     return inst
 
 
-def assign_owner(session: Session, *, organization_id, instance_id, owner_user_id,
-                 principal) -> ObligationInstance:
+def assign_owner(
+    session: Session, *, organization_id, instance_id, owner_user_id, principal
+) -> ObligationInstance:
     if principal.role not in ("compliance_admin",):
         raise RolePermissionError("only compliance_admin may assign owners")
 
@@ -44,26 +45,40 @@ def assign_owner(session: Session, *, organization_id, instance_id, owner_user_i
         select(Membership).where(
             Membership.user_id == owner_user_id,
             Membership.organization_id == organization_id,
-            Membership.status == "active")
+            Membership.status == "active",
+        )
     ).scalar_one_or_none()
     if not valid:
         raise RolePermissionError("Target user is not an active member of this organization")
     inst = _get_instance(session, organization_id, instance_id)
     prior = inst.owner_user_id
     inst.owner_user_id = owner_user_id
-    audit.record(session, action="instance_assigned", organization_id=organization_id,
-                 actor_user_id=principal.user_id, entity_type="obligation_instance",
-                 entity_id=str(instance_id),
-                 meta={"from": str(prior) if prior else None, "to": str(owner_user_id)})
+    audit.record(
+        session,
+        action="instance_assigned",
+        organization_id=organization_id,
+        actor_user_id=principal.user_id,
+        entity_type="obligation_instance",
+        entity_id=str(instance_id),
+        meta={"from": str(prior) if prior else None, "to": str(owner_user_id)},
+    )
     session.flush()
-    notify.notify_assignment(session, organization_id=organization_id, instance=inst,
-                             owner_user_id=owner_user_id)
+    notify.notify_assignment(
+        session, organization_id=organization_id, instance=inst, owner_user_id=owner_user_id
+    )
     return inst
 
 
-def transition(session: Session, *, organization_id, instance_id, action: str,
-               principal, override_evidence: bool = False,
-               reason: str | None = None) -> ObligationInstance:
+def transition(
+    session: Session,
+    *,
+    organization_id,
+    instance_id,
+    action: str,
+    principal,
+    override_evidence: bool = False,
+    reason: str | None = None,
+) -> ObligationInstance:
     inst = _get_instance(session, organization_id, instance_id)
 
     # preparers act only on their own assigned instances
@@ -79,7 +94,8 @@ def transition(session: Session, *, organization_id, instance_id, action: str,
         if not comp["eligible_for_completion"] and not override_evidence:
             raise EvidenceGateError(
                 f"primary evidence required before completion "
-                f"(missing: {[m[0] for m in comp['missing']]})")
+                f"(missing: {[m[0] for m in comp['missing']]})"
+            )
 
     inst.status = to_status
     now = datetime.now(UTC)
@@ -92,11 +108,21 @@ def transition(session: Session, *, organization_id, instance_id, action: str,
         inst.completed_by = None
         inst.approved_by = None
 
-    audit.record(session, action="instance_status_change", organization_id=organization_id,
-                 actor_user_id=principal.user_id, entity_type="obligation_instance",
-                 entity_id=str(instance_id),
-                 meta={"action": action, "from": from_status, "to": to_status,
-                       "override_evidence": override_evidence, "reason": reason})
+    audit.record(
+        session,
+        action="instance_status_change",
+        organization_id=organization_id,
+        actor_user_id=principal.user_id,
+        entity_type="obligation_instance",
+        entity_id=str(instance_id),
+        meta={
+            "action": action,
+            "from": from_status,
+            "to": to_status,
+            "override_evidence": override_evidence,
+            "reason": reason,
+        },
+    )
     session.flush()
 
     # Maker-Checker routing notifications (best-effort; recorded even if undelivered)

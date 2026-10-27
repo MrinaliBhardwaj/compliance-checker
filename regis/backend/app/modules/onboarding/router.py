@@ -1,4 +1,5 @@
 """Onboarding API: profile preview (no commit) + calendar generation (human-confirmed)."""
+
 from __future__ import annotations
 
 from datetime import date
@@ -39,8 +40,9 @@ class GenerateRequest(BaseModel):
 
 
 @router.post("/calendar/generate")
-def calendar_generate(body: GenerateRequest, db: DbSession,
-                      principal: Principal = Depends(_admin)) -> dict:
+def calendar_generate(
+    body: GenerateRequest, db: DbSession, principal: Principal = Depends(_admin)
+) -> dict:
     """Commit the confirmed profile, then generate + persist the calendar."""
     from fastapi import HTTPException, status
     from sqlalchemy import select
@@ -48,22 +50,36 @@ def calendar_generate(body: GenerateRequest, db: DbSession,
     from app.models.tenancy import Entity
 
     entity = db.execute(
-        select(Entity).where(Entity.id == body.entity_id,
-                             Entity.organization_id == principal.organization_id)
+        select(Entity).where(
+            Entity.id == body.entity_id, Entity.organization_id == principal.organization_id
+        )
     ).scalar_one_or_none()
     if not entity:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Entity not found in organization")
 
-    prof = save_profile(db, organization_id=principal.organization_id,
-                        entity_id=body.entity_id, raw_input=body.raw_input,
-                        confirmed_by=principal.user_id)
+    prof = save_profile(
+        db,
+        organization_id=principal.organization_id,
+        entity_id=body.entity_id,
+        raw_input=body.raw_input,
+        confirmed_by=principal.user_id,
+    )
     ctx = None
     if body.window_start and body.window_end:
-        ctx = {"window_start": body.window_start, "window_end": body.window_end,
-               "anchors": {}, "license_expiry": None}
-    res = generate_calendar(db, organization_id=principal.organization_id,
-                            entity_id=body.entity_id, profile=prof.profile, ctx=ctx,
-                            actor_user_id=principal.user_id)
+        ctx = {
+            "window_start": body.window_start,
+            "window_end": body.window_end,
+            "anchors": {},
+            "license_expiry": None,
+        }
+    res = generate_calendar(
+        db,
+        organization_id=principal.organization_id,
+        entity_id=body.entity_id,
+        profile=prof.profile,
+        ctx=ctx,
+        actor_user_id=principal.user_id,
+    )
     return {
         "company_obligations": res.company_obligations,
         "instances": res.instances,

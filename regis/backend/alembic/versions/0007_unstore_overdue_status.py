@@ -13,6 +13,7 @@ obligation_instances is under FORCE ROW LEVEL SECURITY, so on Postgres an UPDATE
 without `app.current_org` would match no rows and succeed silently. Run it once per
 org inside that org's scope (organizations itself has no RLS).
 """
+
 from __future__ import annotations
 
 import sqlalchemy as sa
@@ -33,8 +34,9 @@ def upgrade() -> None:
         return
     org_ids = bind.execute(sa.text("SELECT id FROM organizations")).scalars().all()
     for org_id in org_ids:
-        bind.execute(sa.text("SELECT set_config('app.current_org', :org, true)"),
-                     {"org": str(org_id)})
+        bind.execute(
+            sa.text("SELECT set_config('app.current_org', :org, true)"), {"org": str(org_id)}
+        )
         bind.execute(sa.text(_RESET + " AND organization_id = :org"), {"org": org_id})
     # Don't leave a tenant scope behind for the rest of the migration transaction.
     bind.execute(sa.text("SELECT set_config('app.current_org', '', true)"))

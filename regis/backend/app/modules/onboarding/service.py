@@ -12,6 +12,7 @@ audit trail, and idempotency. It does NOT re-decide anything — the engines are
 the source of truth. Re-running is safe (upsert on natural keys) and powers the
 "regenerate with diff" flow (removed obligations deactivate, never delete).
 """
+
 from __future__ import annotations
 
 import uuid
@@ -54,12 +55,19 @@ def _library_dict(session: Session) -> dict:
     return {
         "obligation_templates": [
             {
-                "template_id": t.template_id, "law_id": t.law_id, "category": t.category,
-                "title": t.title, "description": t.description, "frequency": t.frequency,
-                "due_rule": t.due_rule, "applicability_rule": t.applicability_rule,
+                "template_id": t.template_id,
+                "law_id": t.law_id,
+                "category": t.category,
+                "title": t.title,
+                "description": t.description,
+                "frequency": t.frequency,
+                "due_rule": t.due_rule,
+                "applicability_rule": t.applicability_rule,
                 "required_evidence": t.required_evidence,
-                "default_owner_role": t.default_owner_role, "risk_level": t.risk_level,
-                "form_reference": t.form_reference, "dependencies": t.dependencies,
+                "default_owner_role": t.default_owner_role,
+                "risk_level": t.risk_level,
+                "form_reference": t.form_reference,
+                "dependencies": t.dependencies,
                 "verification_status": t.verification_status,
             }
             for t in templates
@@ -67,8 +75,15 @@ def _library_dict(session: Session) -> dict:
     }
 
 
-def save_profile(session: Session, *, organization_id, entity_id, raw_input: dict,
-                 library: dict | None = None, confirmed_by=None) -> CompanyProfile:
+def save_profile(
+    session: Session,
+    *,
+    organization_id,
+    entity_id,
+    raw_input: dict,
+    library: dict | None = None,
+    confirmed_by=None,
+) -> CompanyProfile:
     """Extract + persist the structured profile with provenance (human-confirmed upstream)."""
     library = library or _library_dict(session)
     extracted = extract_profile(raw_input, library)
@@ -86,18 +101,32 @@ def save_profile(session: Session, *, organization_id, entity_id, raw_input: dic
     existing.confirmed_by = confirmed_by
     session.flush()
 
-    audit.record(session, action="profile_extracted", organization_id=organization_id,
-                 actor_user_id=confirmed_by, entity_type="company_profile",
-                 entity_id=str(entity_id),
-                 meta={"review_fields": extracted["review_fields"],
-                       "issues": len(extracted["issues"]),
-                       "completeness": extracted["completeness"]})
+    audit.record(
+        session,
+        action="profile_extracted",
+        organization_id=organization_id,
+        actor_user_id=confirmed_by,
+        entity_type="company_profile",
+        entity_id=str(entity_id),
+        meta={
+            "review_fields": extracted["review_fields"],
+            "issues": len(extracted["issues"]),
+            "completeness": extracted["completeness"],
+        },
+    )
     return existing
 
 
-def generate_calendar(session: Session, *, organization_id, entity_id, profile: dict,
-                      ctx: dict | None = None, library: dict | None = None,
-                      actor_user_id=None) -> GenerationResult:
+def generate_calendar(
+    session: Session,
+    *,
+    organization_id,
+    entity_id,
+    profile: dict,
+    ctx: dict | None = None,
+    library: dict | None = None,
+    actor_user_id=None,
+) -> GenerationResult:
     """
     Run applicability + instance generation and persist the result idempotently.
 
@@ -112,15 +141,18 @@ def generate_calendar(session: Session, *, organization_id, entity_id, profile: 
 
     universe = generate_compliance_universe(library, profile)
     cobs_input = build_company_obligations(universe, library)
-    new_appl_ids = {c["applicability_id"] if "applicability_id" in c
-                    else c["template_id"] for c in cobs_input}
+    new_appl_ids = {
+        c["applicability_id"] if "applicability_id" in c else c["template_id"] for c in cobs_input
+    }
 
     # --- previously stored applicable set (for diff + deactivation) ---
     existing_cobs = {
         c.applicability_id: c
         for c in session.execute(
             select(CompanyObligation).where(CompanyObligation.entity_id == entity_id)
-        ).scalars().all()
+        )
+        .scalars()
+        .all()
     }
     prior_active_ids = {aid for aid, c in existing_cobs.items() if c.is_active}
 
@@ -133,8 +165,10 @@ def generate_calendar(session: Session, *, organization_id, entity_id, profile: 
         co = existing_cobs.get(appl_id)
         if co is None:
             co = CompanyObligation(
-                organization_id=organization_id, entity_id=entity_id,
-                template_id=appl_id.split("__")[0], applicability_id=appl_id,
+                organization_id=organization_id,
+                entity_id=entity_id,
+                template_id=appl_id.split("__")[0],
+                applicability_id=appl_id,
                 state=c.get("state"),
             )
             session.add(co)
@@ -151,7 +185,8 @@ def generate_calendar(session: Session, *, organization_id, entity_id, profile: 
 
     # --- instance generation per the due rules ---
     ctx = ctx or {
-        "window_start": date(2026, 4, 1), "window_end": date(2027, 3, 31),
+        "window_start": date(2026, 4, 1),
+        "window_end": date(2027, 3, 31),
         "anchors": {"agm_date": date(2026, 9, 25), "tds_return_date": date(2026, 7, 31)},
         "license_expiry": date(2026, 11, 30),
     }
@@ -171,12 +206,18 @@ def generate_calendar(session: Session, *, organization_id, entity_id, profile: 
             )
         ).scalar_one_or_none()
         if exists is None:
-            session.add(ObligationInstance(
-                company_obligation_id=co.id, organization_id=organization_id,
-                period_label=inst.period_label, due_date=date.fromisoformat(inst.due_date),
-                status=inst.status, working_day_adjusted=inst.working_day_adjusted,
-                generation_source=inst.generation_source, owner_user_id=co.owner_user_id,
-            ))
+            session.add(
+                ObligationInstance(
+                    company_obligation_id=co.id,
+                    organization_id=organization_id,
+                    period_label=inst.period_label,
+                    due_date=date.fromisoformat(inst.due_date),
+                    status=inst.status,
+                    working_day_adjusted=inst.working_day_adjusted,
+                    generation_source=inst.generation_source,
+                    owner_user_id=co.owner_user_id,
+                )
+            )
             inst_count += 1
         # existing instances are left untouched (status may have advanced)
 
@@ -190,10 +231,13 @@ def generate_calendar(session: Session, *, organization_id, entity_id, profile: 
                 select(EventListener).where(EventListener.company_obligation_id == co.id)
             ).scalar_one_or_none()
             if listener_exists is None:
-                session.add(EventListener(
-                    company_obligation_id=co.id, organization_id=organization_id,
-                    due_rule_type=c["due_rule"]["type"],
-                ))
+                session.add(
+                    EventListener(
+                        company_obligation_id=co.id,
+                        organization_id=organization_id,
+                        due_rule_type=c["due_rule"]["type"],
+                    )
+                )
                 listener_count += 1
 
     diff = {
@@ -201,15 +245,28 @@ def generate_calendar(session: Session, *, organization_id, entity_id, profile: 
         "removed": sorted(removed),
         "unchanged": sorted(new_appl_ids & prior_active_ids),
     }
-    audit.record(session, action="calendar_generated", organization_id=organization_id,
-                 actor_user_id=actor_user_id, entity_type="entity", entity_id=str(entity_id),
-                 meta={"generation_run_id": run_id, "library_version": LIBRARY_VERSION,
-                       "summary": universe["summary"],
-                       "added": len(diff["added"]), "removed": len(diff["removed"])})
+    audit.record(
+        session,
+        action="calendar_generated",
+        organization_id=organization_id,
+        actor_user_id=actor_user_id,
+        entity_type="entity",
+        entity_id=str(entity_id),
+        meta={
+            "generation_run_id": run_id,
+            "library_version": LIBRARY_VERSION,
+            "summary": universe["summary"],
+            "added": len(diff["added"]),
+            "removed": len(diff["removed"]),
+        },
+    )
     session.flush()
 
     return GenerationResult(
-        company_obligations=len(co_rows), instances=inst_count,
-        event_listeners=listener_count, parked=len(gen["parked"]),
-        generation_run_id=run_id, diff=diff,
+        company_obligations=len(co_rows),
+        instances=inst_count,
+        event_listeners=listener_count,
+        parked=len(gen["parked"]),
+        generation_run_id=run_id,
+        diff=diff,
     )

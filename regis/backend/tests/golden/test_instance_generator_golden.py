@@ -4,6 +4,7 @@ Golden regression — instance generator (Profile B, FY2026-27 window).
 Locked figures from the verified reference:
   367 dated instances, 21 event-driven, 3 continuous, 92 working-day-adjusted.
 """
+
 from datetime import date
 
 import pytest
@@ -22,7 +23,8 @@ pytestmark = pytest.mark.golden
 @pytest.fixture(scope="module")
 def gen_b(library, profile_b):
     ctx = {
-        "window_start": date(2026, 4, 1), "window_end": date(2027, 3, 31),
+        "window_start": date(2026, 4, 1),
+        "window_end": date(2027, 3, 31),
         "anchors": {"agm_date": date(2026, 9, 25), "tds_return_date": date(2026, 7, 31)},
         "license_expiry": date(2026, 11, 30),
     }
@@ -62,8 +64,13 @@ def test_all_instances_within_window(gen_b):
 
 
 def test_overdue_predicate():
-    inst = Instance(company_obligation_id="co", template_id="t",
-                    period_label="2026-05", due_date="2026-05-10", status="pending")
+    inst = Instance(
+        company_obligation_id="co",
+        template_id="t",
+        period_label="2026-05",
+        due_date="2026-05-10",
+        status="pending",
+    )
     assert is_overdue(inst, date(2026, 5, 11)) is True
     assert is_overdue(inst, date(2026, 5, 9)) is False
     inst.status = "completed"
@@ -80,7 +87,8 @@ def test_holiday_injection_changes_adjustment(library, profile_b):
     """Hardening check: passing an empty holiday set still produces a valid run
     (weekends still shift) and the default-set run reproduces 92."""
     base_ctx = {
-        "window_start": date(2026, 4, 1), "window_end": date(2027, 3, 31),
+        "window_start": date(2026, 4, 1),
+        "window_end": date(2027, 3, 31),
         "anchors": {"agm_date": date(2026, 9, 25), "tds_return_date": date(2026, 7, 31)},
         "license_expiry": date(2026, 11, 30),
     }

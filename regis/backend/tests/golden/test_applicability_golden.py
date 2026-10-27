@@ -4,6 +4,7 @@ Golden regression — applicability engine.
 These three profiles + their exact summary numbers are the contract. Any engine
 or library change that shifts them fails CI. Verified against the live seed.
 """
+
 import pytest
 
 from app.engines.applicability import diff_universe, generate_compliance_universe
@@ -39,8 +40,11 @@ def test_profile_c_summary(library, profile_c):
 def test_profile_b_state_expansion(library, profile_b):
     """PT expands MH/KA/TN (DL excluded — not a PT state)."""
     res = generate_compliance_universe(library, profile_b)
-    pt = sorted(r["template_id"] for r in res["applicable"]
-                if r["template_id"].startswith("lab_pt_deposit__"))
+    pt = sorted(
+        r["template_id"]
+        for r in res["applicable"]
+        if r["template_id"].startswith("lab_pt_deposit__")
+    )
     assert pt == ["lab_pt_deposit__KA", "lab_pt_deposit__MH", "lab_pt_deposit__TN"]
     # DL correctly excluded from PT expansion
     assert "lab_pt_deposit__DL" not in {r["template_id"] for r in res["applicable"]}

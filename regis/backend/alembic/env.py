@@ -1,4 +1,5 @@
 """Alembic environment — URL and metadata come from the app, not alembic.ini."""
+
 from __future__ import annotations
 
 from logging.config import fileConfig
@@ -39,8 +40,7 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata,
-                          compare_type=True)
+        context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
         with context.begin_transaction():
             context.run_migrations()
 

@@ -5,6 +5,7 @@ reminder/escalation run, both per org under its RLS scope.
 Overdue is computed on read (`lifecycle.effective_status`), never stored, so the
 worker writes no status. Job bodies call the same services the API uses.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -40,8 +41,9 @@ async def nightly_sweep(ctx) -> dict:
                         ObligationInstance.status.in_(STORED_OPEN),
                     )
                 ).all()
-                overdue += sum(1 for status, due in rows
-                               if effective_status(status, due, today) == "overdue")
+                overdue += sum(
+                    1 for status, due in rows if effective_status(status, due, today) == "overdue"
+                )
             finally:
                 session.rollback()  # end this org's transaction (and its tenant scope)
     return {"overdue": overdue}
@@ -50,6 +52,7 @@ async def nightly_sweep(ctx) -> dict:
 async def enqueue_due_reminders(ctx) -> dict:
     """Materialize + dispatch today's reminders/escalations per org (idempotent)."""
     from app.modules.notify.service import run_reminders
+
     today = date.today()
     total = 0
     with SessionLocal() as session:
@@ -66,9 +69,10 @@ async def enqueue_due_reminders(ctx) -> dict:
 
 class WorkerSettings:
     """arq entrypoint: `arq app.jobs.worker.WorkerSettings`."""
+
     functions = [nightly_sweep, enqueue_due_reminders]
     cron_jobs = [
-        cron(nightly_sweep, hour=0, minute=30),       # 00:30 IST daily
-        cron(enqueue_due_reminders, hour=6, minute=0), # 06:00 IST daily
+        cron(nightly_sweep, hour=0, minute=30),  # 00:30 IST daily
+        cron(enqueue_due_reminders, hour=6, minute=0),  # 06:00 IST daily
     ]
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)

@@ -8,6 +8,7 @@ Portable column types.
   key it stores plaintext (and logs once) so local work isn't blocked. Production
   MUST set the key — enforced in app.core.config for non-dev environments.
 """
+
 from __future__ import annotations
 
 import os
@@ -25,6 +26,7 @@ def _fernet():
     if not key:
         return None
     from cryptography.fernet import Fernet
+
     return Fernet(key.encode() if isinstance(key, str) else key)
 
 

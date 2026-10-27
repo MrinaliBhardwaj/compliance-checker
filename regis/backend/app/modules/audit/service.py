@@ -7,6 +7,7 @@ so reads are pure projection + enrichment (actor names, human labels, target
 titles). Tenant isolation is enforced by the org filter + the RLS GUC set in
 get_db; we never trust the caller for the org id.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -48,12 +49,22 @@ ACTION_LABELS: dict[str, str] = {
 # Actions grouped for the viewer's filter dropdown.
 ACTION_GROUPS: dict[str, list[str]] = {
     "Obligations": ["calendar_generated", "instance_assigned", "instance_status_change"],
-    "Evidence": ["document_uploaded", "document_classified", "document_classified_manual",
-                 "document_unprocessed", "document_linked", "document_link_blocked",
-                 "document_upload_blocked"],
+    "Evidence": [
+        "document_uploaded",
+        "document_classified",
+        "document_classified_manual",
+        "document_unprocessed",
+        "document_linked",
+        "document_link_blocked",
+        "document_upload_blocked",
+    ],
     "Team": ["member_invited", "invite_accepted", "member_role_changed", "member_removed"],
-    "Legal & system": ["legal_update_published", "legal_update_reviewed",
-                        "reminders_run", "profile_extracted"],
+    "Legal & system": [
+        "legal_update_published",
+        "legal_update_reviewed",
+        "reminders_run",
+        "profile_extracted",
+    ],
 }
 
 
@@ -85,10 +96,12 @@ def _resolve_targets(session: Session, rows: Sequence[AuditLog]) -> dict[tuple[s
     if inst_ids:
         for inst, tpl in session.execute(
             select(ObligationInstance, ObligationTemplate)
-            .join(CompanyObligation,
-                  ObligationInstance.company_obligation_id == CompanyObligation.id)
-            .join(ObligationTemplate,
-                  CompanyObligation.template_id == ObligationTemplate.template_id)
+            .join(
+                CompanyObligation, ObligationInstance.company_obligation_id == CompanyObligation.id
+            )
+            .join(
+                ObligationTemplate, CompanyObligation.template_id == ObligationTemplate.template_id
+            )
             .where(ObligationInstance.id.in_(inst_ids))
         ).all():
             label = tpl.title
@@ -98,23 +111,18 @@ def _resolve_targets(session: Session, rows: Sequence[AuditLog]) -> dict[tuple[s
 
     doc_ids = ids_for("document")
     if doc_ids:
-        for d in session.execute(
-            select(Document).where(Document.id.in_(doc_ids))
-        ).scalars().all():
+        for d in session.execute(select(Document).where(Document.id.in_(doc_ids))).scalars().all():
             out[("document", str(d.id))] = d.file_name or "Document"
 
     ent_ids = ids_for("entity")
     if ent_ids:
-        for e in session.execute(
-            select(Entity).where(Entity.id.in_(ent_ids))
-        ).scalars().all():
+        for e in session.execute(select(Entity).where(Entity.id.in_(ent_ids))).scalars().all():
             out[("entity", str(e.id))] = e.legal_name
 
     return out
 
 
-def _serialize(row: AuditLog, actors: dict[str, User],
-               targets: dict[tuple[str, str], str]) -> dict:
+def _serialize(row: AuditLog, actors: dict[str, User], targets: dict[tuple[str, str], str]) -> dict:
     actor = actors.get(str(row.actor_user_id)) if row.actor_user_id else None
     target = targets.get((row.entity_type or "", row.entity_id or ""))
     # membership rows usually carry the affected email in meta — surface it as label.
@@ -177,8 +185,11 @@ def list_events(
     # the DB row doesn't hold. Pagination stays DB-driven; this only narrows a page.
     if q:
         needle = q.lower()
-        events = [e for e in events if needle in
-                  f"{e['action_label']} {e['actor_name']} {e['target_label'] or ''}".lower()]
+        events = [
+            e
+            for e in events
+            if needle in f"{e['action_label']} {e['actor_name']} {e['target_label'] or ''}".lower()
+        ]
 
     return {"events": events, "limit": limit, "offset": offset, "has_more": has_more}
 
@@ -191,13 +202,19 @@ def events_for_entity(
     entity_id: str,
 ) -> list[dict]:
     """Full chronological history for one entity (e.g. an obligation drawer timeline)."""
-    rows = session.execute(
-        select(AuditLog)
-        .where(AuditLog.organization_id == organization_id,
-               AuditLog.entity_type == entity_type,
-               AuditLog.entity_id == str(entity_id))
-        .order_by(AuditLog.created_at.asc())
-    ).scalars().all()
+    rows = (
+        session.execute(
+            select(AuditLog)
+            .where(
+                AuditLog.organization_id == organization_id,
+                AuditLog.entity_type == entity_type,
+                AuditLog.entity_id == str(entity_id),
+            )
+            .order_by(AuditLog.created_at.asc())
+        )
+        .scalars()
+        .all()
+    )
     actors = _resolve_actors(session, rows)
     targets = _resolve_targets(session, rows)
     return [_serialize(r, actors, targets) for r in rows]

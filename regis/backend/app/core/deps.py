@@ -1,4 +1,5 @@
 """Request-scoped dependencies: a DB session with the caller's tenant RLS scope set."""
+
 from __future__ import annotations
 
 from collections.abc import Iterator

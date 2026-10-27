@@ -20,6 +20,7 @@ This module implements the parts that must be exact and testable:
 LLM answer generation and RAG are behind clean interfaces (in app.ai); the
 deterministic structured path is fully working and is the anti-hallucination spine.
 """
+
 from __future__ import annotations
 
 import re
@@ -32,32 +33,68 @@ from enum import StrEnum
 # Intent taxonomy
 # ---------------------------------------------------------------------------
 class Intent(StrEnum):
-    DUE_WINDOW = "DUE_WINDOW"            # due this week/month/today/overdue -> structured
-    STATUS_LOOKUP = "STATUS_LOOKUP"      # status of <obligation>          -> structured
-    COUNT_SUMMARY = "COUNT_SUMMARY"      # how many / breakdown            -> structured
+    DUE_WINDOW = "DUE_WINDOW"  # due this week/month/today/overdue -> structured
+    STATUS_LOOKUP = "STATUS_LOOKUP"  # status of <obligation>          -> structured
+    COUNT_SUMMARY = "COUNT_SUMMARY"  # how many / breakdown            -> structured
     EVIDENCE_LOOKUP = "EVIDENCE_LOOKUP"  # what evidence for <obligation>  -> documents
     OBLIGATION_INFO = "OBLIGATION_INFO"  # what does X require / penalty   -> library
-    LEGAL_QA = "LEGAL_QA"                # what does <law> say             -> reg KB (RAG)
-    ACTION_REQUEST = "ACTION_REQUEST"    # file/submit/mark                -> ESCALATE (read-only)
-    LEGAL_OPINION = "LEGAL_OPINION"      # are we compliant / will we be fined -> ESCALATE (consult)
-    OUT_OF_SCOPE = "OUT_OF_SCOPE"        # litigation/contracts/non-compliance -> DECLINE
+    LEGAL_QA = "LEGAL_QA"  # what does <law> say             -> reg KB (RAG)
+    ACTION_REQUEST = "ACTION_REQUEST"  # file/submit/mark                -> ESCALATE (read-only)
+    LEGAL_OPINION = "LEGAL_OPINION"  # are we compliant / will we be fined -> ESCALATE (consult)
+    OUT_OF_SCOPE = "OUT_OF_SCOPE"  # litigation/contracts/non-compliance -> DECLINE
 
 
 SourceType = ("instance", "document", "template", "law", "regchunk")
 
 ROUTER_RULES = [
-    (Intent.ACTION_REQUEST, [r"\b(file|submit|pay|mark (it )?complete|approve|send|upload for me|do it)\b"]),
-    (Intent.LEGAL_OPINION, [r"are we (fully |definitely )?compliant", r"will we (be )?(fined|penali[sz]ed)",
-                            r"is it (legal|okay) (to|if)", r"do we have to", r"can we (skip|avoid|ignore)"]),
-    (Intent.OUT_OF_SCOPE, [r"\b(litigation|lawsuit|court case|contract review|nda|audit finding|erm|ifc)\b"]),
+    (
+        Intent.ACTION_REQUEST,
+        [r"\b(file|submit|pay|mark (it )?complete|approve|send|upload for me|do it)\b"],
+    ),
+    (
+        Intent.LEGAL_OPINION,
+        [
+            r"are we (fully |definitely )?compliant",
+            r"will we (be )?(fined|penali[sz]ed)",
+            r"is it (legal|okay) (to|if)",
+            r"do we have to",
+            r"can we (skip|avoid|ignore)",
+        ],
+    ),
+    (
+        Intent.OUT_OF_SCOPE,
+        [r"\b(litigation|lawsuit|court case|contract review|nda|audit finding|erm|ifc)\b"],
+    ),
     (Intent.EVIDENCE_LOOKUP, [r"\b(evidence|proof|challan|acknowledg|document|uploaded)\b"]),
-    (Intent.DUE_WINDOW, [r"\b(due|overdue|this week|this month|today|upcoming|deadline|next \d+ days)\b"]),
-    (Intent.STATUS_LOOKUP, [r"\bstatus of\b", r"\bwhere are we on\b", r"\bhave we (filed|done|completed)\b"]),
-    (Intent.COUNT_SUMMARY, [r"\bhow many\b", r"\bbreakdown\b", r"\bsummary\b", r"\bby (category|law|risk)\b"]),
-    (Intent.OBLIGATION_INFO, [r"\bwhat does .* (require|need)\b", r"\bwhen is .* due\b",
-                              r"\bpenalty\b", r"\bwhat is (the )?\b"]),
-    (Intent.LEGAL_QA, [r"\bwhat does (the )?(rbi|sebi|act|regulation|master direction|circular)\b",
-                       r"\bsection \d+\b", r"\bunder (fema|pmla|companies act)\b"]),
+    (
+        Intent.DUE_WINDOW,
+        [r"\b(due|overdue|this week|this month|today|upcoming|deadline|next \d+ days)\b"],
+    ),
+    (
+        Intent.STATUS_LOOKUP,
+        [r"\bstatus of\b", r"\bwhere are we on\b", r"\bhave we (filed|done|completed)\b"],
+    ),
+    (
+        Intent.COUNT_SUMMARY,
+        [r"\bhow many\b", r"\bbreakdown\b", r"\bsummary\b", r"\bby (category|law|risk)\b"],
+    ),
+    (
+        Intent.OBLIGATION_INFO,
+        [
+            r"\bwhat does .* (require|need)\b",
+            r"\bwhen is .* due\b",
+            r"\bpenalty\b",
+            r"\bwhat is (the )?\b",
+        ],
+    ),
+    (
+        Intent.LEGAL_QA,
+        [
+            r"\bwhat does (the )?(rbi|sebi|act|regulation|master direction|circular)\b",
+            r"\bsection \d+\b",
+            r"\bunder (fema|pmla|companies act)\b",
+        ],
+    ),
 ]
 
 ESCALATE = {Intent.ACTION_REQUEST, Intent.LEGAL_OPINION, Intent.OUT_OF_SCOPE}
@@ -75,7 +112,9 @@ def route_intent(query: str) -> Intent:
 # ---------------------------------------------------------------------------
 # Permission-aware scoping (PRD role matrix), applied BEFORE retrieval.
 # ---------------------------------------------------------------------------
-def scope_instances(instances: list[dict], role: str, user_id: str) -> tuple[list[dict], str | None]:
+def scope_instances(
+    instances: list[dict], role: str, user_id: str
+) -> tuple[list[dict], str | None]:
     if role in ("compliance_admin", "head"):
         return instances, None
     if role == "preparer":
@@ -91,22 +130,38 @@ def scope_instances(instances: list[dict], role: str, user_id: str) -> tuple[lis
 def q_due_window(instances, today: date, query: str):
     q = query.lower()
     if "overdue" in q:
-        sel = [i for i in instances if i["status"] not in ("completed", "not_applicable")
-               and date.fromisoformat(i["due_date"]) < today]
+        sel = [
+            i
+            for i in instances
+            if i["status"] not in ("completed", "not_applicable")
+            and date.fromisoformat(i["due_date"]) < today
+        ]
         label = "overdue"
     elif "today" in q:
-        sel = [i for i in instances if i["due_date"] == today.isoformat()
-               and i["status"] not in ("completed", "not_applicable")]
+        sel = [
+            i
+            for i in instances
+            if i["due_date"] == today.isoformat()
+            and i["status"] not in ("completed", "not_applicable")
+        ]
         label = "due today"
     elif "month" in q:
         end = today + timedelta(days=30)
-        sel = [i for i in instances if today <= date.fromisoformat(i["due_date"]) <= end
-               and i["status"] not in ("completed", "not_applicable")]
+        sel = [
+            i
+            for i in instances
+            if today <= date.fromisoformat(i["due_date"]) <= end
+            and i["status"] not in ("completed", "not_applicable")
+        ]
         label = "due in the next 30 days"
     else:  # default: this week
         end = today + timedelta(days=7)
-        sel = [i for i in instances if today <= date.fromisoformat(i["due_date"]) <= end
-               and i["status"] not in ("completed", "not_applicable")]
+        sel = [
+            i
+            for i in instances
+            if today <= date.fromisoformat(i["due_date"]) <= end
+            and i["status"] not in ("completed", "not_applicable")
+        ]
         label = "due this week"
     sel.sort(key=lambda i: i["due_date"])
     return sel, [f'instance:{i["id"]}' for i in sel], {"label": label, "count": len(sel)}
@@ -117,13 +172,18 @@ def q_status_lookup(instances, query: str):
     m = re.search(r"status of (.+)|on (.+)", query.lower())
     term = (m.group(1) or m.group(2)).strip() if m else ""
     term = re.sub(r"[^a-z0-9 ]", "", term).strip()
-    hits = [i for i in instances if term and (term in i["template_id"].lower()
-            or term.split()[0] in i["template_id"].lower())]
+    hits = [
+        i
+        for i in instances
+        if term
+        and (term in i["template_id"].lower() or term.split()[0] in i["template_id"].lower())
+    ]
     return hits, [f'instance:{i["id"]}' for i in hits], {"term": term, "count": len(hits)}
 
 
 def q_count_summary(instances):
     from collections import Counter
+
     by_status = Counter(i["status"] for i in instances)
     return [], [], {"total": len(instances), "by_status": dict(by_status)}
 
@@ -135,8 +195,11 @@ def q_count_summary(instances):
 def verify_grounding(answer_citations: list[str], retrieved_ids: set[str]) -> dict:
     unknown = [c for c in answer_citations if c not in retrieved_ids]
     grounded = (len(answer_citations) > 0) and (not unknown)
-    return {"grounded": grounded, "unknown_citations": unknown,
-            "citation_count": len(answer_citations)}
+    return {
+        "grounded": grounded,
+        "unknown_citations": unknown,
+        "citation_count": len(answer_citations),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -145,7 +208,7 @@ def verify_grounding(answer_citations: list[str], retrieved_ids: set[str]) -> di
 CONF = {
     "structured_exact": 0.97,
     "library_verified": 0.85,
-    "library_unverified": 0.70,   # DRAFT_UNVERIFIED cap
+    "library_unverified": 0.70,  # DRAFT_UNVERIFIED cap
     "rag_strong": 0.70,
     "rag_weak": 0.45,
 }
@@ -167,16 +230,22 @@ def confidence(intent: Intent, retrieval_quality: str, template_verified=True) -
 # Escalation copy
 # ---------------------------------------------------------------------------
 ESCALATION_RESPONSE = {
-    Intent.ACTION_REQUEST: ("read_only",
+    Intent.ACTION_REQUEST: (
+        "read_only",
         "I can't take actions like filing, submitting, or marking obligations complete — "
-        "I'm read-only. I can show you the obligation and its evidence so you can act in the tracker."),
-    Intent.LEGAL_OPINION: ("consult_professional",
+        "I'm read-only. I can show you the obligation and its evidence so you can act in the tracker.",
+    ),
+    Intent.LEGAL_OPINION: (
+        "consult_professional",
         "I can show you the facts in your compliance data, but I can't give a definitive legal "
         "opinion on whether you're compliant or will be penalised. Please confirm with your "
-        "compliance head or a qualified professional."),
-    Intent.OUT_OF_SCOPE: ("out_of_scope",
+        "compliance head or a qualified professional.",
+    ),
+    Intent.OUT_OF_SCOPE: (
+        "out_of_scope",
         "That's outside what I cover in this version (NBFC statutory compliance). "
-        "Contracts, litigation, audit, ERM and IFC aren't in scope yet."),
+        "Contracts, litigation, audit, ERM and IFC aren't in scope yet.",
+    ),
 }
 
 
@@ -200,18 +269,34 @@ class CopilotTurn:
     audit: dict
 
 
-def answer(query: str, *, role: str, user_id: str, instances: list[dict],
-           today: date, library_unverified=True) -> CopilotTurn:
+def answer(
+    query: str,
+    *,
+    role: str,
+    user_id: str,
+    instances: list[dict],
+    today: date,
+    library_unverified=True,
+) -> CopilotTurn:
     intent = route_intent(query)
 
     # 1. Escalation gates first (read-only / legal opinion / out-of-scope)
     if intent in ESCALATE:
         reason, msg = ESCALATION_RESPONSE[intent]
-        return CopilotTurn(query, role, intent.value, True, reason,
-                           {"message": msg}, [], 0.0,
-                           {"grounded": True, "unknown_citations": [], "citation_count": 0},
-                           None, False,
-                           _audit(query, role, user_id, intent, [], reason))
+        return CopilotTurn(
+            query,
+            role,
+            intent.value,
+            True,
+            reason,
+            {"message": msg},
+            [],
+            0.0,
+            {"grounded": True, "unknown_citations": [], "citation_count": 0},
+            None,
+            False,
+            _audit(query, role, user_id, intent, [], reason),
+        )
 
     # 2. Permission scope BEFORE retrieval
     scoped, scope_note = scope_instances(instances, role, user_id)
@@ -244,12 +329,30 @@ def answer(query: str, *, role: str, user_id: str, instances: list[dict],
         conf = min(conf, CONF["library_unverified"])
 
     # 4. Abstention: structured query with zero rows is a valid, grounded "nothing found"
-    return CopilotTurn(query, role, intent.value, False, None, facts, cites, round(conf, 2),
-                       grounding, scope_note, provisional,
-                       _audit(query, role, user_id, intent, cites, None))
+    return CopilotTurn(
+        query,
+        role,
+        intent.value,
+        False,
+        None,
+        facts,
+        cites,
+        round(conf, 2),
+        grounding,
+        scope_note,
+        provisional,
+        _audit(query, role, user_id, intent, cites, None),
+    )
 
 
 def _audit(query, role, user_id, intent, cites, escalation):
-    return {"user_id": user_id, "role": role, "query": query, "intent": intent.value,
-            "retrieved_context": cites, "escalation": escalation,
-            "model_version": "copilot-v1", "ts": "<timestamp>"}
+    return {
+        "user_id": user_id,
+        "role": role,
+        "query": query,
+        "intent": intent.value,
+        "retrieved_context": cites,
+        "escalation": escalation,
+        "model_version": "copilot-v1",
+        "ts": "<timestamp>",
+    }

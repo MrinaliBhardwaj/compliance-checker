@@ -11,6 +11,7 @@ Fails OPEN on backend errors: we throttle attackers, we don't lock real users ou
 because Redis hiccuped. The per-account limit still holds the line when the
 per-IP layer is defeated (e.g. a spoofed X-Forwarded-For behind a bad proxy).
 """
+
 from __future__ import annotations
 
 import threading
@@ -84,9 +85,13 @@ def _get_backend():
         return _backend
     try:
         import redis  # sync client; declared dep (arq also uses redis)
+
         client = redis.Redis.from_url(
-            get_settings().redis_url, socket_connect_timeout=0.25,
-            socket_timeout=0.25, decode_responses=True)
+            get_settings().redis_url,
+            socket_connect_timeout=0.25,
+            socket_timeout=0.25,
+            decode_responses=True,
+        )
         client.ping()
         _backend = _RedisBackend(client)
     except Exception:

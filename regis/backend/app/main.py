@@ -4,6 +4,7 @@ Regis backend — FastAPI modular monolith entrypoint.
 Wires the bounded-context module routers over the shared deterministic engines.
 All AI is read-only/assistive; the deterministic cores are the source of truth.
 """
+
 from __future__ import annotations
 
 import time
@@ -37,7 +38,7 @@ app = FastAPI(
     title="Regis — NBFC Compliance Platform (Phase 1)",
     version="0.1.0",
     description="AI-assisted, human-confirmed compliance calendar for Indian NBFCs. "
-                "Deterministic cores; read-only AI; ap-south-1 data residency.",
+    "Deterministic cores; read-only AI; ap-south-1 data residency.",
     docs_url="/docs" if _docs_on else None,
     redoc_url="/redoc" if _docs_on else None,
     openapi_url="/openapi.json" if _docs_on else None,

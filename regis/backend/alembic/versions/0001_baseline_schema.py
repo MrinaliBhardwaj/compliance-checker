@@ -8,6 +8,7 @@ The baseline is materialized from the SQLAlchemy metadata so the migration and
 the ORM models can never drift. Postgres-specific hardening (RLS + append-only
 audit_log) is a separate revision (0002) so it can be tested in isolation.
 """
+
 from __future__ import annotations
 
 from alembic import op

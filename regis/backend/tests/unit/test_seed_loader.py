@@ -1,4 +1,5 @@
 """Unit tests — seed loader (M2 acceptance, pure parse layer; no DB)."""
+
 import copy
 
 import pytest

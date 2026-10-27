@@ -13,6 +13,7 @@ Hard invariant honoured here: every obligation_template is loaded with
 `verification_status = DRAFT_UNVERIFIED` exactly as the seed ships it. Flipping a
 template to VERIFIED is a content-team action elsewhere, never done by this loader.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,9 +25,18 @@ SEED_PATH = Path(__file__).with_name("nbfc_obligation_library_seed.json")
 
 # Structural contract we assert on load (not legal correctness — that's content team).
 REQUIRED_TEMPLATE_KEYS = {
-    "template_id", "law_id", "category", "title", "description", "frequency",
-    "due_rule", "applicability_rule", "required_evidence", "default_owner_role",
-    "risk_level", "verification_status",
+    "template_id",
+    "law_id",
+    "category",
+    "title",
+    "description",
+    "frequency",
+    "due_rule",
+    "applicability_rule",
+    "required_evidence",
+    "default_owner_role",
+    "risk_level",
+    "verification_status",
 }
 REQUIRED_LAW_KEYS = {"id", "name", "regulator", "category"}
 VALID_VERIFICATION = {"DRAFT_UNVERIFIED", "VERIFIED"}
@@ -67,17 +77,20 @@ def validate_library(library: dict[str, Any]) -> None:
         missing = REQUIRED_TEMPLATE_KEYS - tpl.keys()
         if missing:
             raise SeedValidationError(
-                f"template {tpl.get('template_id')!r} missing keys: {sorted(missing)}")
+                f"template {tpl.get('template_id')!r} missing keys: {sorted(missing)}"
+            )
         tid = tpl["template_id"]
         if tid in seen_tpl_ids:
             raise SeedValidationError(f"duplicate template id: {tid!r}")
         seen_tpl_ids.add(tid)
         if tpl["law_id"] not in law_ids:
             raise SeedValidationError(
-                f"template {tid!r} references unknown law_id {tpl['law_id']!r}")
+                f"template {tid!r} references unknown law_id {tpl['law_id']!r}"
+            )
         if tpl["verification_status"] not in VALID_VERIFICATION:
             raise SeedValidationError(
-                f"template {tid!r} has invalid verification_status {tpl['verification_status']!r}")
+                f"template {tid!r} has invalid verification_status {tpl['verification_status']!r}"
+            )
         if "type" not in (tpl["due_rule"] or {}):
             raise SeedValidationError(f"template {tid!r} due_rule has no 'type'")
 
@@ -112,10 +125,15 @@ def seed_database(session, path: Path | str = SEED_PATH) -> dict[str, int]:
     for law in library["law_library"]:
         existing = session.get(LawLibrary, law["id"])
         if existing is None:
-            session.add(LawLibrary(
-                id=law["id"], name=law["name"], regulator=law["regulator"],
-                category=law["category"], reference_url=law.get("reference_url"),
-            ))
+            session.add(
+                LawLibrary(
+                    id=law["id"],
+                    name=law["name"],
+                    regulator=law["regulator"],
+                    category=law["category"],
+                    reference_url=law.get("reference_url"),
+                )
+            )
         else:
             existing.name = law["name"]
             existing.regulator = law["regulator"]
@@ -127,12 +145,18 @@ def seed_database(session, path: Path | str = SEED_PATH) -> dict[str, int]:
     for tpl in library["obligation_templates"]:
         existing = session.get(ObligationTemplate, tpl["template_id"])
         payload = dict(
-            law_id=tpl["law_id"], category=tpl["category"], title=tpl["title"],
-            description=tpl["description"], frequency=tpl["frequency"],
-            due_rule=tpl["due_rule"], applicability_rule=tpl["applicability_rule"],
+            law_id=tpl["law_id"],
+            category=tpl["category"],
+            title=tpl["title"],
+            description=tpl["description"],
+            frequency=tpl["frequency"],
+            due_rule=tpl["due_rule"],
+            applicability_rule=tpl["applicability_rule"],
             required_evidence=tpl["required_evidence"],
-            default_owner_role=tpl["default_owner_role"], risk_level=tpl["risk_level"],
-            penalty_note=tpl.get("penalty_note"), form_reference=tpl.get("form_reference"),
+            default_owner_role=tpl["default_owner_role"],
+            risk_level=tpl["risk_level"],
+            penalty_note=tpl.get("penalty_note"),
+            form_reference=tpl.get("form_reference"),
             dependencies=tpl.get("dependencies", []),
             # Invariant: seed always loads as shipped — DRAFT_UNVERIFIED. Never auto-promote.
             verification_status=tpl["verification_status"],

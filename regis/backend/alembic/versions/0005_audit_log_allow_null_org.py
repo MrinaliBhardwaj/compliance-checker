@@ -7,6 +7,7 @@ Create Date: 2026-09-08
 System-level audit events (e.g. failed auth attempts) have no organization_id.
 The original policy rejects NULL because NULL = 'anything' is NULL (fails check).
 """
+
 from __future__ import annotations
 
 from alembic import op

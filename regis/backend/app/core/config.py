@@ -4,6 +4,7 @@ Application settings (pydantic-settings). Env-driven; safe dev defaults.
 Data residency note: in production every managed service (RDS, ElastiCache, S3,
 Bedrock/Anthropic endpoint) is pinned to AWS ap-south-1 — see infra/terraform.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache
@@ -19,7 +20,8 @@ _BACKEND_ENV = Path(__file__).resolve().parents[2] / ".env"
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_prefix="REGIS_", env_file=str(_BACKEND_ENV), extra="ignore")
+        env_prefix="REGIS_", env_file=str(_BACKEND_ENV), extra="ignore"
+    )
 
     env: str = "dev"  # dev | staging | prod
     # Postgres in every real environment; SQLite only for local engine/integration tests.
@@ -47,7 +49,8 @@ class Settings(BaseSettings):
     @property
     def content_admins(self) -> frozenset[str]:
         return frozenset(
-            e.strip().lower() for e in self.content_admin_emails.split(",") if e.strip())
+            e.strip().lower() for e in self.content_admin_emails.split(",") if e.strip()
+        )
 
     # Auth
     jwt_secret: str = "dev-only-change-me"

@@ -5,6 +5,7 @@ Exercises the real HTTP surface end to end: signup -> JWT -> onboarding preview 
 calendar generate -> dashboard -> copilot ask, including the read-only escalation.
 Env is set before importing the app so app.core.db binds to the test database.
 """
+
 from __future__ import annotations
 
 import os
@@ -38,8 +39,9 @@ def client():
     # thread, which silently empties the seeded library — see git history.)
     get_settings.cache_clear()
     test_engine = create_engine(f"sqlite+pysqlite:///{_TMP.name}", future=True)
-    TestSession = sessionmaker(bind=test_engine, autoflush=False,
-                               expire_on_commit=False, future=True)
+    TestSession = sessionmaker(
+        bind=test_engine, autoflush=False, expire_on_commit=False, future=True
+    )
     Base.metadata.create_all(test_engine)
     with TestSession() as s:
         seed_database(s)
@@ -66,10 +68,15 @@ def client():
 def _auth(client) -> tuple[dict, str]:
     # unique email per call: the module-scoped client shares one DB, so a fixed
     # email would 409 on every signup after the first
-    r = client.post("/auth/signup", json={
-        "email": f"officer-{uuid.uuid4().hex[:8]}@acme.example", "password": "pw123456",
-        "organization_name": "Acme NBFC", "entity_legal_name": "Acme Capital Ltd",
-    })
+    r = client.post(
+        "/auth/signup",
+        json={
+            "email": f"officer-{uuid.uuid4().hex[:8]}@acme.example",
+            "password": "pw123456",
+            "organization_name": "Acme NBFC",
+            "entity_legal_name": "Acme Capital Ltd",
+        },
+    )
     assert r.status_code == 200, r.text
     body = r.json()
     # signup now also sets a session cookie; drop it so the shared client stays
@@ -86,29 +93,53 @@ def test_full_onboarding_flow(client):
     headers, entity_id = _auth(client)
 
     # profile preview (no commit) — returns provenance + gap questions
-    preview = client.post("/onboarding/profile/preview", headers=headers, json={
-        "raw_input": {"asset_size": "3000", "deposit_taking": "No",
-                      "operating_states": ["MH", "KA", "TN", "DL"],
-                      "employee_count": 260, "gst_registered": "Yes"}
-    }).json()
+    preview = client.post(
+        "/onboarding/profile/preview",
+        headers=headers,
+        json={
+            "raw_input": {
+                "asset_size": "3000",
+                "deposit_taking": "No",
+                "operating_states": ["MH", "KA", "TN", "DL"],
+                "employee_count": 260,
+                "gst_registered": "Yes",
+            }
+        },
+    ).json()
     assert preview["profile"]["rbi_layer"] == "middle"
     assert "gap_questions" in preview
 
     # generate calendar (commit) — Profile B-like
-    gen = client.post("/onboarding/calendar/generate", headers=headers, json={
-        "entity_id": entity_id,
-        "raw_input": {
-            "asset_size": "3000", "turnover": "450", "deposit_taking": "No",
-            "is_listed": "No", "has_listed_debt": "Yes",
-            "operating_states": ["MH", "KA", "TN", "DL"], "branch_count": 22,
-            "employee_count": 260, "gst_registered": "Yes",
-            "has_foreign_investment": "Yes", "has_ecb": "Yes", "is_secured_lender": "Yes",
-            "has_borrowings": "Yes", "is_large_corporate": "Yes", "has_msme_dues": "Yes",
-            "has_floating_rate_retail": "Yes", "has_capital_changes": "Yes", "has_sbo": "Yes",
-            "has_nonresident_payments": "Yes", "has_international_transactions": "Yes",
-            "has_reportable_accounts": "Yes",
+    gen = client.post(
+        "/onboarding/calendar/generate",
+        headers=headers,
+        json={
+            "entity_id": entity_id,
+            "raw_input": {
+                "asset_size": "3000",
+                "turnover": "450",
+                "deposit_taking": "No",
+                "is_listed": "No",
+                "has_listed_debt": "Yes",
+                "operating_states": ["MH", "KA", "TN", "DL"],
+                "branch_count": 22,
+                "employee_count": 260,
+                "gst_registered": "Yes",
+                "has_foreign_investment": "Yes",
+                "has_ecb": "Yes",
+                "is_secured_lender": "Yes",
+                "has_borrowings": "Yes",
+                "is_large_corporate": "Yes",
+                "has_msme_dues": "Yes",
+                "has_floating_rate_retail": "Yes",
+                "has_capital_changes": "Yes",
+                "has_sbo": "Yes",
+                "has_nonresident_payments": "Yes",
+                "has_international_transactions": "Yes",
+                "has_reportable_accounts": "Yes",
+            },
         },
-    }).json()
+    ).json()
     # clean payload closes the loop to 99 applicable obligations
     assert gen["company_obligations"] == 99
     assert gen["instances"] > 0
@@ -118,44 +149,67 @@ def test_full_onboarding_flow(client):
     assert "health_score" in dash and dash["total_instances"] > 0
 
     # copilot: structured answer is grounded
-    due = client.post("/copilot/ask", headers=headers,
-                      json={"query": "What's due this month?"}).json()
+    due = client.post(
+        "/copilot/ask", headers=headers, json={"query": "What's due this month?"}
+    ).json()
     assert due["intent"] == "DUE_WINDOW"
     assert due["confidence"] == 0.97
 
     # copilot: action request -> read-only escalation, no substantive answer
-    act = client.post("/copilot/ask", headers=headers,
-                      json={"query": "File my GST return for me"}).json()
+    act = client.post(
+        "/copilot/ask", headers=headers, json={"query": "File my GST return for me"}
+    ).json()
     assert act["escalated"] and act["escalation_reason"] == "read_only"
 
 
 def test_evidence_and_maker_checker_over_http(client):
     headers, entity_id = _auth(client)
     # ensure a calendar exists (idempotent if a prior test already generated it)
-    client.post("/onboarding/calendar/generate", headers=headers, json={
-        "entity_id": entity_id,
-        "raw_input": {"asset_size": "3000", "turnover": "450", "deposit_taking": "No",
-                      "has_listed_debt": "Yes", "operating_states": ["MH", "KA", "TN", "DL"],
-                      "employee_count": 260, "gst_registered": "Yes"},
-    })
+    client.post(
+        "/onboarding/calendar/generate",
+        headers=headers,
+        json={
+            "entity_id": entity_id,
+            "raw_input": {
+                "asset_size": "3000",
+                "turnover": "450",
+                "deposit_taking": "No",
+                "has_listed_debt": "Yes",
+                "operating_states": ["MH", "KA", "TN", "DL"],
+                "employee_count": 260,
+                "gst_registered": "Yes",
+            },
+        },
+    )
     # grab a pending instance
     instances = client.get("/obligations/instances", headers=headers).json()
     inst_id = instances[0]["id"]
 
     # start -> upload -> classify -> link -> submit -> approve
-    assert client.post(f"/obligations/instances/{inst_id}/start", headers=headers,
-                       json={}).json()["status"] == "in_progress"
+    assert (
+        client.post(f"/obligations/instances/{inst_id}/start", headers=headers, json={}).json()[
+            "status"
+        ]
+        == "in_progress"
+    )
 
-    up = client.post("/documents/upload", headers=headers,
-                     files={"file": ("ack.pdf", b"%PDF ack bytes", "application/pdf")},
-                     data={"entity_id": entity_id}).json()
+    up = client.post(
+        "/documents/upload",
+        headers=headers,
+        files={"file": ("ack.pdf", b"%PDF ack bytes", "application/pdf")},
+        data={"entity_id": entity_id},
+    ).json()
     doc_id = up["document"]["id"]
     assert up["document"]["processing_status"] == "unprocessed"  # AI off in tests
 
-    client.post(f"/documents/{doc_id}/classify", headers=headers,
-                json={"doc_type": "FILING_ACK", "extracted": {"period": instances[0]["period_label"]}})
-    link = client.post(f"/documents/{doc_id}/link", headers=headers,
-                       json={"instance_id": inst_id}).json()
+    client.post(
+        f"/documents/{doc_id}/classify",
+        headers=headers,
+        json={"doc_type": "FILING_ACK", "extracted": {"period": instances[0]["period_label"]}},
+    )
+    link = client.post(
+        f"/documents/{doc_id}/link", headers=headers, json={"instance_id": inst_id}
+    ).json()
     assert link["blocked"] is False
 
     client.post(f"/obligations/instances/{inst_id}/submit", headers=headers, json={})
@@ -168,24 +222,34 @@ def test_evidence_and_maker_checker_over_http(client):
 def test_exact_duplicate_upload_over_http(client):
     headers, entity_id = _auth(client)
     files = {"file": ("dup.pdf", b"same-bytes-xyz", "application/pdf")}
-    first = client.post("/documents/upload", headers=headers, files=files,
-                        data={"entity_id": entity_id}).json()
+    first = client.post(
+        "/documents/upload", headers=headers, files=files, data={"entity_id": entity_id}
+    ).json()
     assert first["document"] is not None
     files2 = {"file": ("dup2.pdf", b"same-bytes-xyz", "application/pdf")}
-    second = client.post("/documents/upload", headers=headers, files=files2,
-                         data={"entity_id": entity_id}).json()
+    second = client.post(
+        "/documents/upload", headers=headers, files=files2, data={"entity_id": entity_id}
+    ).json()
     assert second["document"] is None
     assert second["duplicate"]["verdict"] == "EXACT_DUPLICATE"
 
 
 def test_report_export_over_http(client):
     headers, entity_id = _auth(client)
-    client.post("/onboarding/calendar/generate", headers=headers, json={
-        "entity_id": entity_id,
-        "raw_input": {"asset_size": "3000", "deposit_taking": "No",
-                      "operating_states": ["MH", "KA"], "employee_count": 260,
-                      "gst_registered": "Yes"},
-    })
+    client.post(
+        "/onboarding/calendar/generate",
+        headers=headers,
+        json={
+            "entity_id": entity_id,
+            "raw_input": {
+                "asset_size": "3000",
+                "deposit_taking": "No",
+                "operating_states": ["MH", "KA"],
+                "employee_count": 260,
+                "gst_registered": "Yes",
+            },
+        },
+    )
     j = client.get("/reports/compliance", headers=headers).json()
     assert j["provisional"] is True and "health_score" in j
 
@@ -200,6 +264,7 @@ def test_report_export_over_http(client):
 
 def test_preparer_cannot_export(client):
     from app.core.security import Principal, create_access_token
+
     tok = create_access_token(Principal(user_id="u1", organization_id="o1", role="preparer"))
     r = client.get("/reports/compliance.pdf", headers={"Authorization": f"Bearer {tok}"})
     assert r.status_code == 403
@@ -212,23 +277,41 @@ def test_notifications_inbox_over_http(client):
 
 def test_legal_updates_over_http(client):
     import uuid as _uuid
+
     email = f"content-{_uuid.uuid4().hex[:8]}@acme.example"
-    r = client.post("/auth/signup", json={
-        "email": email, "password": "pw123456",
-        "organization_name": "Acme NBFC", "entity_legal_name": "Acme Capital Ltd"})
+    r = client.post(
+        "/auth/signup",
+        json={
+            "email": email,
+            "password": "pw123456",
+            "organization_name": "Acme NBFC",
+            "entity_legal_name": "Acme Capital Ltd",
+        },
+    )
     assert r.status_code == 200, r.text
     headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
     entity_id = r.json()["entity_id"]
     client.cookies.clear()  # stay stateless — authenticate via the Bearer header below
     # ensure a profile exists (so matching has something to match against)
-    client.post("/onboarding/calendar/generate", headers=headers, json={
-        "entity_id": entity_id,
-        "raw_input": {"asset_size": "3000", "deposit_taking": "No",
-                      "operating_states": ["MH"], "employee_count": 260, "gst_registered": "Yes"},
-    })
+    client.post(
+        "/onboarding/calendar/generate",
+        headers=headers,
+        json={
+            "entity_id": entity_id,
+            "raw_input": {
+                "asset_size": "3000",
+                "deposit_taking": "No",
+                "operating_states": ["MH"],
+                "employee_count": 260,
+                "gst_registered": "Yes",
+            },
+        },
+    )
 
-    body = {"title": "Middle-layer CCO change",
-            "affects_filter": {"rbi_layer": ["middle", "upper"]}}
+    body = {
+        "title": "Middle-layer CCO change",
+        "affects_filter": {"rbi_layer": ["middle", "upper"]},
+    }
     # the feed is cross-tenant: a customer org admin must NOT be able to publish
     assert client.post("/legal-updates", headers=headers, json=body).status_code == 403
 
@@ -245,16 +328,21 @@ def test_legal_updates_over_http(client):
     feed = client.get("/legal-updates", headers=headers).json()
     assert feed and feed[0]["match"] in ("APPLICABLE", "NEEDS_REVIEW")
 
-    rev = client.post(f"/legal-updates/{update_id}/review", headers=headers,
-                      json={"status": "applicable"})
+    rev = client.post(
+        f"/legal-updates/{update_id}/review", headers=headers, json={"status": "applicable"}
+    )
     assert rev.status_code == 200 and rev.json()["status"] == "applicable"
 
 
 def test_preparer_cannot_review_legal_update(client):
     from app.core.security import Principal, create_access_token
+
     tok = create_access_token(Principal(user_id="u1", organization_id="o1", role="preparer"))
-    r = client.post("/legal-updates/00000000-0000-0000-0000-000000000000/review",
-                    headers={"Authorization": f"Bearer {tok}"}, json={"status": "applicable"})
+    r = client.post(
+        "/legal-updates/00000000-0000-0000-0000-000000000000/review",
+        headers={"Authorization": f"Bearer {tok}"},
+        json={"status": "applicable"},
+    )
     assert r.status_code == 403
 
 
@@ -266,10 +354,13 @@ def test_preparer_cannot_generate(client):
     """RBAC: only compliance_admin can generate the calendar."""
     # a fresh admin to mint a preparer would need invite flow; assert the gate via role check
     from app.core.security import Principal, create_access_token
+
     tok = create_access_token(Principal(user_id="u1", organization_id="o1", role="preparer"))
-    r = client.post("/onboarding/calendar/generate",
-                    headers={"Authorization": f"Bearer {tok}"},
-                    json={"entity_id": "e1", "raw_input": {}})
+    r = client.post(
+        "/onboarding/calendar/generate",
+        headers={"Authorization": f"Bearer {tok}"},
+        json={"entity_id": "e1", "raw_input": {}},
+    )
     assert r.status_code == 403
 
 
@@ -277,11 +368,18 @@ def test_httponly_cookie_session(client):
     """Auth rides on an httpOnly cookie: set on signup, usable with no Authorization
     header, and cleared by logout. (Isolated client so its cookie jar is its own.)"""
     import uuid as _uuid
+
     c = TestClient(app)  # shares the app (overrides + seeded DB) but owns its cookies
     email = f"cookie-{_uuid.uuid4().hex[:8]}@acme.example"
-    r = c.post("/auth/signup", json={
-        "email": email, "password": "goodpassword1",
-        "organization_name": "Cookie NBFC", "entity_legal_name": "Cookie Ltd"})
+    r = c.post(
+        "/auth/signup",
+        json={
+            "email": email,
+            "password": "goodpassword1",
+            "organization_name": "Cookie NBFC",
+            "entity_legal_name": "Cookie Ltd",
+        },
+    )
     assert r.status_code == 200
     set_cookie = r.headers.get("set-cookie", "").lower()
     assert "regis_session=" in set_cookie and "httponly" in set_cookie
@@ -300,16 +398,25 @@ def test_login_is_rate_limited(client):
     import uuid as _uuid
 
     from app.core.config import get_settings
+
     email = f"rl-{_uuid.uuid4().hex[:8]}@acme.example"
-    r = client.post("/auth/signup", json={  # signup itself isn't rate-limited
-        "email": email, "password": "goodpassword1",
-        "organization_name": "RL NBFC", "entity_legal_name": "RL Ltd"})
+    r = client.post(
+        "/auth/signup",
+        json={  # signup itself isn't rate-limited
+            "email": email,
+            "password": "goodpassword1",
+            "organization_name": "RL NBFC",
+            "entity_legal_name": "RL Ltd",
+        },
+    )
     assert r.status_code == 200
     client.cookies.clear()
 
     limit = get_settings().login_max_attempts
-    codes = [client.post("/auth/login", json={"email": email, "password": "wrong"}).status_code
-             for _ in range(limit)]
+    codes = [
+        client.post("/auth/login", json={"email": email, "password": "wrong"}).status_code
+        for _ in range(limit)
+    ]
     assert set(codes) == {401}  # wrong-password attempts up to the limit
 
     blocked = client.post("/auth/login", json={"email": email, "password": "wrong"})
@@ -321,22 +428,33 @@ def test_login_is_rate_limited(client):
 
 def test_signup_rejects_short_password(client):
     import uuid as _uuid
-    r = client.post("/auth/signup", json={
-        "email": f"weak-{_uuid.uuid4().hex[:8]}@acme.example", "password": "short",
-        "organization_name": "Weak NBFC", "entity_legal_name": "Weak Ltd"})
+
+    r = client.post(
+        "/auth/signup",
+        json={
+            "email": f"weak-{_uuid.uuid4().hex[:8]}@acme.example",
+            "password": "short",
+            "organization_name": "Weak NBFC",
+            "entity_legal_name": "Weak Ltd",
+        },
+    )
     assert r.status_code == 422  # Pydantic min_length gate, before any DB write
 
 
 def test_upload_rejects_oversize_file(client):
     from app.core.config import get_settings
+
     headers, entity_id = _auth(client)
     s = get_settings()
     original = s.max_upload_mb
     s.max_upload_mb = 0  # any non-empty upload now exceeds the cap
     try:
-        r = client.post("/documents/upload", headers=headers,
-                        data={"entity_id": entity_id},
-                        files={"file": ("big.pdf", b"x" * 4096, "application/pdf")})
+        r = client.post(
+            "/documents/upload",
+            headers=headers,
+            data={"entity_id": entity_id},
+            files={"file": ("big.pdf", b"x" * 4096, "application/pdf")},
+        )
         assert r.status_code == 413
     finally:
         s.max_upload_mb = original

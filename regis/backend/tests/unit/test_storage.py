@@ -1,4 +1,5 @@
 """Unit tests — local storage adapter (dev/test path)."""
+
 import tempfile
 
 import pytest

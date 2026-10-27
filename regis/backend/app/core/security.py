@@ -5,6 +5,7 @@ Provider-agnostic: password and SSO users share the same User row; SSO callbacks
 (Google/Microsoft) mint the same JWT. The token carries the active org + role so
 the DB layer can set the RLS GUC and routers can enforce the PRD role matrix.
 """
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -26,8 +27,12 @@ def set_auth_cookie(response: Response, token: str) -> None:
     can't exfiltrate it. SameSite=Lax + non-GET mutations gives CSRF protection."""
     s = get_settings()
     response.set_cookie(
-        key=s.auth_cookie_name, value=token, httponly=True,
-        secure=s.auth_cookie_secure, samesite="lax", path="/",
+        key=s.auth_cookie_name,
+        value=token,
+        httponly=True,
+        secure=s.auth_cookie_secure,
+        samesite="lax",
+        path="/",
         max_age=s.access_token_ttl_minutes * 60,
     )
 
@@ -35,8 +40,11 @@ def set_auth_cookie(response: Response, token: str) -> None:
 def clear_auth_cookie(response: Response) -> None:
     s = get_settings()
     response.delete_cookie(
-        key=s.auth_cookie_name, path="/", httponly=True,
-        secure=s.auth_cookie_secure, samesite="lax",
+        key=s.auth_cookie_name,
+        path="/",
+        httponly=True,
+        secure=s.auth_cookie_secure,
+        samesite="lax",
     )
 
 
@@ -62,19 +70,25 @@ class Principal(BaseModel):
 def create_access_token(principal: Principal) -> str:
     s = get_settings()
     payload = {
-        "sub": principal.user_id, "org": principal.organization_id,
-        "role": principal.role, "email": principal.email,
+        "sub": principal.user_id,
+        "org": principal.organization_id,
+        "role": principal.role,
+        "email": principal.email,
         "exp": datetime.now(UTC) + timedelta(minutes=s.access_token_ttl_minutes),
     }
     return jwt.encode(payload, s.jwt_secret, algorithm=s.jwt_algorithm)
 
 
-def create_invite_token(*, membership_id: str, organization_id: str, email: str,
-                        ttl_days: int = 7) -> str:
+def create_invite_token(
+    *, membership_id: str, organization_id: str, email: str, ttl_days: int = 7
+) -> str:
     """Signed, time-limited invite token. Carries the membership it activates."""
     s = get_settings()
     payload = {
-        "purpose": "invite", "mid": membership_id, "org": organization_id, "email": email,
+        "purpose": "invite",
+        "mid": membership_id,
+        "org": organization_id,
+        "email": email,
         "exp": datetime.now(UTC) + timedelta(days=ttl_days),
     }
     return jwt.encode(payload, s.jwt_secret, algorithm=s.jwt_algorithm)
@@ -105,8 +119,12 @@ def get_current_principal(
         claims = jwt.decode(token, s.jwt_secret, algorithms=[s.jwt_algorithm])
     except JWTError as e:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid token") from e
-    return Principal(user_id=claims["sub"], organization_id=claims["org"],
-                     role=claims["role"], email=claims.get("email"))
+    return Principal(
+        user_id=claims["sub"],
+        organization_id=claims["org"],
+        role=claims["role"],
+        email=claims.get("email"),
+    )
 
 
 CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
@@ -114,9 +132,12 @@ CurrentPrincipal = Annotated[Principal, Depends(get_current_principal)]
 
 def require_role(*roles: str):
     """Dependency factory enforcing the PRD role matrix on a route."""
+
     def _dep(principal: CurrentPrincipal) -> Principal:
         if principal.role not in roles:
-            raise HTTPException(status.HTTP_403_FORBIDDEN,
-                                f"Requires role in {roles}; you are '{principal.role}'.")
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN, f"Requires role in {roles}; you are '{principal.role}'."
+            )
         return principal
+
     return _dep

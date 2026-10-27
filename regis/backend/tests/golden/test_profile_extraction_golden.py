@@ -5,6 +5,7 @@ Locked: clean payload -> 99 applicable downstream; messy payload -> states
 normalized, malformed CIN flagged, FDI gap (+3) ranked above intl-txn (+1),
 61 applicable / 33 review composition.
 """
+
 import pytest
 
 from app.engines.applicability import generate_compliance_universe
@@ -14,28 +15,44 @@ pytestmark = pytest.mark.golden
 
 
 RAW_CLEAN = {
-    "cin": "U65999MH2018PTC123456", "pan": "AAACT1234A",
+    "cin": "U65999MH2018PTC123456",
+    "pan": "AAACT1234A",
     "nbfc_type": "Investment and Credit Company",
-    "asset_size": "3000", "turnover": "450",
-    "deposit_taking": "No", "is_listed": "No", "has_listed_debt": "Yes",
+    "asset_size": "3000",
+    "turnover": "450",
+    "deposit_taking": "No",
+    "is_listed": "No",
+    "has_listed_debt": "Yes",
     "operating_states": ["MH", "KA", "TN", "DL"],
-    "branch_count": 22, "employee_count": 260, "gst_registered": "Yes",
-    "has_foreign_investment": "Yes", "has_ecb": "Yes", "is_secured_lender": "Yes",
-    "has_borrowings": "Yes", "is_large_corporate": "Yes", "has_msme_dues": "Yes",
-    "has_floating_rate_retail": "Yes", "has_capital_changes": "Yes", "has_sbo": "Yes",
-    "has_nonresident_payments": "Yes", "has_international_transactions": "Yes",
+    "branch_count": 22,
+    "employee_count": 260,
+    "gst_registered": "Yes",
+    "has_foreign_investment": "Yes",
+    "has_ecb": "Yes",
+    "is_secured_lender": "Yes",
+    "has_borrowings": "Yes",
+    "is_large_corporate": "Yes",
+    "has_msme_dues": "Yes",
+    "has_floating_rate_retail": "Yes",
+    "has_capital_changes": "Yes",
+    "has_sbo": "Yes",
+    "has_nonresident_payments": "Yes",
+    "has_international_transactions": "Yes",
     "has_reportable_accounts": "Yes",
 }
 
 RAW_MESSY = {
-    "cin": "U65999MH", "pan": "AAACT1234A",          # malformed CIN
+    "cin": "U65999MH",
+    "pan": "AAACT1234A",  # malformed CIN
     "nbfc_type": "microfinance",
-    "asset_size": "around 3 thousand crore",          # free text
+    "asset_size": "around 3 thousand crore",  # free text
     "turnover": "₹4,50 Cr",
-    "rbi_layer": "Base",                              # contradicts asset size
+    "rbi_layer": "Base",  # contradicts asset size
     "deposit_taking": "No",
     "operating_states": "Maharashtra, Karnataka and Tamil Nadu",  # full names + 'and'
-    "branch_count": 12, "employee_count": 40, "gst_registered": "Yes",
+    "branch_count": 12,
+    "employee_count": 40,
+    "gst_registered": "Yes",
 }
 
 

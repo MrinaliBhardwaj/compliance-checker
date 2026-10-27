@@ -7,6 +7,7 @@ Integration — M9 compliance report + export.
 - HTML carries the key figures; PDF is a valid document (magic bytes + EOF);
 - RBAC: preparers cannot export.
 """
+
 from datetime import date
 
 import pytest
@@ -18,7 +19,8 @@ from app.modules.reports.render import render_html, render_pdf
 from app.modules.reports.service import build_compliance_report
 
 CTX = {
-    "window_start": date(2026, 4, 1), "window_end": date(2027, 3, 31),
+    "window_start": date(2026, 4, 1),
+    "window_end": date(2027, 3, 31),
     "anchors": {"agm_date": date(2026, 9, 25), "tds_return_date": date(2026, 7, 31)},
     "license_expiry": date(2026, 11, 30),
 }
@@ -27,8 +29,13 @@ TODAY = date(2026, 7, 15)
 
 @pytest.fixture
 def report(db, seeded_org, profile_b):
-    generate_calendar(db, organization_id=seeded_org["org_id"], entity_id=seeded_org["entity_id"],
-                      profile=profile_b, ctx=CTX)
+    generate_calendar(
+        db,
+        organization_id=seeded_org["org_id"],
+        entity_id=seeded_org["entity_id"],
+        profile=profile_b,
+        ctx=CTX,
+    )
     return build_compliance_report(db, organization_id=seeded_org["org_id"], today=TODAY)
 
 
@@ -39,10 +46,15 @@ def test_report_is_provisional(report):
 
 
 def test_report_counts_are_grounded(db, seeded_org, report):
-    rows = db.execute(
-        select(ObligationInstance).where(
-            ObligationInstance.organization_id == seeded_org["org_id"])
-    ).scalars().all()
+    rows = (
+        db.execute(
+            select(ObligationInstance).where(
+                ObligationInstance.organization_id == seeded_org["org_id"]
+            )
+        )
+        .scalars()
+        .all()
+    )
     assert report["totals"]["instances"] == len(rows)
     # tiles sum is internally consistent
     assert report["tiles"]["overdue"] == report["totals"]["by_status"].get("overdue", 0)
@@ -72,5 +84,6 @@ def test_pdf_render_is_valid(report):
 def test_pdf_minimal_fallback_directly(report):
     # exercise the dependency-free writer explicitly (production may use reportlab)
     from app.modules.reports.render import _render_pdf_minimal, _report_lines
+
     pdf = _render_pdf_minimal(_report_lines(report))
     assert pdf.startswith(b"%PDF-1.4") and pdf.rstrip().endswith(b"%%EOF")

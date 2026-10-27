@@ -1,4 +1,5 @@
 """Unit tests — Maker-Checker lifecycle rules (state machine + role matrix)."""
+
 import pytest
 
 from app.modules.obligations.lifecycle import (
@@ -41,7 +42,7 @@ def test_illegal_state_transition():
     with pytest.raises(LifecycleError):
         plan_transition("approve", "pending", "compliance_admin")  # not submitted yet
     with pytest.raises(LifecycleError):
-        plan_transition("reopen", "pending", "compliance_admin")   # only completed/na reopen
+        plan_transition("reopen", "pending", "compliance_admin")  # only completed/na reopen
 
 
 def test_cannot_act_on_terminal_with_open_action():

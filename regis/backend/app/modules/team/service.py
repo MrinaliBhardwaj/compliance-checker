@@ -8,6 +8,7 @@ existing assignment endpoint. Invariants:
   - everything is audited; invites are signed, time-limited tokens (no email needed
     locally — the admin shares the returned link).
 """
+
 from __future__ import annotations
 
 from sqlalchemy import func, select, update
@@ -25,23 +26,27 @@ class TeamError(Exception):
     """Business-rule violation (HTTP 409)."""
 
 
-class NotFound(Exception):
-    ...
+class NotFound(Exception): ...
 
 
 def _active_admin_count(session: Session, organization_id, exclude_membership=None) -> int:
-    q = select(func.count()).select_from(Membership).where(
-        Membership.organization_id == organization_id,
-        Membership.role == "compliance_admin",
-        Membership.status == "active",
+    q = (
+        select(func.count())
+        .select_from(Membership)
+        .where(
+            Membership.organization_id == organization_id,
+            Membership.role == "compliance_admin",
+            Membership.status == "active",
+        )
     )
     if exclude_membership is not None:
         q = q.where(Membership.id != exclude_membership)
     return session.execute(q).scalar_one()
 
 
-def invite_member(session: Session, *, organization_id, email: str, role: str,
-                  full_name: str | None, invited_by) -> dict:
+def invite_member(
+    session: Session, *, organization_id, email: str, role: str, full_name: str | None, invited_by
+) -> dict:
     if role not in ROLES:
         raise TeamError(f"invalid role '{role}'")
     email = email.strip().lower()
@@ -53,28 +58,43 @@ def invite_member(session: Session, *, organization_id, email: str, role: str,
         session.flush()
 
     membership = session.execute(
-        select(Membership).where(Membership.user_id == user.id,
-                                 Membership.organization_id == organization_id)
+        select(Membership).where(
+            Membership.user_id == user.id, Membership.organization_id == organization_id
+        )
     ).scalar_one_or_none()
     if membership and membership.status == "active":
         raise TeamError("user is already an active member of this organization")
     if membership is None:
-        membership = Membership(user_id=user.id, organization_id=organization_id,
-                                role=role, status="invited")
+        membership = Membership(
+            user_id=user.id, organization_id=organization_id, role=role, status="invited"
+        )
         session.add(membership)
     else:
         membership.role = role
         membership.status = "invited"
     session.flush()
 
-    token = create_invite_token(membership_id=str(membership.id),
-                                organization_id=str(organization_id), email=email)
-    audit.record(session, action="member_invited", organization_id=organization_id,
-                 actor_user_id=invited_by, entity_type="membership",
-                 entity_id=str(membership.id), meta={"email": email, "role": role})
-    return {"membership_id": str(membership.id), "user_id": str(user.id), "email": email,
-            "role": role, "status": "invited", "invite_token": token,
-            "invite_url": f"/accept?token={token}"}
+    token = create_invite_token(
+        membership_id=str(membership.id), organization_id=str(organization_id), email=email
+    )
+    audit.record(
+        session,
+        action="member_invited",
+        organization_id=organization_id,
+        actor_user_id=invited_by,
+        entity_type="membership",
+        entity_id=str(membership.id),
+        meta={"email": email, "role": role},
+    )
+    return {
+        "membership_id": str(membership.id),
+        "user_id": str(user.id),
+        "email": email,
+        "role": role,
+        "status": "invited",
+        "invite_token": token,
+        "invite_url": f"/accept?token={token}",
+    }
 
 
 def list_members(session: Session, *, organization_id) -> list[dict]:
@@ -85,16 +105,23 @@ def list_members(session: Session, *, organization_id) -> list[dict]:
         .order_by(Membership.created_at)
     ).all()
     return [
-        {"membership_id": str(m.id), "user_id": str(u.id), "email": u.email,
-         "full_name": u.full_name, "role": m.role, "status": m.status}
+        {
+            "membership_id": str(m.id),
+            "user_id": str(u.id),
+            "email": u.email,
+            "full_name": u.full_name,
+            "role": m.role,
+            "status": m.status,
+        }
         for m, u in rows
     ]
 
 
 def assignable_users(session: Session, *, organization_id) -> list[dict]:
     """Members eligible to own obligations (active only) — drives the owner picker."""
-    return [m for m in list_members(session, organization_id=organization_id)
-            if m["status"] == "active"]
+    return [
+        m for m in list_members(session, organization_id=organization_id) if m["status"] == "active"
+    ]
 
 
 def update_role(session: Session, *, organization_id, membership_id, role: str, actor) -> dict:
@@ -104,14 +131,24 @@ def update_role(session: Session, *, organization_id, membership_id, role: str, 
     if not m or str(m.organization_id) != str(organization_id):
         raise NotFound()
     # never strip the last admin
-    if (m.role == "compliance_admin" and role != "compliance_admin"
-            and m.status == "active" and _active_admin_count(session, organization_id) <= 1):
+    if (
+        m.role == "compliance_admin"
+        and role != "compliance_admin"
+        and m.status == "active"
+        and _active_admin_count(session, organization_id) <= 1
+    ):
         raise TeamError("cannot change role of the last active admin")
     prior = m.role
     m.role = role
-    audit.record(session, action="member_role_changed", organization_id=organization_id,
-                 actor_user_id=actor, entity_type="membership", entity_id=str(m.id),
-                 meta={"from": prior, "to": role})
+    audit.record(
+        session,
+        action="member_role_changed",
+        organization_id=organization_id,
+        actor_user_id=actor,
+        entity_type="membership",
+        entity_id=str(m.id),
+        meta={"from": prior, "to": role},
+    )
     return {"membership_id": str(m.id), "role": role, "status": m.status}
 
 
@@ -119,8 +156,11 @@ def remove_member(session: Session, *, organization_id, membership_id, reassign_
     m = session.get(Membership, membership_id)
     if not m or str(m.organization_id) != str(organization_id):
         raise NotFound()
-    if (m.role == "compliance_admin" and m.status == "active"
-            and _active_admin_count(session, organization_id) <= 1):
+    if (
+        m.role == "compliance_admin"
+        and m.status == "active"
+        and _active_admin_count(session, organization_id) <= 1
+    ):
         raise TeamError("cannot remove the last active admin")
 
     # reassign owned obligations so nothing is orphaned (PRD edge case)
@@ -132,8 +172,10 @@ def remove_member(session: Session, *, organization_id, membership_id, reassign_
             raise TeamError("reassign_to is not an active member")
         res = session.execute(
             update(ObligationInstance)
-            .where(ObligationInstance.organization_id == organization_id,
-                   ObligationInstance.owner_user_id == m.user_id)
+            .where(
+                ObligationInstance.organization_id == organization_id,
+                ObligationInstance.owner_user_id == m.user_id,
+            )
             .values(owner_user_id=target_user)
         )
         reassigned = getattr(res, "rowcount", 0) or 0
@@ -141,17 +183,27 @@ def remove_member(session: Session, *, organization_id, membership_id, reassign_
         # no target -> unassign (surfaces as unowned for an admin to pick up)
         res = session.execute(
             update(ObligationInstance)
-            .where(ObligationInstance.organization_id == organization_id,
-                   ObligationInstance.owner_user_id == m.user_id)
+            .where(
+                ObligationInstance.organization_id == organization_id,
+                ObligationInstance.owner_user_id == m.user_id,
+            )
             .values(owner_user_id=None)
         )
         reassigned = getattr(res, "rowcount", 0) or 0
 
     m.status = "removed"
-    audit.record(session, action="member_removed", organization_id=organization_id,
-                 actor_user_id=actor, entity_type="membership", entity_id=str(m.id),
-                 meta={"reassigned_instances": reassigned,
-                       "reassigned_to": str(reassign_to) if reassign_to else None})
+    audit.record(
+        session,
+        action="member_removed",
+        organization_id=organization_id,
+        actor_user_id=actor,
+        entity_type="membership",
+        entity_id=str(m.id),
+        meta={
+            "reassigned_instances": reassigned,
+            "reassigned_to": str(reassign_to) if reassign_to else None,
+        },
+    )
     return {"membership_id": str(m.id), "status": "removed", "reassigned_instances": reassigned}
 
 
@@ -167,15 +219,18 @@ def _resolve_user(session: Session, organization_id, ident):
         return m.user_id
     # maybe a user id directly
     direct = session.execute(
-        select(Membership).where(Membership.user_id == ident,
-                                 Membership.organization_id == organization_id,
-                                 Membership.status == "active")
+        select(Membership).where(
+            Membership.user_id == ident,
+            Membership.organization_id == organization_id,
+            Membership.status == "active",
+        )
     ).scalar_one_or_none()
     return direct.user_id if direct else None
 
 
-def accept_invite(session: Session, *, token: str, password: str | None,
-                  full_name: str | None) -> dict:
+def accept_invite(
+    session: Session, *, token: str, password: str | None, full_name: str | None
+) -> dict:
     from app.core.db import set_tenant
     from app.core.security import (
         Principal,
@@ -183,6 +238,7 @@ def accept_invite(session: Session, *, token: str, password: str | None,
         decode_invite_token,
         verify_password,
     )
+
     claims = decode_invite_token(token)
     # The invite token carries its org — scope the session to it so the membership
     # read/update, entity read, and audit insert all satisfy RLS on Postgres. The
@@ -217,16 +273,31 @@ def accept_invite(session: Session, *, token: str, password: str | None,
     if full_name and not user.full_name:
         user.full_name = full_name
     membership.status = "active"
-    audit.record(session, action="invite_accepted",
-                 organization_id=membership.organization_id, actor_user_id=user.id,
-                 entity_type="membership", entity_id=str(membership.id), meta={})
+    audit.record(
+        session,
+        action="invite_accepted",
+        organization_id=membership.organization_id,
+        actor_user_id=user.id,
+        entity_type="membership",
+        entity_id=str(membership.id),
+        meta={},
+    )
 
-    entity = session.execute(
-        select(Entity).where(Entity.organization_id == membership.organization_id)
-    ).scalars().first()
-    principal = Principal(user_id=str(user.id), organization_id=str(membership.organization_id),
-                          role=membership.role, email=user.email)
-    return {"access_token": create_access_token(principal),
-            "organization_id": str(membership.organization_id),
-            "entity_id": str(entity.id) if entity else "", "role": membership.role,
-            "email": user.email}
+    entity = (
+        session.execute(select(Entity).where(Entity.organization_id == membership.organization_id))
+        .scalars()
+        .first()
+    )
+    principal = Principal(
+        user_id=str(user.id),
+        organization_id=str(membership.organization_id),
+        role=membership.role,
+        email=user.email,
+    )
+    return {
+        "access_token": create_access_token(principal),
+        "organization_id": str(membership.organization_id),
+        "entity_id": str(entity.id) if entity else "",
+        "role": membership.role,
+        "email": user.email,
+    }

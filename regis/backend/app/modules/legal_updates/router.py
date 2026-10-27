@@ -5,6 +5,7 @@ open to customer org admins (who must not inject content into other tenants'
 feeds). Listing computes a deterministic match verdict per org; review is
 admin/head only (PRD §10) — preparers do not review legal updates.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -30,7 +31,8 @@ def _publisher(principal: Principal = Depends(require_role("compliance_admin")))
     if not principal.email or principal.email.lower() not in allowed:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
-            "Publishing legal updates is restricted to the platform content team")
+            "Publishing legal updates is restricted to the platform content team",
+        )
     return principal
 
 
@@ -42,18 +44,24 @@ class PublishBody(BaseModel):
     published_date: date | None = None
     ai_summary: str | None = None
     ai_impact_note: str | None = None
-    raw_text: str | None = None   # if provided + model configured, summarized via seam
+    raw_text: str | None = None  # if provided + model configured, summarized via seam
 
 
 @router.post("")
-def publish(body: PublishBody, db: DbSession,
-            principal: Principal = Depends(_publisher)) -> dict:
+def publish(body: PublishBody, db: DbSession, principal: Principal = Depends(_publisher)) -> dict:
     u = svc.publish_update(
-        db, title=body.title, affects_filter=body.affects_filter, law_id=body.law_id,
-        source_url=body.source_url, published_date=body.published_date,
-        ai_summary=body.ai_summary, ai_impact_note=body.ai_impact_note,
-        raw_text=body.raw_text, actor_user_id=principal.user_id,
-        organization_id=principal.organization_id)
+        db,
+        title=body.title,
+        affects_filter=body.affects_filter,
+        law_id=body.law_id,
+        source_url=body.source_url,
+        published_date=body.published_date,
+        ai_summary=body.ai_summary,
+        ai_impact_note=body.ai_impact_note,
+        raw_text=body.raw_text,
+        actor_user_id=principal.user_id,
+        organization_id=principal.organization_id,
+    )
     return {"id": str(u.id), "title": u.title}
 
 
@@ -68,13 +76,22 @@ class ReviewBody(BaseModel):
 
 
 @router.post("/{update_id}/review")
-def review(update_id: str, body: ReviewBody, db: DbSession,
-           principal: Principal = Depends(_reviewer)) -> dict:
+def review(
+    update_id: str, body: ReviewBody, db: DbSession, principal: Principal = Depends(_reviewer)
+) -> dict:
     try:
-        row = svc.review_update(db, organization_id=principal.organization_id,
-                                legal_update_id=update_id, status=body.status,
-                                reviewed_by=principal.user_id, reason=body.reason)
+        row = svc.review_update(
+            db,
+            organization_id=principal.organization_id,
+            legal_update_id=update_id,
+            status=body.status,
+            reviewed_by=principal.user_id,
+            reason=body.reason,
+        )
     except ValueError as e:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, str(e)) from e
-    return {"legal_update_id": str(row.legal_update_id), "status": row.status,
-            "reviewed_at": (row.reviewed_at.isoformat() if row.reviewed_at else None)}
+    return {
+        "legal_update_id": str(row.legal_update_id),
+        "status": row.status,
+        "reviewed_at": (row.reviewed_at.isoformat() if row.reviewed_at else None),
+    }

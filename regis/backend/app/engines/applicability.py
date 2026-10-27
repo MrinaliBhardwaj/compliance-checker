@@ -12,6 +12,7 @@ The engine is deterministic and auditable. The LLM layer (profile
 extraction, rationale polish, review questions) sits AROUND this core
 and never overrides a deterministic decision.
 """
+
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
@@ -26,8 +27,8 @@ from typing import Any
 PROFILE_FIELDS = {
     # hard identity (high trust)
     "rbi_registered": bool,
-    "nbfc_category": str,        # "icc" | "nd_si" | "deposit_taking" | ...
-    "rbi_layer": str,            # "base" | "middle" | "upper"
+    "nbfc_category": str,  # "icc" | "nd_si" | "deposit_taking" | ...
+    "rbi_layer": str,  # "base" | "middle" | "upper"
     "deposit_taking": bool,
     "is_listed": bool,
     "has_listed_debt": bool,
@@ -35,9 +36,9 @@ PROFILE_FIELDS = {
     "turnover_cr": (int, float),
     "employee_count": int,
     "branch_count": int,
-    "operating_states": list,    # ["MH","KA",...]
+    "operating_states": list,  # ["MH","KA",...]
     "gst_registered": bool,
-    "gst_scheme": str,           # "regular" | "qrmp"
+    "gst_scheme": str,  # "regular" | "qrmp"
     "is_isd": bool,
     "esi_applicable": bool,
     # self-declared operational flags (softer -> may need review if absent)
@@ -62,10 +63,21 @@ PROFILE_FIELDS = {
 
 # Fields treated as "hard" (objective, asked directly, high trust when present)
 HARD_FIELDS = {
-    "rbi_registered", "nbfc_category", "rbi_layer", "deposit_taking",
-    "is_listed", "has_listed_debt", "asset_size_cr", "turnover_cr",
-    "employee_count", "branch_count", "operating_states",
-    "gst_registered", "gst_scheme", "is_isd", "esi_applicable",
+    "rbi_registered",
+    "nbfc_category",
+    "rbi_layer",
+    "deposit_taking",
+    "is_listed",
+    "has_listed_debt",
+    "asset_size_cr",
+    "turnover_cr",
+    "employee_count",
+    "branch_count",
+    "operating_states",
+    "gst_registered",
+    "gst_scheme",
+    "is_isd",
+    "esi_applicable",
 }
 
 # Alias map: rule-key shorthand -> profile field for irregular numeric mins
@@ -121,7 +133,7 @@ class ObligationResult:
     rationale: str
     conditions: list = field(default_factory=list)
     missing_fields: list = field(default_factory=list)
-    state: str | None = None          # set when expanded per state
+    state: str | None = None  # set when expanded per state
     template_verified: bool = True
 
 
@@ -137,7 +149,7 @@ def eval_condition(key: str, value: Any, profile: dict) -> ConditionResult:
 
     # 2. numeric min on *_min_cr  (asset_size_min_cr -> asset_size_cr)
     if key.endswith("_min_cr"):
-        pf_key = key.replace("_min", "")            # asset_size_min_cr -> asset_size_cr
+        pf_key = key.replace("_min", "")  # asset_size_min_cr -> asset_size_cr
         actual = profile.get(pf_key)
         if actual is None:
             return ConditionResult(key, ">=", value, None, False, missing=True)
@@ -199,7 +211,13 @@ def score_confidence(conds: list[ConditionResult], template_verified: bool) -> f
                 per.append(CONF_MISSING)
             elif c.near_boundary:
                 per.append(CONF_BOUNDARY)
-            elif c.key == "all" or c.key in HARD_FIELDS or c.key.replace("_min", "").replace("_cr", "") in {"asset_size", "turnover"} or c.key in MIN_ALIASES or c.key in STATE_KEYS:
+            elif (
+                c.key == "all"
+                or c.key in HARD_FIELDS
+                or c.key.replace("_min", "").replace("_cr", "") in {"asset_size", "turnover"}
+                or c.key in MIN_ALIASES
+                or c.key in STATE_KEYS
+            ):
                 per.append(CONF_HARD)
             else:
                 per.append(CONF_SOFT_PRESENT)
@@ -224,7 +242,9 @@ def build_rationale(decision: Decision, conds: list[ConditionResult]) -> str:
         if c.predicate == "intersects":
             parts.append(f"operates in {c.actual or 'no matching state'} (state-scoped)")
         elif c.predicate == ">=":
-            parts.append(f"{c.key.replace('_min_cr','').replace('_min','')} = {c.actual} {'>=' if c.passed else '<'} {c.expected}")
+            parts.append(
+                f"{c.key.replace('_min_cr','').replace('_min','')} = {c.actual} {'>=' if c.passed else '<'} {c.expected}"
+            )
         elif c.predicate == "in":
             parts.append(f"{c.key} = '{c.actual}' {'is' if c.passed else 'is not'} in {c.expected}")
         else:
@@ -263,9 +283,14 @@ def evaluate_template(tpl: dict, profile: dict) -> list[ObligationResult]:
     rationale = build_rationale(decision, conds)
 
     base = ObligationResult(
-        template_id=tpl["template_id"], title=tpl["title"], category=tpl["category"],
-        decision=decision.value, confidence=conf, rationale=rationale,
-        conditions=[asdict(c) for c in conds], missing_fields=missing,
+        template_id=tpl["template_id"],
+        title=tpl["title"],
+        category=tpl["category"],
+        decision=decision.value,
+        confidence=conf,
+        rationale=rationale,
+        conditions=[asdict(c) for c in conds],
+        missing_fields=missing,
         template_verified=template_verified,
     )
 
@@ -337,6 +362,6 @@ def diff_universe(old_ids: set[str], new_result: dict) -> dict:
     new_ids = {r["template_id"] for r in new_result["applicable"]}
     return {
         "added": sorted(new_ids - old_ids),
-        "removed": sorted(old_ids - new_ids),   # deactivate (is_active=False), never delete
+        "removed": sorted(old_ids - new_ids),  # deactivate (is_active=False), never delete
         "unchanged": sorted(new_ids & old_ids),
     }

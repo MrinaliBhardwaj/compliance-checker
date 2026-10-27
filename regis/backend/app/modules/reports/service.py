@@ -6,6 +6,7 @@ from rows, and the `provisional` banner reflects the DRAFT_UNVERIFIED content ga
 The same effective-status logic as the dashboard (overdue evaluated on read) so the
 report and the live view never disagree.
 """
+
 from __future__ import annotations
 
 from collections import Counter, defaultdict
@@ -23,15 +24,18 @@ from app.modules.obligations.lifecycle import STORED_OPEN, effective_status
 LIBRARY_VERSION = "0.1-draft"
 
 
-def build_compliance_report(session: Session, *, organization_id, today: date,
-                            entity_id=None) -> dict:
+def build_compliance_report(
+    session: Session, *, organization_id, today: date, entity_id=None
+) -> dict:
     org = session.get(Organization, organization_id)
     entity = session.get(Entity, entity_id) if entity_id else None
 
-    q = (select(ObligationInstance, CompanyObligation, ObligationTemplate)
-         .join(CompanyObligation, ObligationInstance.company_obligation_id == CompanyObligation.id)
-         .join(ObligationTemplate, CompanyObligation.template_id == ObligationTemplate.template_id)
-         .where(ObligationInstance.organization_id == organization_id))
+    q = (
+        select(ObligationInstance, CompanyObligation, ObligationTemplate)
+        .join(CompanyObligation, ObligationInstance.company_obligation_id == CompanyObligation.id)
+        .join(ObligationTemplate, CompanyObligation.template_id == ObligationTemplate.template_id)
+        .where(ObligationInstance.organization_id == organization_id)
+    )
     if entity_id:
         q = q.where(CompanyObligation.entity_id == entity_id)
     triples = session.execute(q).all()
@@ -59,10 +63,15 @@ def build_compliance_report(session: Session, *, organization_id, today: date,
         by_category[tpl.category][eff] += 1
         if tpl.verification_status != "VERIFIED":
             provisional = True
-        item = {"period_label": inst.period_label, "title": tpl.title,
-                "category": tpl.category, "form_reference": tpl.form_reference,
-                "due_date": inst.due_date.isoformat() if inst.due_date else None,
-                "status": eff, "risk_level": tpl.risk_level}
+        item = {
+            "period_label": inst.period_label,
+            "title": tpl.title,
+            "category": tpl.category,
+            "form_reference": tpl.form_reference,
+            "due_date": inst.due_date.isoformat() if inst.due_date else None,
+            "status": eff,
+            "risk_level": tpl.risk_level,
+        }
         if eff == "overdue":
             overdue.append(item)
         elif eff in STORED_OPEN and inst.due_date and today <= inst.due_date <= week:
@@ -89,8 +98,12 @@ def build_compliance_report(session: Session, *, organization_id, today: date,
         "provisional": provisional,  # DRAFT_UNVERIFIED content gate -> shown as provisional
         "health_score": health,
         "totals": {"instances": len(triples), "by_status": dict(by_status)},
-        "tiles": {"overdue": n_overdue, "due_this_week": len(due_week),
-                  "awaiting_review": len(awaiting), "completed": by_status.get("completed", 0)},
+        "tiles": {
+            "overdue": n_overdue,
+            "due_this_week": len(due_week),
+            "awaiting_review": len(awaiting),
+            "completed": by_status.get("completed", 0),
+        },
         "narrative": narrative,
         "by_category": {k: dict(v) for k, v in by_category.items()},
         "sections": {

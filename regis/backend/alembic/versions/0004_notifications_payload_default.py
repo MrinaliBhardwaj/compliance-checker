@@ -7,6 +7,7 @@ Create Date: 2026-09-08
 Sets a server-side default for the `payload` JSONB column so raw SQL
 inserts that omit the column receive an empty JSON object instead of NULL.
 """
+
 from __future__ import annotations
 
 from alembic import op

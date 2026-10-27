@@ -6,6 +6,7 @@ Calendar support (spec additions): holiday_calendar + event_listeners.
 - event_listeners registers the event-driven obligations (21 in the golden run)
   that are NOT pre-generated; an instance is created when the event fires.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -36,9 +37,11 @@ class EventListener(Base):
 
     id: Mapped[uuid.UUID] = uuid_pk()
     company_obligation_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("company_obligations.id", ondelete="CASCADE"), index=True, nullable=False)
+        ForeignKey("company_obligations.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     organization_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("organizations.id", ondelete="CASCADE"), index=True, nullable=False)
+        ForeignKey("organizations.id", ondelete="CASCADE"), index=True, nullable=False
+    )
     due_rule_type: Mapped[str] = mapped_column(String(40))  # days_after_event|before_event|...
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = created_at_col()

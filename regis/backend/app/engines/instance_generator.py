@@ -17,6 +17,7 @@ When absent it falls back to DEFAULT_HOLIDAYS (identical to the reference set),
 so the golden 367/92 figures reproduce exactly. The job layer passes the
 DB-backed holiday_calendar in production.
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -28,7 +29,7 @@ from datetime import date, timedelta
 # ---------------------------------------------------------------------------
 # Calendar context
 # ---------------------------------------------------------------------------
-FY_START_MONTH = 4                      # India FY = 1 Apr - 31 Mar
+FY_START_MONTH = 4  # India FY = 1 Apr - 31 Mar
 QUARTER_ENDS = [(3, 31), (6, 30), (9, 30), (12, 31)]
 TDS_QUARTER_ENDS = [(6, 30), (9, 30), (12, 31), (3, 31)]  # IT TDS quarters
 
@@ -36,13 +37,18 @@ TDS_QUARTER_ENDS = [(6, 30), (9, 30), (12, 31), (3, 31)]  # IT TDS quarters
 # This is the reference's HOLIDAYS_2026_27 and is the DEFAULT used by the golden
 # regression so the 92-adjusted figure is reproducible.
 DEFAULT_HOLIDAYS = {
-    date(2026, 8, 15), date(2026, 10, 2), date(2026, 10, 20),
-    date(2027, 1, 26), date(2027, 3, 25),
+    date(2026, 8, 15),
+    date(2026, 10, 2),
+    date(2026, 10, 20),
+    date(2027, 1, 26),
+    date(2027, 3, 25),
 }
 
 # Active holiday set for the current generation call (swapped in by
 # generate_instances when ctx carries a holiday calendar; restored after).
-_ACTIVE_HOLIDAYS: contextvars.ContextVar[frozenset[date]] = contextvars.ContextVar('_ACTIVE_HOLIDAYS', default=frozenset(DEFAULT_HOLIDAYS))
+_ACTIVE_HOLIDAYS: contextvars.ContextVar[frozenset[date]] = contextvars.ContextVar(
+    "_ACTIVE_HOLIDAYS", default=frozenset(DEFAULT_HOLIDAYS)
+)
 
 
 def is_working_day(d: date) -> bool:
@@ -85,7 +91,7 @@ class Instance:
     status: str = "pending"
     working_day_adjusted: bool = False
     generation_source: str = "scheduled"
-    anchor: str | None = None           # dependency anchor description
+    anchor: str | None = None  # dependency anchor description
     owner_role: str = "preparer"
     risk_level: str = "medium"
 
@@ -102,7 +108,7 @@ def gen_day_of_month(dr, ctx):
     out = []
     y, m = ctx["window_start"].year, ctx["window_start"].month
     for _ in range(15):  # walk months across the window
-        py, pm = y, m                        # the period month
+        py, pm = y, m  # the period month
         ay, am = add_months(py, pm, dr.get("offset_month", 0))
         day = min(dr["day"], monthrange(ay, am)[1])
         due = date(ay, am, day)
@@ -132,7 +138,7 @@ def gen_days_after_month_end(dr, ctx):
 def gen_days_after_quarter_end(dr, ctx):
     out = []
     for y in range(ctx["window_start"].year, ctx["window_end"].year + 1):
-        for (qm, qd) in QUARTER_ENDS:
+        for qm, qd in QUARTER_ENDS:
             qend = date(y, qm, qd)
             days = dr["days"]
             # year-end quarter may carry a longer window (annual_days)
@@ -160,7 +166,9 @@ def gen_days_after_fortnight_end(dr, ctx):
 def gen_weekly(dr, ctx):
     out = []
     d = ctx["window_start"]
-    target = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4}[dr["day_of_week"]]
+    target = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4}[
+        dr["day_of_week"]
+    ]
     while d.weekday() != target:
         d += timedelta(days=1)
     while d <= ctx["window_end"]:
@@ -221,10 +229,21 @@ def gen_msme(dr, ctx):
 def gen_state_specific(dr, ctx):
     # half-yearly via common_dates, else monthly via default_day
     if "common_dates" in dr:
-        return _date_list({"dates": dr["common_dates"],
-                           "working_day_adjustment": dr.get("working_day_adjustment")}, ctx)
-    return gen_day_of_month({"day": dr["default_day"], "offset_month": dr.get("offset_month", 1),
-                             "working_day_adjustment": dr.get("working_day_adjustment")}, ctx)
+        return _date_list(
+            {
+                "dates": dr["common_dates"],
+                "working_day_adjustment": dr.get("working_day_adjustment"),
+            },
+            ctx,
+        )
+    return gen_day_of_month(
+        {
+            "day": dr["default_day"],
+            "offset_month": dr.get("offset_month", 1),
+            "working_day_adjustment": dr.get("working_day_adjustment"),
+        },
+        ctx,
+    )
 
 
 def gen_max_gap(dr, ctx):
@@ -261,7 +280,7 @@ def gen_first_bm(dr, ctx):
 def gen_days_after_anchor(dr, ctx, anchor_key, label):
     anchor = ctx["anchors"].get(anchor_key)
     if not anchor:
-        return [(f"{label}-AWAIT", None, False)]   # parked until anchor known
+        return [(f"{label}-AWAIT", None, False)]  # parked until anchor known
     due = anchor + timedelta(days=dr["days"])
     due, adj = adjust(due, dr.get("working_day_adjustment"))
     return [(f"{label}-{anchor.isoformat()}", due, adj)] if _in_window(due, ctx) else []
@@ -302,9 +321,16 @@ ANCHORED = {
     "days_after_tds_return": ("tds_return_date", "TDSCERT"),
 }
 # event-driven types -> NOT generated on a schedule (created on event)
-EVENT_DRIVEN = {"days_after_event", "before_event", "hours_after_event",
-                "around_due_date", "days_after_account_open",
-                "per_loan_disbursal", "per_rate_reset", "risk_based_periodic"}
+EVENT_DRIVEN = {
+    "days_after_event",
+    "before_event",
+    "hours_after_event",
+    "around_due_date",
+    "days_after_account_open",
+    "per_loan_disbursal",
+    "per_rate_reset",
+    "risk_based_periodic",
+}
 # continuous controls -> no dated instances (perpetual)
 CONTINUOUS = {"continuous"}
 
@@ -331,9 +357,12 @@ def generate_instances(company_obligations: list[dict], ctx: dict) -> dict:
         for co in company_obligations:
             dr = co["due_rule"]
             t = dr.get("type")
-            meta = dict(company_obligation_id=co["company_obligation_id"],
-                        template_id=co["template_id"], owner_role=co.get("owner_role", "preparer"),
-                        risk_level=co.get("risk_level", "medium"))
+            meta = dict(
+                company_obligation_id=co["company_obligation_id"],
+                template_id=co["template_id"],
+                owner_role=co.get("owner_role", "preparer"),
+                risk_level=co.get("risk_level", "medium"),
+            )
             cctx = {**ctx, "state": co.get("state")}
 
             if t in EVENT_DRIVEN:
@@ -348,7 +377,9 @@ def generate_instances(company_obligations: list[dict], ctx: dict) -> dict:
             elif t in GOV_ANNUAL:
                 rows = gen_annual_fy(dr, cctx, label="REVIEW")
             elif t in GOV_QUARTERLY:
-                rows = gen_days_after_quarter_end({"days": 30, "working_day_adjustment": "next"}, cctx)
+                rows = gen_days_after_quarter_end(
+                    {"days": 30, "working_day_adjustment": "next"}, cctx
+                )
             elif t in ANCHORED:
                 akey, lbl = ANCHORED[t]
                 rows = gen_days_after_anchor(dr, cctx, akey, lbl)
@@ -359,21 +390,33 @@ def generate_instances(company_obligations: list[dict], ctx: dict) -> dict:
                 if due is None:
                     parked.append((co["template_id"], label))
                     continue
-                instances.append(Instance(due_date=due.isoformat(), period_label=label,
-                                          working_day_adjusted=adj, anchor=cctx.get("state"),
-                                          **meta))
+                instances.append(
+                    Instance(
+                        due_date=due.isoformat(),
+                        period_label=label,
+                        working_day_adjusted=adj,
+                        anchor=cctx.get("state"),
+                        **meta,
+                    )
+                )
 
         instances.sort(key=lambda i: i.due_date)
-        return {"instances": instances, "event_driven": event_driven,
-                "continuous": continuous, "parked": parked}
+        return {
+            "instances": instances,
+            "event_driven": event_driven,
+            "continuous": continuous,
+            "parked": parked,
+        }
 
 
 # ---------------------------------------------------------------------------
 # Overdue sweep + reminder schedule (pure functions for the daily job)
 # ---------------------------------------------------------------------------
 def is_overdue(inst: Instance, today: date) -> bool:
-    return (inst.status not in ("completed", "not_applicable")
-            and date.fromisoformat(inst.due_date) < today)
+    return (
+        inst.status not in ("completed", "not_applicable")
+        and date.fromisoformat(inst.due_date) < today
+    )
 
 
 def reminder_schedule(due: date, lead_days=(7, 3, 1), overdue_days=(1, 3, 7)) -> dict:

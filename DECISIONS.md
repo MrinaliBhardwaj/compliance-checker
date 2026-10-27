@@ -259,3 +259,25 @@ unchanged; everything here is about decision-making, trust and error prevention.
      variants manually.
   4. `node.screenshot()` does not render absolutely-positioned overlays (a modal scrim
      looked absent when it was correct). Use the `get_screenshot` tool to verify those.
+
+## 2026-10-27 — CI enforces what the 2026-09-08 entry claimed
+
+- **Correction:** the 2026-09-08 entry said CI enforced black, isort and mypy. It
+  didn't. Those checks lived in `regis/.github/workflows/ci.yml`, and GitHub ignores
+  workflows below the repo root, so they never ran (87 of 104 files had drifted
+  from black). The root workflow ran ruff, pytest and the frontend build only.
+- **Now:** the root `.github/workflows/ci.yml` is the only workflow. The backend job
+  runs ruff → black --check → isort --check-only → mypy → pytest (with the live
+  Postgres RLS tests), and the frontend job runs `npm run build`. The nested
+  workflow is deleted, and `make ci-check` no longer ends in `|| true`.
+- **Black is pinned `>=26.1,<27`.** Its stable style changes with each January major
+  release, so an open upper bound would turn CI red with no code change. Bump it
+  deliberately, with a formatting-only commit.
+- **isort and ruff both treat `alembic` as third-party** (`known_third_party` /
+  `known-third-party`), so the local `alembic/` migrations dir doesn't make them
+  disagree on import order.
+- **Triggers are unchanged:** push to `main` and pull requests. Branches such as
+  `testing` / `Final_Work` are checked only when a PR is opened.
+- **Overdue is computed on read, never stored** (`lifecycle.effective_status`, BUG-04).
+  The worker writes no status; migration 0007 reset previously stored `overdue` rows,
+  per org under RLS.

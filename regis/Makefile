@@ -42,4 +42,4 @@ build-frontend:
 	cd frontend && $(NPM) ci && $(NPM) run build
 
 ci-check:
-	cd $(BACKEND) && ruff check . && black --check . && isort --check-only . && python -m mypy app || true
+	cd $(BACKEND) && ruff check . && black --check . && isort --check-only . && python -m mypy app

@@ -41,6 +41,12 @@ jobs:
           psql -h localhost -U postgres -c "CREATE DATABASE regis_test OWNER regis;"
       - name: Lint (ruff)
         run: ruff check .
+      - name: Format (black)
+        run: black --check .
+      - name: Imports (isort)
+        run: isort --check-only .
+      - name: Types (mypy)
+        run: python -m mypy app
       - name: Tests + coverage (includes live-Postgres RLS hardening)
         env:
           REGIS_TEST_PG_URL: postgresql+psycopg://regis:regis@localhost:5432/regis_test

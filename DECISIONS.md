@@ -316,3 +316,30 @@ unchanged; everything here is about decision-making, trust and error prevention.
 - **Why not a hard block:** signup creates exactly one admin, so a hard rule would leave
   a brand-new org unable to complete anything until it invites a second member.
   Recording the exception keeps small orgs working and gives auditors the signal.
+
+## 2026-10-28 — Settled behaviours (BUG-24, 25, 26, 27, 32)
+
+- **The JWT in auth responses is for API clients (BUG-24).** `/auth/signup`, `/login`
+  and `/accept` return `access_token` for scripts, tests and integrations, which send
+  it as `Authorization: Bearer`. The browser app never reads it: its session is the
+  httpOnly `regis_session` cookie. So "never exposed to JS" holds for the web app, not
+  for API clients. The token alone grants nothing beyond the caller's *current*
+  membership, which is re-checked on every request.
+- **Mark N/A is allowed from any open state, including `ready_for_review` (BUG-25).**
+  An admin may decide an obligation doesn't apply after work started or was submitted
+  (e.g. a branch closed mid-cycle). It always needs an 8+ character reason, and reopen
+  undoes it.
+- **The evidence gate checks the *primary* evidence type, on approve only (BUG-26).**
+  This matches the document-intelligence spec: completion needs the primary proof
+  (e.g. the challan), and supporting items count towards completeness % but don't
+  block. Submit is ungated on purpose: the checker, not the maker, enforces evidence.
+  An admin can override the gate, with a reason, and it's audited.
+- **Entity matching on evidence is identifier-substring based (BUG-27), a known
+  limitation.** Entities hold PAN and CIN but not GSTIN or TAN, so GST and TDS
+  documents match because a GSTIN embeds the PAN. Exact matching needs GSTIN/TAN
+  columns on `entities`. Until then an override (reason required, audited) covers the
+  edge cases.
+- **Rule for system audit events (BUG-32).** Policy 0005 lets `organization_id IS NULL`
+  rows through the tenant USING clause, so a NULL-org audit row would be visible to
+  every tenant. Nothing writes one today. If system-level events are added, give them
+  their own table or read path; never write NULL-org rows to `audit_log`.

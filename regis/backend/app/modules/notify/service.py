@@ -154,7 +154,9 @@ def emit(
     )
     if delivered:
         row.sent_at = datetime.now(UTC)
-    payload["delivered"] = delivered
+    # Reassign rather than mutate: a plain JSON column doesn't track in-place changes,
+    # so `payload["delivered"] = ...` after the INSERT never reached the database.
+    row.payload = {**payload, "delivered": delivered}
     return row
 
 

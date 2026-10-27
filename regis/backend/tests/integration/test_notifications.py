@@ -254,3 +254,25 @@ def test_escalations_skip_removed_and_invited_members(db, seeded_org, profile_b)
     )
     assert seeded_org["user_id"] in recipients
     assert not set(ghosts) & set(recipients)
+
+
+def test_delivered_flag_is_persisted(db, seeded_org):
+    """BUG-28: emit() mutated payload['delivered'] after the INSERT, and a plain JSON
+    column doesn't track in-place changes, so the flag never reached the database."""
+    from app.modules.notify.service import emit
+
+    row = emit(
+        db,
+        organization_id=seeded_org["org_id"],
+        user_id=seeded_org["user_id"],
+        type_="reminder",
+        channel="email",
+        payload={"kind": "pre_due"},
+        to_email="x@acme.example",
+        subject="s",
+        body="b",
+    )
+    db.commit()
+    db.expire_all()
+    stored = db.get(Notification, row.id)
+    assert "delivered" in stored.payload and stored.payload["kind"] == "pre_due"

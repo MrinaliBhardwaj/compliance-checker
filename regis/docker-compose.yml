@@ -61,7 +61,8 @@ services:
       REGIS_JWT_SECRET: dev-only-change-me
     ports: ["8000:8000"]
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/ready || exit 1"]
+      # python:3.12-slim has no curl; urlopen raises (exit 1) on a non-2xx response.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready', timeout=4)"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -82,12 +83,17 @@ services:
       REGIS_REDIS_URL: redis://redis:6379/0
     command: ["arq", "app.jobs.worker.WorkerSettings"]
 
-  # Optional helper to run demo script inside the backend container
+  # Optional helper to run demo script inside the backend container. It repeats the
+  # api's boot, so it only starts on request: `docker compose --profile demo up demo`.
   demo:
     build: ./backend
+    profiles: ["demo"]
     depends_on:
-      - postgres
-      - redis
+      postgres: {condition: service_healthy}
+      redis: {condition: service_started}
+    environment:
+      REGIS_DATABASE_URL: postgresql+psycopg://regis:regis@postgres:5432/regis
+      REGIS_REDIS_URL: redis://redis:6379/0
     entrypoint: ["/bin/sh","-c","/app/scripts/demo.sh"]
 
 volumes:

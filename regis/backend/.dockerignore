@@ -1,0 +1,13 @@
+# Keep local state, secrets and caches out of the image (COPY . .).
+.env
+.env.*
+!.env.example
+*.db
+.regis_storage/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+**/__pycache__/
+*.egg-info/
+tests/

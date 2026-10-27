@@ -1,6 +1,7 @@
 # BUILD_PLAN — Regis (NBFC Compliance Platform, Phase 1)
 
-> Status: **proposal for review.** No implementation code until this is approved.
+> Status: **approved and implemented (Phase 1).** Kept as the original plan and its
+> rationale; for what was actually built, see `README.md` and `regis/README.md`.
 > Scope: Phase 1 MVP per `phase1_mvp_prd.md`. Phase 2/3 features in the PRD "out of scope" list are **not** built.
 > Source of truth for engine logic: the six reference `.py` files in `/Compliance docs`. They are **ported and hardened, not redesigned.**
 

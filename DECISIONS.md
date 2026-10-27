@@ -281,3 +281,28 @@ unchanged; everything here is about decision-making, trust and error prevention.
 - **Overdue is computed on read, never stored** (`lifecycle.effective_status`, BUG-04).
   The worker writes no status; migration 0007 reset previously stored `overdue` rows,
   per org under RLS.
+
+## 2026-10-27 — Corrected metrics, and decisions from the P1 pass
+
+- **Correction to the 2026-07-11 "verified metrics"** (137 tests / 84% / 34 endpoints
+  / 27 tables). Measured from the code on this date: **19** tables in
+  `Base.metadata`, **41** API endpoints across **10** modules plus `/health`,
+  `/ready` and `/metrics`, **165** tests (160 everywhere + 5 Postgres-only), and
+  **85%** coverage. The READMEs and the presentation now use these numbers.
+- **A new calendar is tracked from the onboarding date.** With no explicit window,
+  generation covers the current Indian FY (plus the next one in its last 60 days);
+  instances that fell due before onboarding aren't created (they're reported as
+  `not_tracked`); and anchor dates are never invented: dependents of an unknown
+  AGM / TDS-return / licence date park until given. A monthly worker job rolls
+  calendars into the next FY. The golden tests still pass an explicit window.
+- **Authorization is re-read per request.** The JWT identifies the user; the active
+  membership decides the role. Removal and demotion take effect immediately, not when
+  the token expires.
+- **Audit reasons are enforced by the API** (8+ characters) for reject, mark-N/A,
+  reopen, evidence-gate override and override-linking. The UI check is a convenience,
+  not the control.
+- **Copilot wording:** it is deterministic and structured-first; the RAG seam over
+  regulatory text (Qdrant) is stubbed. Docs and slides say so until it is wired.
+- **Open:** maker ≠ checker (self-approval) is not enforced yet. It needs a decision for
+  single-admin orgs: require a second member, or allow an audited self-approval with a
+  mandatory reason.

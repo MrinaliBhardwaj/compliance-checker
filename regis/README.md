@@ -16,8 +16,9 @@ replacing weeks of spreadsheet setup.
 
 ## What's built (and proven)
 
-The four verified reference engines are ported **verbatim** into `backend/app/engines/`
-and locked behind regression tests reproducing every quoted figure:
+The verified reference engines are ported and adapted into `backend/app/engines/`
+(the code differs from `Compliance docs/`), and their behaviour is locked by golden
+regression tests reproducing every quoted figure:
 
 | Engine | Golden result (test-locked) |
 |---|---|
@@ -33,21 +34,23 @@ chain, and a FastAPI modular monolith covering the full Phase-1 surface:
 
 | Module | What it does |
 |---|---|
-| Auth | self-serve signup/login, JWT, RBAC, provider-agnostic (SSO-ready) |
+| Auth | self-serve signup/login, httpOnly-cookie JWT, RBAC re-checked against the membership on every request; SSO planned |
 | Onboarding | profile preview (provenance + gaps) → human-confirmed calendar generation |
 | Obligations | tracker, dashboard, **Maker-Checker lifecycle** (assign/start/submit/approve/reject/mark-NA/reopen) |
 | Evidence | upload → AI classify/extract (optional seam) → human-confirmed link → completeness gate |
 | Notifications | risk-weighted reminders, overdue escalation ladder, assignment + review routing (email/Slack seam) |
 | Reports | board-ready compliance status as JSON/HTML/**PDF** (pluggable engine + dependency-free fallback) |
 | Legal updates | curated feed, optional AI summary, **deterministic applicability match reusing the obligation engine** |
-| Copilot | read-only, structured-first, grounded-or-silent Q&A; escalates action/legal-opinion requests |
+| Copilot | read-only, deterministic, structured-first, grounded-or-silent Q&A; escalates action/legal-opinion requests. The RAG seam (`app/ai/rag.py`, Qdrant) is stubbed and not called yet |
 
-Background: an Arq worker runs the nightly overdue sweep + idempotent reminder
-dispatch. Frontend: Next.js scaffold (login · onboarding · dashboard + Copilot ·
-legal updates · PDF export).
+Background: an Arq worker counts overdue items nightly (overdue is computed on read,
+never stored), dispatches reminders and escalations idempotently, and rolls each
+calendar into the next FY in its last 60 days. Frontend: Next.js 14 app — onboarding,
+dashboard, obligations tracker with Maker-Checker sheet, evidence, team and invites,
+notifications, legal updates, audit trail, reports, command palette and Copilot.
 
 ```
-Test status: 113 passed, 2 skipped (Postgres-only RLS/append-only tests).
+Test status: 160 passed, 5 skipped (Postgres-only RLS/append-only tests; 165 pass with Postgres).
 ```
 
 ## Repository layout
@@ -55,18 +58,18 @@ Test status: 113 passed, 2 skipped (Postgres-only RLS/append-only tests).
 ```
 regis/
 ├─ backend/                 FastAPI modular monolith (Python 3.12)
-│  ├─ app/engines/          ← ported verbatim from the verified references (pure, deterministic)
-│  ├─ app/ai/               LLM / OCR / RAG seams (graceful offline fallback)
+│  ├─ app/engines/          ← ported from the verified references (pure, deterministic, golden-locked)
+│  ├─ app/ai/               LLM / OCR seams (graceful offline fallback); RAG stub, not wired
 │  ├─ app/models/           SQLAlchemy models (1:1 with migrations)
-│  ├─ app/modules/          auth · onboarding · obligations · documents · notify · reports · legal_updates · copilot
-│  ├─ app/jobs/             Arq worker (nightly sweep, overdue, reminders)
+│  ├─ app/modules/          auth · team · onboarding · obligations · documents · notify · reports · legal_updates · copilot · audit
+│  ├─ app/jobs/             Arq worker (overdue count, reminders/escalations, FY roll-over)
 │  ├─ app/seed/             obligation-library loader + CLI
 │  ├─ alembic/              migrations (baseline + RLS/append-only hardening)
-│  └─ tests/                golden (the contract) · unit · integration · api
-├─ frontend/                Next.js 14 App Router (login · onboarding · dashboard + Copilot)
+│  └─ tests/                golden (the contract) · unit · integration (incl. HTTP API smoke)
+├─ frontend/                Next.js 14 App Router (the full Phase-1 UI)
 ├─ infra/terraform/         AWS ap-south-1 topology (README; modules to author)
 ├─ shared/openapi.json      generated API contract
-└─ docker-compose.yml       postgres · redis · minio(S3) · qdrant · api · worker
+└─ docker-compose.yml       postgres · redis · minio · qdrant · api · worker (no frontend service)
 ```
 
 ## Quick start
@@ -75,14 +78,17 @@ regis/
 ```bash
 cd backend
 pip install -e ".[dev]"
-python -m pytest -q            # 69 passed, 2 skipped
+python -m pytest -q            # 160 passed, 5 skipped
 ```
 
 ### Run the full stack (Docker)
 ```bash
 docker compose up --build       # api on :8000 (migrates + seeds on boot), worker, db, redis, minio, qdrant
-# API docs: http://localhost:8000/docs
+# API docs: http://localhost:8000/docs   — then run the frontend (below) for the UI
 ```
+
+Evidence files are kept on the `evidence` volume. MinIO and Qdrant start but aren't
+used yet: storage is local outside `REGIS_ENV=prod`, and the Copilot is deterministic.
 
 ### Developer helpers
 
@@ -136,7 +142,9 @@ npm install && npm run dev      # http://localhost:3000  (proxies /api -> :8000)
 ### Verify the Postgres-only guarantees (RLS + append-only audit)
 ```bash
 cd backend
-REGIS_TEST_PG_URL=postgresql+psycopg://regis:regis@localhost:5432/regis_test \
+# regis_app is the non-superuser that compose's postgres-init creates. Don't use
+# `regis` (the compose superuser): superusers bypass RLS, even with FORCE.
+REGIS_TEST_PG_URL=postgresql+psycopg://regis_app:regis_app_pw@localhost:5432/regis_test \
   python -m pytest tests/integration/test_postgres_hardening.py -q
 ```
 
@@ -157,16 +165,16 @@ REGIS_TEST_PG_URL=postgresql+psycopg://regis:regis@localhost:5432/regis_test \
 - **Backend:** FastAPI with SQLAlchemy 2 and Alembic migrations; runtime on Python 3.11/3.12. The backend enforces tenant isolation at the DB layer using Postgres Row-Level Security (RLS).
 - **Database hardening:** RLS for tenant isolation, `FORCE ROW LEVEL SECURITY` on production, and append-only `audit_log` enforced by a DB trigger (see `backend/alembic/versions/0002_rls_and_append_only_audit.py`). These are the key defensive guarantees: application code cannot bypass tenant boundaries even under bugs.
 - **Authentication & session scope:** The app sets session GUCs `app.current_org` and `app.bootstrap` for tenant-aware queries; tests must run as a non-superuser role because Postgres superusers bypass RLS.
-- **Testing strategy:** Three test tiers exist: unit, golden (regression-locked engine outputs), and integration (Postgres-backed). Integration tests that verify RLS/append-only behavior run against a real Postgres instance and the CI creates a non-superuser `regis_app` role and `regis_test` DB before applying migrations.
-- **Formatting & quality:** Backend uses `ruff`, `black`, `isort` and `mypy` for linting, formatting and type checks; the CI workflow enforces these checks and runs frontend `next build` to ensure TypeScript correctness.
+- **Testing strategy:** Three test tiers exist: unit, golden (regression-locked engine outputs), and integration (Postgres-backed). Integration tests that verify RLS/append-only behavior run against a real Postgres instance; CI creates a non-superuser role and a `regis_test` DB for them (locally, compose's `postgres-init` creates `regis_app`).
+- **Formatting & quality:** Backend uses `ruff`, `black`, `isort` and `mypy`. The repo-root workflow (`.github/workflows/ci.yml`) enforces all four, runs pytest including the live-Postgres RLS tests, and builds the frontend (`next build`, which type-checks). It runs on pushes to `main` and on pull requests.
 
 
 ## Stack decisions (made during the build)
 
 - **Python/FastAPI backend** — keeps the verified engines bit-for-bit; regression tests pass day one.
 - **Arq on Redis** — async-native job runner (vs BullMQ; follows from the Python choice).
-- **Qdrant** — vector store, data-residency clean for ap-south-1.
-- **FastAPI JWT auth, provider-agnostic** — self-contained for dev; SSO-ready.
+- **Qdrant** — chosen vector store (data-residency clean for ap-south-1); provisioned in compose, not yet wired to the Copilot.
+- **FastAPI JWT auth** — self-contained; `users.auth_provider` leaves room for SSO, which is planned, not built.
 
 ## Out of scope (Phase 1, per PRD — deliberately not built)
 

@@ -17,9 +17,10 @@
 - FastAPI backend (Python 3.11/3.12)
 - Postgres with RLS + append-only `audit_log`
 - Next.js frontend
-- Arq worker + Redis
-- Qdrant for vector search (Copilot RAG)
-- MinIO for local S3-compatible storage
+- Arq worker + Redis (overdue count, reminders/escalations, FY roll-over)
+- Copilot: deterministic and structured-first over the org's own data; RAG over
+  regulatory text (Qdrant) is a stubbed seam, planned next
+- Evidence on local storage (a Docker volume); S3/MinIO adapter planned for prod
 
 ## Slide 5 — Key design choices
 - DB-enforced tenant isolation (RLS) — security at the data layer.
@@ -28,17 +29,21 @@
 - Verification via golden tests for deterministic engines.
 
 ## Slide 6 — Demo steps
-1. Start local stack: `docker compose up -d postgres redis minio qdrant`
-2. Create test DB + role (or use compose `db_init`):
-   - `psql -U regis -c "CREATE ROLE regis_app WITH LOGIN PASSWORD 'regis_app_pw'"`
-   - `psql -U regis -c "CREATE DATABASE regis_test OWNER regis_app"`
-3. Apply migrations & seed: `cd backend && alembic upgrade head && python -m app.seed.cli`
-4. Start API: `uvicorn app.main:app --reload`
-5. Open `http://localhost:3000` (frontend) or `http://localhost:8000/docs` (API)
+1. Start the stack (from `regis/`): `docker compose up --build -d`. The API migrates
+   and seeds on boot (29 laws, 106 obligation templates), and `postgres-init` creates
+   the non-superuser `regis_app` role and `regis_test` DB.
+2. Start the UI: `cd frontend && npm install && npm run dev`
+3. Open `http://localhost:3000`, sign up, and run onboarding. The calendar is tracked
+   from today, with nothing overdue on day one, and filings that need a date you
+   haven't given (AGM, licence expiry) wait as "awaiting a date".
+4. API docs: `http://localhost:8000/docs`
 
 ## Slide 7 — Tests & CI
-- Local: `pytest` runs unit, golden, and integration tests.
-- CI: GitHub Actions runs ruff/black/isort/mypy, alembic migrations, and pytest against Postgres.
+- Local: `pytest` runs unit, golden, and integration tests (160 pass, plus 5 that
+  need Postgres; all 165 pass with it). Coverage 85%.
+- CI (GitHub Actions, on PRs and pushes to `main`): ruff, black, isort, mypy, then
+  pytest including the live-Postgres RLS tests (run as a non-superuser), and the
+  frontend build.
 
 ## Slide 8 — Evaluation criteria
 - Correctness: golden tests reproduce verified outputs.

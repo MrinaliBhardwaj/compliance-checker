@@ -17,11 +17,11 @@ a content-team flag flips it.
 |---|---|
 | Rule engines | **5** deterministic engines — applicability, instance generation, profile extraction, document intelligence, copilot — locked behind golden regression tests |
 | Obligation library | **106** obligation templates spanning **29** Indian laws (RBI, Companies Act, GST, FEMA, labour, tax) |
-| Calendar generation | one profile → **367+** dated obligation instances, working-day adjusted, in **< 2s** end-to-end over HTTP |
+| Calendar generation | the reference profile over a full FY → **367** dated obligation instances (golden-locked), working-day adjusted; generation runs in well under a second. A new company's calendar starts on its onboarding day |
 | Document intelligence | **98.4%** evidence-to-obligation classification on the reference corpus (192/195) |
-| API surface | **34** REST endpoints across 9 modules |
-| Database | **27** PostgreSQL tables, row-level security (tenant isolation), append-only audit log, Alembic migrations |
-| Tests | **137** tests at **84%** coverage — 133 run everywhere; 4 RLS/append-only hardening tests run against live Postgres in CI |
+| API surface | **41** REST endpoints across 10 modules, plus `/health`, `/ready`, `/metrics` |
+| Database | **19** PostgreSQL tables, row-level security (tenant isolation), append-only audit log, Alembic migrations |
+| Tests | **165** tests at **85%** coverage — 160 run everywhere; 5 RLS/append-only hardening tests need live Postgres (CI runs them) |
 
 ## Modules
 
@@ -32,10 +32,10 @@ a content-team flag flips it.
 | Obligations | tracker, dashboard, **maker-checker lifecycle** (assign → start → submit → approve/reject → reopen) |
 | Evidence | upload → AI classify/extract → human-confirmed link → completeness gate; exact-duplicate detection |
 | Audit trail | every state change, append-only and immutable — filterable evidence trail for auditors and RBI inspection |
-| Notifications | risk-weighted reminders, overdue escalation ladder (Arq background worker) |
+| Notifications | risk-weighted reminders, overdue escalation ladder, monthly calendar roll-over (Arq background worker) |
 | Reports | board-ready compliance status as JSON / HTML / PDF |
 | Legal updates | curated feed with deterministic applicability matching |
-| Copilot | read-only, structured-first, grounded-or-silent Q&A with citations; escalates action requests |
+| Copilot | read-only, deterministic and structured-first: grounded-or-silent Q&A over your own obligations, with citations; escalates action requests. A RAG seam over regulatory text is stubbed, not wired |
 
 ## Stack
 
@@ -49,7 +49,7 @@ deterministic-only offline mode by default.
 # backend (SQLite quickstart — no infra needed)
 cd regis/backend
 pip install -e ".[dev]"
-pytest                                   # 133 passed, 4 skipped
+pytest                                   # 160 passed, 5 skipped (Postgres-only)
 
 REGIS_DATABASE_URL="sqlite+pysqlite:///dev.db" REGIS_JWT_SECRET=dev python -c \
   "from app.core.db import engine, SessionLocal; from app.models import Base; \
@@ -63,9 +63,11 @@ cd regis/frontend
 npm install && npm run dev               # http://localhost:3000 (proxies /api -> :8000)
 ```
 
-Sign up, run onboarding, and the dashboard fills with your generated calendar.
-For production-shaped dev (Postgres + RLS), point `REGIS_DATABASE_URL` at Postgres
-and run `alembic upgrade head`.
+Sign up, run onboarding, and the dashboard fills with your calendar, tracked from
+today. Filings that depend on a date you haven't given (AGM, TDS return, licence
+expiry) wait as "awaiting a date" rather than being guessed.
+For production-shaped dev (Postgres + RLS), use `docker compose up --build` in
+`regis/` (see [`regis/README.md`](regis/README.md)).
 
 ## Deeper docs
 

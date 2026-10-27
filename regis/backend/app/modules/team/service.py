@@ -166,7 +166,6 @@ def remove_member(session: Session, *, organization_id, membership_id, reassign_
     # reassign owned obligations so nothing is orphaned (PRD edge case)
     reassigned = 0
     if reassign_to:
-        session.get(Membership, reassign_to) if _is_membership(session, reassign_to) else None
         target_user = _resolve_user(session, organization_id, reassign_to)
         if target_user is None:
             raise TeamError("reassign_to is not an active member")
@@ -205,10 +204,6 @@ def remove_member(session: Session, *, organization_id, membership_id, reassign_
         },
     )
     return {"membership_id": str(m.id), "status": "removed", "reassigned_instances": reassigned}
-
-
-def _is_membership(session: Session, ident) -> bool:
-    return session.get(Membership, ident) is not None
 
 
 def _resolve_user(session: Session, organization_id, ident):

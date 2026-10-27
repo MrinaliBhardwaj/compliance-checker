@@ -71,7 +71,6 @@ class _RedisBackend:
         self._r.delete(key)
 
     def clear(self) -> None:  # prod never calls this; tests use memory
-        pass
         for key in self._r.scan_iter("rl:*"):
             self._r.delete(key)
 

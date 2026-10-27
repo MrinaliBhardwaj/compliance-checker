@@ -186,9 +186,14 @@ def run_reminders(session: Session, organization_id, today: date) -> dict:
     """Materialize today's reminder/escalation intents into notifications (idempotent)."""
     rows = (
         session.execute(
-            select(ObligationInstance).where(
+            select(ObligationInstance)
+            .join(
+                CompanyObligation, ObligationInstance.company_obligation_id == CompanyObligation.id
+            )
+            .where(
                 ObligationInstance.organization_id == organization_id,
                 ObligationInstance.status.in_(_OPEN),
+                CompanyObligation.is_active.is_(True),
             )
         )
         .scalars()

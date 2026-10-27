@@ -34,7 +34,10 @@ def build_compliance_report(
         select(ObligationInstance, CompanyObligation, ObligationTemplate)
         .join(CompanyObligation, ObligationInstance.company_obligation_id == CompanyObligation.id)
         .join(ObligationTemplate, CompanyObligation.template_id == ObligationTemplate.template_id)
-        .where(ObligationInstance.organization_id == organization_id)
+        .where(
+            ObligationInstance.organization_id == organization_id,
+            CompanyObligation.is_active.is_(True),
+        )
     )
     if entity_id:
         q = q.where(CompanyObligation.entity_id == entity_id)

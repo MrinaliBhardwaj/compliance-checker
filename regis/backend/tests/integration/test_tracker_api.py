@@ -100,3 +100,50 @@ def test_legal_update_affected_count(db, seeded_org, profile_b):
     )
     feed = lusvc.list_for_org(db, organization_id=seeded_org["org_id"])
     assert feed[0]["affected_obligations"] >= 1  # org holds obligations under law_rbi_returns
+
+
+def test_deactivated_obligations_drop_out_everywhere(db, seeded_org, profile_a, profile_b):
+    """BUG-07: B -> A deactivates ~31 obligations; their instances must leave the
+    tracker, dashboard, report, Copilot context and reminder run."""
+    from datetime import timedelta
+
+    from sqlalchemy import select
+
+    from app.models.compliance import CompanyObligation, ObligationInstance
+    from app.models.system import Notification
+    from app.modules.copilot.router import _load_instance_rows
+    from app.modules.notify.service import run_reminders
+    from app.modules.obligations.router import dashboard
+    from app.modules.reports.service import build_compliance_report
+
+    kw = {"organization_id": seeded_org["org_id"], "entity_id": seeded_org["entity_id"]}
+    generate_calendar(db, profile=profile_b, ctx=CTX, **kw)
+    generate_calendar(db, profile=profile_a, ctx=CTX, **kw)
+    active, inactive = (
+        db.execute(
+            select(ObligationInstance.id)
+            .join(CompanyObligation)
+            .where(CompanyObligation.is_active.is_(flag))
+        )
+        .scalars()
+        .all()
+        for flag in (True, False)
+    )
+    assert active and inactive
+
+    admin = _admin(seeded_org)
+    assert {r["id"] for r in list_instances(db=db, principal=admin)} == {str(i) for i in active}
+    assert dashboard(db=db, principal=admin)["total_instances"] == len(active)
+    report = build_compliance_report(
+        db, organization_id=seeded_org["org_id"], today=date(2026, 6, 1)
+    )
+    assert report["totals"]["instances"] == len(active)
+    assert {r["id"] for r in _load_instance_rows(db, seeded_org["org_id"])} == {
+        str(i) for i in active
+    }
+
+    # a reminder day for a deactivated instance sends nothing about it
+    gone = db.get(ObligationInstance, inactive[0])
+    run_reminders(db, seeded_org["org_id"], gone.due_date - timedelta(days=7))
+    sent = db.execute(select(Notification.payload)).scalars().all()
+    assert all(p.get("instance_id") != str(gone.id) for p in sent)

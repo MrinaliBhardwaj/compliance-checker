@@ -68,7 +68,10 @@ def list_instances(
         select(ObligationInstance, CompanyObligation, ObligationTemplate)
         .join(CompanyObligation, ObligationInstance.company_obligation_id == CompanyObligation.id)
         .join(ObligationTemplate, CompanyObligation.template_id == ObligationTemplate.template_id)
-        .where(ObligationInstance.organization_id == principal.organization_id)
+        .where(
+            ObligationInstance.organization_id == principal.organization_id,
+            CompanyObligation.is_active.is_(True),
+        )
         .order_by(ObligationInstance.due_date)
     )
     triples = db.execute(query).all()
@@ -145,8 +148,13 @@ def dashboard(db: DbSession, principal: CurrentPrincipal) -> dict:
     """Risk-weighted counts for the action tiles + a simple health score."""
     rows = (
         db.execute(
-            select(ObligationInstance).where(
-                ObligationInstance.organization_id == principal.organization_id
+            select(ObligationInstance)
+            .join(
+                CompanyObligation, ObligationInstance.company_obligation_id == CompanyObligation.id
+            )
+            .where(
+                ObligationInstance.organization_id == principal.organization_id,
+                CompanyObligation.is_active.is_(True),
             )
         )
         .scalars()

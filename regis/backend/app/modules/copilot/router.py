@@ -18,7 +18,7 @@ from sqlalchemy import select
 from app.core.deps import DbSession
 from app.core.security import CurrentPrincipal
 from app.engines.copilot import answer
-from app.models.compliance import ObligationInstance
+from app.models.compliance import CompanyObligation, ObligationInstance
 from app.models.system import CopilotMessage
 
 router = APIRouter(prefix="/copilot", tags=["copilot"])
@@ -31,7 +31,14 @@ class Ask(BaseModel):
 def _load_instance_rows(db, organization_id: str) -> list[dict]:
     rows = (
         db.execute(
-            select(ObligationInstance).where(ObligationInstance.organization_id == organization_id)
+            select(ObligationInstance)
+            .join(
+                CompanyObligation, ObligationInstance.company_obligation_id == CompanyObligation.id
+            )
+            .where(
+                ObligationInstance.organization_id == organization_id,
+                CompanyObligation.is_active.is_(True),
+            )
         )
         .scalars()
         .all()

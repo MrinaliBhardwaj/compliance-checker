@@ -163,7 +163,11 @@ def _role_users(session: Session, organization_id, role: str) -> list[User]:
         session.execute(
             select(User)
             .join(Membership, Membership.user_id == User.id)
-            .where(Membership.organization_id == organization_id, Membership.role == role)
+            .where(
+                Membership.organization_id == organization_id,
+                Membership.role == role,
+                Membership.status == "active",  # not removed, not a pending invite
+            )
         )
         .scalars()
         .all()

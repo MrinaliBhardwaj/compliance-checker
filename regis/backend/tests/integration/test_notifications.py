@@ -214,3 +214,43 @@ def test_assignment_notification(db, seeded_org, profile_b):
         db.execute(select(Notification).where(Notification.type == "assignment")).scalars().all()
     )
     assert any(str(n.user_id) == str(prep.id) for n in assigns)
+
+
+def test_escalations_skip_removed_and_invited_members(db, seeded_org, profile_b):
+    """BUG-11: only active members receive role-targeted escalations."""
+    _make_admin_membership(db, seeded_org)
+    ghosts = []
+    for status in ("removed", "invited"):
+        u = User(email=f"{status}@acme.example", full_name=status)
+        db.add(u)
+        db.flush()
+        db.add(
+            Membership(
+                user_id=u.id,
+                organization_id=seeded_org["org_id"],
+                role="compliance_admin",
+                status=status,
+            )
+        )
+        ghosts.append(u.id)
+    db.flush()
+    generate_calendar(
+        db,
+        organization_id=seeded_org["org_id"],
+        entity_id=seeded_org["entity_id"],
+        profile=profile_b,
+        ctx=CTX,
+    )
+    inst = (
+        db.execute(select(ObligationInstance).where(ObligationInstance.due_date.isnot(None)))
+        .scalars()
+        .first()
+    )
+    run_reminders(db, seeded_org["org_id"], inst.due_date + timedelta(days=3))  # admin rung
+    recipients = (
+        db.execute(select(Notification.user_id).where(Notification.type == "escalation"))
+        .scalars()
+        .all()
+    )
+    assert seeded_org["user_id"] in recipients
+    assert not set(ghosts) & set(recipients)

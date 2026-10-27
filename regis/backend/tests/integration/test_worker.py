@@ -51,3 +51,36 @@ def test_extend_calendars_adds_next_fy_near_fy_end(db, seeded_org, profile_b, mo
     assert len(dues) > before
     assert max(dues) > date(2027, 3, 31)
     assert sum(1 for d in dues if d <= date(2027, 3, 31)) == before
+
+
+def test_failing_org_is_logged_and_others_still_run(db, seeded_org, monkeypatch, caplog):
+    """BUG-20: one org's failure must be visible in the worker log, not swallowed."""
+    import logging
+
+    from app.models.tenancy import Organization
+    from app.modules.notify import service as notify
+
+    other = Organization(name="Second NBFC")
+    db.add(other)
+    db.commit()
+    bad = str(seeded_org["org_id"])
+
+    def flaky(session, org_id, today):
+        if str(org_id) == bad:
+            raise RuntimeError("smtp down")
+        return {"notifications": 2}
+
+    monkeypatch.setattr(notify, "run_reminders", flaky)
+    with caplog.at_level(logging.ERROR, logger="app.jobs.worker"):
+        out = _run_job(monkeypatch, db, worker.enqueue_due_reminders, date(2026, 10, 27))
+    assert out == {"reminders_created": 2}  # the healthy org still ran
+    assert any(bad in r.getMessage() and r.exc_info for r in caplog.records)
+
+
+def test_cron_runs_on_india_time():
+    """BUG-21: arq defaults to the host zone (UTC in python:3.12-slim), which ran the
+    '00:30 IST' sweep at 06:00 IST."""
+    from datetime import timedelta
+
+    tz = worker.WorkerSettings.timezone
+    assert tz.utcoffset(None) == timedelta(hours=5, minutes=30)

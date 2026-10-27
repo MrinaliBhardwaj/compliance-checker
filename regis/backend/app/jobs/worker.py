@@ -9,7 +9,8 @@ worker writes no status. Job bodies call the same services the API uses.
 from __future__ import annotations
 
 import logging
-from datetime import date
+from datetime import date, timedelta
+from datetime import timezone as dt_timezone
 
 from arq import cron
 from arq.connections import RedisSettings
@@ -68,6 +69,8 @@ async def enqueue_due_reminders(ctx) -> dict:
                 total += run_reminders(session, org_id, today)["notifications"]
                 session.commit()  # per-org: reminder INSERTs must land under this org's RLS scope
             except Exception:
+                # one org's failure mustn't stop the rest, but it must be visible
+                logger.exception("enqueue_due_reminders failed for org %s", org_id)
                 session.rollback()
     return {"reminders_created": total}
 
@@ -112,6 +115,11 @@ async def extend_calendars(ctx) -> dict:
 
 class WorkerSettings:
     """arq entrypoint: `arq app.jobs.worker.WorkerSettings`."""
+
+    # Cron times below are India time. arq otherwise uses the host's zone, which is UTC
+    # in python:3.12-slim (00:30 "IST" ran at 06:00 IST). IST has no DST, so a fixed
+    # offset is exact and needs no tzdata.
+    timezone = dt_timezone(timedelta(hours=5, minutes=30), "IST")
 
     functions = [nightly_sweep, enqueue_due_reminders, extend_calendars]
     cron_jobs = [

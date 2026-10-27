@@ -24,6 +24,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Text extraction for uploaded evidence (app/ai/ocr.py imports these lazily). Images
+# also need the tesseract binary, which the Dockerfile installs.
+ocr = [
+    "pypdf>=4",
+    "pytesseract>=0.3",
+    "Pillow>=10",
+    "python-docx>=1.1",
+]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",

@@ -18,7 +18,7 @@ help:
 	@echo "  make ci-check          -> run CI checks locally"
 
 install-dev:
-	cd $(BACKEND) && $(PY) -m pip install --upgrade pip && $(PIP) install -e ."[dev]"
+	cd $(BACKEND) && $(PY) -m pip install --upgrade pip && $(PIP) install -e ."[dev,ocr]"
 
 precommit-install:
 	cd $(BACKEND) && $(PIP) install pre-commit && pre-commit install

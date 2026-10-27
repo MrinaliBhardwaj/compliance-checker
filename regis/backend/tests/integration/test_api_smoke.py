@@ -402,7 +402,7 @@ def test_login_is_rate_limited(client):
     email = f"rl-{_uuid.uuid4().hex[:8]}@acme.example"
     r = client.post(
         "/auth/signup",
-        json={  # signup itself isn't rate-limited
+        json={  # one signup: well inside its own per-IP budget
             "email": email,
             "password": "goodpassword1",
             "organization_name": "RL NBFC",
@@ -424,6 +424,64 @@ def test_login_is_rate_limited(client):
     # the correct password is refused too while throttled — no slipping through
     good = client.post("/auth/login", json={"email": email, "password": "goodpassword1"})
     assert good.status_code == 429
+
+
+def test_own_login_does_not_reset_the_ip_budget(client):
+    """BUG-13: a successful login used to reset the per-IP counter, so an attacker
+    could guess against other accounts, log into their own, and go again."""
+    import uuid as _uuid
+
+    from app.core.config import get_settings
+
+    email = f"atk-{_uuid.uuid4().hex[:8]}@acme.example"
+    assert (
+        client.post(
+            "/auth/signup",
+            json={
+                "email": email,
+                "password": "goodpassword1",
+                "organization_name": "Atk NBFC",
+                "entity_legal_name": "Atk Ltd",
+            },
+        ).status_code
+        == 200
+    )
+    client.cookies.clear()
+    limit = get_settings().login_max_attempts
+    for n in range(limit - 1):  # one guess per victim stays under the per-account limit
+        victim = f"victim{n}-{_uuid.uuid4().hex[:6]}@acme.example"
+        assert (
+            client.post("/auth/login", json={"email": victim, "password": "x"}).status_code == 401
+        )
+    own = client.post("/auth/login", json={"email": email, "password": "goodpassword1"})
+    assert own.status_code == 200  # the attempt that used the last slot
+    client.cookies.clear()
+    nxt = client.post("/auth/login", json={"email": "victim-next@acme.example", "password": "x"})
+    assert nxt.status_code == 429
+
+
+def test_signup_is_rate_limited_per_ip(client):
+    import uuid as _uuid
+
+    from app.core.config import get_settings
+
+    def _signup():
+        r = client.post(
+            "/auth/signup",
+            json={
+                "email": f"s-{_uuid.uuid4().hex[:8]}@acme.example",
+                "password": "goodpassword1",
+                "organization_name": "S NBFC",
+                "entity_legal_name": "S Ltd",
+            },
+        )
+        client.cookies.clear()
+        return r
+
+    codes = [_signup().status_code for _ in range(get_settings().login_max_attempts)]
+    assert set(codes) == {200}
+    blocked = _signup()
+    assert blocked.status_code == 429 and blocked.headers.get("retry-after")
 
 
 def test_signup_rejects_short_password(client):

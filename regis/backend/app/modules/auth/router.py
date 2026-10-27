@@ -63,7 +63,9 @@ class TokenResponse(BaseModel):
 
 
 @router.post("/signup", response_model=TokenResponse)
-def signup(body: SignupRequest, response: Response) -> TokenResponse:
+def signup(body: SignupRequest, request: Request, response: Response) -> TokenResponse:
+    # Each signup creates an org and a user; cap them per IP like logins.
+    _enforce_rate_limit(request, {"signup_ip": ratelimit.client_ip(request)})
     with SessionLocal() as db:
         exists = db.execute(select(User).where(User.email == body.email)).scalar_one_or_none()
         if exists:
@@ -224,8 +226,9 @@ def login(body: LoginRequest, request: Request, response: Response) -> TokenResp
             role=membership.role,
             email=user.email,
         )
-        # success: clear the attempt counters so honest users aren't throttled later
-        ratelimit.reset("login_ip", ratelimit.client_ip(request))
+        # success: clear this account's counter so its owner isn't throttled later.
+        # The per-IP window is left to expire: resetting it here would let anyone
+        # who can sign up refill their guessing budget by logging into their own account.
         ratelimit.reset("login_email", body.email)
         token = create_access_token(principal)
         set_auth_cookie(response, token)

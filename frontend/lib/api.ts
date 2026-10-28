@@ -9,6 +9,16 @@ export class ApiError extends Error {
   }
 }
 
+/** FastAPI 422 details are a list of {loc, msg}; turn them into a sentence a person can act on. */
+function validationMessage(items: { loc?: unknown[]; msg?: string }[]): string {
+  return items.map((it) => {
+    const field = String(it.loc?.[it.loc.length - 1] ?? "")
+      .replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+    const msg = (it.msg ?? "is invalid").replace(/^value is not a valid email address: /i, "");
+    return field ? `${field}: ${msg}` : msg;
+  }).join(" ");
+}
+
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   const res = await fetch(`/api${path}`, {
@@ -18,7 +28,9 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
     let detail = res.statusText;
     try {
       const body = await res.json();
-      detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail ?? body);
+      detail = typeof body.detail === "string" ? body.detail
+        : Array.isArray(body.detail) ? validationMessage(body.detail)
+        : JSON.stringify(body.detail ?? body);
     } catch {
       /* keep statusText */
     }

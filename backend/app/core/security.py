@@ -15,13 +15,26 @@ import bcrypt
 from fastapi import Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from pydantic import AfterValidator, BaseModel, EmailStr
+from pydantic import AfterValidator, BaseModel, BeforeValidator, EmailStr
 
 from app.core.config import get_settings
 
+
 # Emails are matched case-insensitively everywhere (signup, login, invite): store and
 # compare the lowercased form, so "Alice@X.com" and "alice@x.com" are one account.
-NormalizedEmail = Annotated[EmailStr, AfterValidator(lambda v: v.strip().lower())]
+def _strip_pasted_email(v: object) -> object:
+    """Tolerate what people paste: surrounding spaces and a "mailto:" prefix (copying a
+    linked address from a chat or mail client includes it)."""
+    if isinstance(v, str):
+        v = v.strip()
+        if v.lower().startswith("mailto:"):
+            v = v[len("mailto:") :].strip()
+    return v
+
+
+NormalizedEmail = Annotated[
+    EmailStr, BeforeValidator(_strip_pasted_email), AfterValidator(lambda v: v.strip().lower())
+]
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 

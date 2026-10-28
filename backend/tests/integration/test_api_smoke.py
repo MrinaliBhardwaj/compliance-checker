@@ -658,3 +658,24 @@ def test_email_is_case_insensitive(client):
         ).scalar_one()
     eng.dispose()
     assert n == 1 and stored == mixed.lower()
+
+
+def test_pasted_mailto_prefix_is_accepted(client):
+    """Emails copied from a chat or mail client often arrive as 'mailto:x@y.com'."""
+    tag = uuid.uuid4().hex[:8]
+    r = client.post(
+        "/auth/signup",
+        json={
+            "email": f"  mailto:Paste.{tag}@Example.com ",
+            "password": "goodpassword1",
+            "organization_name": "Paste NBFC",
+            "entity_legal_name": "Paste Ltd",
+        },
+    )
+    assert r.status_code == 200, r.text
+    client.cookies.clear()
+    ok = client.post(
+        "/auth/login", json={"email": f"paste.{tag}@example.com", "password": "goodpassword1"}
+    )
+    assert ok.status_code == 200
+    client.cookies.clear()
